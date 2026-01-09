@@ -1,6 +1,8 @@
 extends Area2D
 
 
+const GRID_SIZE = 70
+
 var is_held = false
 
 
@@ -17,3 +19,10 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 			z_index = 10
 		else:
 			z_index = 0
+			
+			# 駒をマスの中央に配置
+			var col = floor(position.x / GRID_SIZE)
+			var row = floor(position.y / GRID_SIZE)
+			var new_x = (col * GRID_SIZE) + (GRID_SIZE / 2.0)
+			var new_y = (row * GRID_SIZE) + (GRID_SIZE / 2.0)
+			position = Vector2(new_x, new_y)
