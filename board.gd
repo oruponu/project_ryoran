@@ -1,7 +1,7 @@
 extends Node2D
 
 
-const GRID_SIZE = 75
+const GRID_SIZE = 70
 const COLS = 9
 const ROWS = 9
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
