@@ -1,6 +1,7 @@
 extends Area2D
 
 
+var piece_type = "pawn"
 var is_held = false
 var current_col = -1
 var current_row = -1
@@ -41,3 +42,15 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				# 盤外のため置けない
 				is_held = true
 				z_index = 10
+
+
+func init_pos(col: int, row: int, type: String) -> void:
+	current_col = col
+	current_row = row
+	piece_type = type
+	
+	var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
+	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
+	position = Vector2(new_x, new_y)
+	
+	GameManager.update_board_state(-1, -1, col, row, self)

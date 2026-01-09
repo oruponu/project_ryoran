@@ -7,6 +7,4 @@
 
 [node name="Board" parent="." instance=ExtResource("1_ig7tw")]
 position = Vector2(325, 45)
-
-[node name="Piece" parent="Board" instance=ExtResource("2_0xm2m")]
-scale = Vector2(0.5, 0.5)
+piece_scene = ExtResource("2_0xm2m")
