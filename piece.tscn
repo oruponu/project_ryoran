@@ -6,6 +6,7 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hisf2"]
 
 [node name="Piece" type="Area2D"]
+scale = Vector2(0.5, 0.5)
 script = ExtResource("1_hisf2")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
