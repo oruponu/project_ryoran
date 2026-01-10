@@ -83,7 +83,7 @@ func update_layout() -> void:
 		representative.visible = true
 
 		var tween = create_tween()
-		tween.tween_property(representative, "position", target_pos, 0.1)
+		tween.tween_property(representative, "position", target_pos, 0.2)
 		
 		representative.rotation_degrees = 180 if is_enemy else 0
 		
