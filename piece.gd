@@ -49,6 +49,14 @@ const PIECE_DATA = {
 	}
 }
 
+const MOVES = {
+	Type.KING: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1), Vector2(-1, 1), Vector2(-1, 0), Vector2(-1, -1)],
+	Type.GOLD: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0), Vector2(-1, -1)],
+	Type.SILVER: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1)],
+	Type.KNIGHT: [Vector2(-1, -2), Vector2(1, -2)],
+	Type.PAWN: [Vector2(0, -1)]
+}
+
 
 @onready var label = $Label
 
@@ -91,16 +99,18 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 			
 			if col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS:
 				var target_piece = GameManager.get_piece(col, row)
+				var is_legal = _can_move_to(col, row)
 				var can_move = false
 				
-				if target_piece == null:
-					can_move = true
-				elif col == current_col and row == current_row:
-					can_move = true
-				elif target_piece.is_enemy != self.is_enemy:
-					can_move = true
-					GameManager.capture_piece(target_piece)
-					target_piece.move_to_hand()
+				if is_legal:
+					if target_piece == null:
+						can_move = true
+					elif col == current_col and row == current_row:
+						can_move = true
+					elif target_piece.is_enemy != self.is_enemy:
+						can_move = true
+						GameManager.capture_piece(target_piece)
+						target_piece.move_to_hand()
 				
 				if can_move:
 					GameManager.update_board_state(current_col, current_row, col, row, self)
@@ -120,6 +130,74 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				# 盤外のため置けない
 				is_held = true
 				z_index = 10
+
+
+func _can_move_to(target_col: int, target_row: int) -> bool:
+	if target_col == current_col and target_row == current_row:
+		return true
+	
+	var dx = target_col - current_col
+	var dy = target_row - current_row
+	
+	if is_enemy:
+		dx = -dx
+		dy = -dy
+	
+	var relative_pos = Vector2(dx, dy)
+	var effective_type = piece_type
+	
+	if is_promoted:
+		match piece_type:
+			Type.SILVER, Type.KNIGHT, Type.LANCE, Type.PAWN:
+				effective_type = Type.GOLD
+	
+	match effective_type:
+		Type.ROOK:
+			if dx == 0 or dy == 0:
+				if _is_path_blocked(target_col, target_row):
+					return false
+				return true
+			if is_promoted and abs(dx) <= 1 and abs(dy) <= 1:
+				return true
+			return false
+		Type.BISHOP:
+			if abs(dx) == abs(dy):
+				if _is_path_blocked(target_col, target_row):
+					return false
+				return true
+			if is_promoted and (abs(dx) + abs(dy) <= 1):
+				return true
+			return false
+		Type.LANCE:
+			if dx == 0 and dy < 0:
+				if _is_path_blocked(target_col, target_row):
+					return false
+				return true
+			return false
+		Type.KNIGHT:
+			return relative_pos in MOVES[Type.KNIGHT]
+		_:
+			if MOVES.has(effective_type):
+				return relative_pos in MOVES[effective_type]
+	return false
+
+
+func _is_path_blocked(target_col: int, target_row: int) -> bool:
+	var dx = target_col - current_col
+	var dy = target_row - current_row
+	var steps = max(abs(dx), abs(dy))
+	
+	var step_x = sign(dx)
+	var step_y = sign(dy)
+	
+	# 現在地と目的地の間にあるマスを確認
+	for i in range(1, steps):
+		var check_col = current_col + (step_x * i)
+		var check_row = current_row + (step_y * i)
+		
+		if GameManager.get_piece(check_col, check_row) != null:
+			return true
+	return false
 
 
 func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
