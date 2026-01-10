@@ -2,6 +2,7 @@ extends Node
 
 
 var board_grid = []
+var holding_piece = null
 
 
 # Called when the node enters the scene tree for the first time.

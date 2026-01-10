@@ -15,9 +15,14 @@ func _process(_delta: float) -> void:
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.is_pressed():
+		# 他の駒が選択中の場合は何もしない
+		if !is_held and GameManager.holding_piece != null:
+			return
+
 		is_held = !is_held
 		if is_held:
 			z_index = 10
+			GameManager.holding_piece = self
 		else:
 			z_index = 0
 			
@@ -29,6 +34,7 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					GameManager.update_board_state(current_col, current_row, col, row, self)
 					current_col = col
 					current_row = row
+					GameManager.holding_piece = null
 					
 					# 駒をマスの中央に配置
 					var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
