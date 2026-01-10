@@ -1,0 +1,31 @@
+extends CanvasLayer
+
+
+signal decision_mode(result: bool)
+
+
+@onready var yes_button = $Panel/YesButton
+@onready var no_button = $Panel/NoButton
+
+
+# Called when the node enters the scene tree for the first time.
+func _ready() -> void:
+	yes_button.pressed.connect(_on_yes_pressed)
+	no_button.pressed.connect(_on_no_pressed)
+	hide()
+
+
+func ask_user() -> bool:
+	show()
+	var result = await decision_mode
+	return result
+
+
+func _on_yes_pressed() -> void:
+	hide()
+	decision_mode.emit(true)
+
+
+func _on_no_pressed() -> void:
+	hide()
+	decision_mode.emit(false)
