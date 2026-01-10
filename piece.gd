@@ -16,6 +16,10 @@ func _process(_delta: float) -> void:
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.is_pressed():
+		# 敵駒の操作を禁止
+		if !is_held and is_enemy:
+			return
+		
 		# 他の駒が選択中の場合は何もしない
 		if !is_held and GameManager.holding_piece != null:
 			return
