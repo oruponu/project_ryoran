@@ -1,15 +1,38 @@
 extends Area2D
 
 
-const PIECE_NAMES = {
-	"pawn": "歩",
-	"bishop": "角",
-	"rook": "飛",
-	"lance": "香",
-	"knight": "桂",
-	"silver": "銀",
-	"gold": "金",
-	"king": "玉"
+const PIECE_DATA = {
+	"king": {
+		"default": "玉",
+		"enemy": "王"
+	},
+	"rook": {
+		"default": "飛",
+		"promoted": "龍"
+	},
+	"bishop": {
+		"default": "角",
+		"promoted": "馬"
+	},
+	"gold": {
+		"default": "金"
+	},
+	"silver": {
+		"default": "銀",
+		"promoted": "全"
+	},
+	"knight": {
+		"default": "桂",
+		"promoted": "圭"
+	},
+	"lance": {
+		"default": "香",
+		"promoted": "杏"
+	},
+	"pawn": {
+		"default": "歩",
+		"promoted": "と"
+	}
 }
 
 
@@ -17,6 +40,7 @@ const PIECE_NAMES = {
 
 var piece_type = "pawn"
 var is_enemy = false
+var is_promoted = false
 var is_held = false
 var current_col = -1
 var current_row = -1
@@ -90,18 +114,32 @@ func init_pos(col: int, row: int, type: String, _is_enemy: bool) -> void:
 	piece_type = type
 	is_enemy = _is_enemy
 	
-	label.text = PIECE_NAMES.get(piece_type, "")
-	
-	if is_enemy:
-		rotation_degrees = 180
-	else:
-		rotation_degrees = 0
+	_update_display()
 	
 	var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	position = Vector2(new_x, new_y)
 	
 	GameManager.update_board_state(-1, -1, col, row, self)
+
+
+func _update_display() -> void:
+	if not PIECE_DATA.has(piece_type):
+		label.text = "？"
+		return
+	
+	var data = PIECE_DATA[piece_type]
+	var disp_text = data.get("default", "？")
+	if is_promoted and data.has("promoted"):
+		disp_text = data["promoted"]
+	elif is_enemy and data.has("enemy"):
+		disp_text = data["enemy"]
+	label.text = disp_text
+	
+	if is_enemy:
+		rotation_degrees = 180
+	else:
+		rotation_degrees = 0
 
 
 func move_to_hand() -> void:
