@@ -255,6 +255,11 @@ func _update_display() -> void:
 		disp_text = data["enemy"]
 	label.text = disp_text
 	
+	if is_promoted:
+		label.modulate = Color(0.8, 0, 0)
+	else:
+		label.modulate = Color.BLACK
+	
 	if is_enemy:
 		rotation_degrees = 180
 	else:
