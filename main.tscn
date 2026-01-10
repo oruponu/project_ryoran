@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene load_steps=7 format=3 uid="uid://btmhrda1vfqfd"]
 
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://board.tscn" id="1_ig7tw"]
 [ext_resource type="PackedScene" uid="uid://cn67r6mghyu06" path="res://piece.tscn" id="2_0xm2m"]
@@ -7,6 +7,11 @@
 
 [sub_resource type="LabelSettings" id="LabelSettings_1bvp3"]
 font_size = 24
+
+[sub_resource type="LabelSettings" id="LabelSettings_lquwl"]
+font_size = 128
+font_color = Color(1, 0.2, 0.2, 1)
+outline_size = 32
 
 [node name="Main" type="Node2D"]
 
@@ -34,6 +39,24 @@ offset_bottom = 90.0
 grow_horizontal = 2
 text = "0 手目（先手）"
 label_settings = SubResource("LabelSettings_1bvp3")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CheckLabel" type="Label" parent="CanvasLayer"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -64.0
+offset_top = -44.5
+offset_right = 64.0
+offset_bottom = 44.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "王手"
+label_settings = SubResource("LabelSettings_lquwl")
 horizontal_alignment = 1
 vertical_alignment = 1
 
