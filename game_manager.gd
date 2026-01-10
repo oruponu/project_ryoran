@@ -111,7 +111,7 @@ func _try_move(piece: Piece, col: int, row: int) -> bool:
 		return false
 	if col == piece.current_col and row == piece.current_row:
 		return false
-	if not piece._can_move_to(col, row):
+	if not piece.can_move_to(col, row):
 		return false
 	
 	var target_piece = get_piece(col, row)

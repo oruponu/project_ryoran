@@ -86,7 +86,7 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 			viewport.set_input_as_handled()
 
 
-func _can_move_to(target_col: int, target_row: int) -> bool:
+func can_move_to(target_col: int, target_row: int) -> bool:
 	if target_col == current_col and target_row == current_row:
 		return true
 	
@@ -159,7 +159,7 @@ func show_move_guides() -> void:
 	
 	for col in range(GameConfig.BOARD_COLS):
 		for row in range(GameConfig.BOARD_ROWS):
-			if _can_move_to(col, row):
+			if can_move_to(col, row):
 				if col == current_col and row == current_row:
 					continue
 				var target = GameManager.get_piece(col, row)
