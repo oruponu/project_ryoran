@@ -100,6 +100,17 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 			var col = floor(position.x / GameConfig.GRID_SIZE)
 			var row = floor(position.y / GameConfig.GRID_SIZE)
 			
+			if col == current_col and row == current_row:
+				# 現在地が選択されたら移動をキャンセル
+				GameManager.holding_piece = null
+				
+				var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
+				var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
+				position = Vector2(new_x, new_y)
+				
+				request_clear_guides.emit()
+				return
+			
 			if col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS:
 				var target_piece = GameManager.get_piece(col, row)
 				var is_legal = _can_move_to(col, row)
@@ -107,8 +118,6 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				
 				if is_legal:
 					if target_piece == null:
-						can_move = true
-					elif col == current_col and row == current_row:
 						can_move = true
 					elif target_piece.is_enemy != self.is_enemy:
 						can_move = true
