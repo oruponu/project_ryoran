@@ -9,6 +9,7 @@ var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
 var turn_label: Label = null
 var check_label: Label = null
+var check_tween: Tween = null
 var promotion_dialog: Node = null
 
 
@@ -98,6 +99,9 @@ func _finish_turn(piece: Piece) -> void:
 func _play_check_animation() -> void:
 	if check_label == null:
 		return
+		
+	if check_tween != null and check_tween.is_valid():
+		check_tween.kill()
 	
 	check_label.visible = true
 	check_label.modulate.a = 1.0
@@ -114,13 +118,13 @@ func _play_check_animation() -> void:
 	
 	check_label.position = Vector2(start_pos_x, current_y)
 	
-	var tween = create_tween()
-	tween.tween_property(check_label, "position:x", center_pos_x, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_interval(1)
-	tween.tween_property(check_label, "position:x", end_pos_x, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tween.parallel().tween_property(check_label, "modulate:a", 0.0, 0.5)
+	check_tween = create_tween()
+	check_tween.tween_property(check_label, "position:x", center_pos_x, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	check_tween.tween_interval(1)
+	check_tween.tween_property(check_label, "position:x", end_pos_x, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	check_tween.parallel().tween_property(check_label, "modulate:a", 0.0, 0.5)
 	
-	tween.tween_callback(func(): check_label.visible = false)
+	check_tween.tween_callback(func(): check_label.visible = false)
 
 
 func _try_drop(piece: Piece, col: int, row: int) -> bool:
