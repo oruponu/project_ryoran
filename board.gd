@@ -31,17 +31,18 @@ func _draw() -> void:
 
 func setup_starting_board() -> void:
 	for x in range(9):
-		spawn_piece(x, 6, "pawn", false)
-		spawn_piece(8 - x, 2, "pawn", true)
+		spawn_piece(x, 6, Piece.Type.PAWN, false)
+		spawn_piece(8 - x, 2, Piece.Type.PAWN, true)
 	
-	spawn_piece(1, 7, "bishop", false)
-	spawn_piece(7, 7, "rook", false)
-	spawn_piece(7, 1, "bishop", true)
-	spawn_piece(1, 1, "rook", true)
+	spawn_piece(1, 7, Piece.Type.BISHOP, false)
+	spawn_piece(7, 7, Piece.Type.ROOK, false)
+	spawn_piece(7, 1, Piece.Type.BISHOP, true)
+	spawn_piece(1, 1, Piece.Type.ROOK, true)
 	
 	var bottom_row_types = [
-		"lance", "knight", "silver", "gold", "king",
-		"gold", "silver", "knight", "lance"
+		Piece.Type.LANCE, Piece.Type.KNIGHT, Piece.Type.SILVER, Piece.Type.GOLD,
+		Piece.Type.KING,
+		Piece.Type.GOLD, Piece.Type.SILVER, Piece.Type.KNIGHT, Piece.Type.LANCE
 	]
 	for x in range(9):
 		var type = bottom_row_types[x]
@@ -50,7 +51,7 @@ func setup_starting_board() -> void:
 		
 
 
-func spawn_piece(x: int, y: int, type: String, is_enemy: bool) -> void:
+func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool) -> void:
 	if piece_scene == null:
 		push_error("Piece Scene が設定されていません")
 		return

@@ -1,35 +1,49 @@
+class_name Piece
+
 extends Area2D
 
 
+enum Type {
+	KING,
+	ROOK,
+	BISHOP,
+	GOLD,
+	SILVER,
+	KNIGHT,
+	LANCE,
+	PAWN
+}
+
+
 const PIECE_DATA = {
-	"king": {
+	Type.KING: {
 		"default": "玉",
 		"enemy": "王"
 	},
-	"rook": {
+	Type.ROOK: {
 		"default": "飛",
 		"promoted": "龍"
 	},
-	"bishop": {
+	Type.BISHOP: {
 		"default": "角",
 		"promoted": "馬"
 	},
-	"gold": {
+	Type.GOLD: {
 		"default": "金"
 	},
-	"silver": {
+	Type.SILVER: {
 		"default": "銀",
 		"promoted": "全"
 	},
-	"knight": {
+	Type.KNIGHT: {
 		"default": "桂",
 		"promoted": "圭"
 	},
-	"lance": {
+	Type.LANCE: {
 		"default": "香",
 		"promoted": "杏"
 	},
-	"pawn": {
+	Type.PAWN: {
 		"default": "歩",
 		"promoted": "と"
 	}
@@ -38,7 +52,7 @@ const PIECE_DATA = {
 
 @onready var label = $Label
 
-var piece_type = "pawn"
+var piece_type = Type.PAWN
 var is_enemy = false
 var is_promoted = false
 var is_held = false
@@ -108,7 +122,7 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				z_index = 10
 
 
-func init_pos(col: int, row: int, type: String, _is_enemy: bool) -> void:
+func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
 	current_col = col
 	current_row = row
 	piece_type = type
