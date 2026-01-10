@@ -36,6 +36,8 @@ func _draw() -> void:
 func add_piece(piece: Piece) -> void:
 	piece.reparent(self)
 	
+	move_child(piece, 0)
+	
 	piece.current_col = -1
 	piece.current_row = -1
 	piece.is_enemy = is_enemy
@@ -81,15 +83,22 @@ func update_layout() -> void:
 		
 		var representative = pieces[0]
 		representative.visible = true
-
+		
+		var dist = representative.position.distance_to(target_pos)
+		var is_capturing = dist > GameConfig.GRID_SIZE
+		
 		var tween = create_tween()
 		tween.tween_property(representative, "position", target_pos, 0.2)
+		
+		if is_capturing:
+			tween.tween_callback(update_layout)
 		
 		representative.rotation_degrees = 180 if is_enemy else 0
 		
 		for i in range(1, pieces.size()):
-			pieces[i].visible = false
-			pieces[i].position = target_pos
+			if !is_capturing:
+				pieces[i].visible = false
+				pieces[i].position = target_pos
 		
 		if pieces.size() > 1:
 			var label = _get_label(type)
