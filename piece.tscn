@@ -1,9 +1,13 @@
-[gd_scene load_steps=4 format=3 uid="uid://cn67r6mghyu06"]
+[gd_scene load_steps=5 format=3 uid="uid://cn67r6mghyu06"]
 
 [ext_resource type="Script" uid="uid://c2b77n144swq5" path="res://piece.gd" id="1_hisf2"]
 [ext_resource type="Texture2D" uid="uid://d3oo548rk8kw8" path="res://piece.png" id="2_hisf2"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hisf2"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_hisf2"]
+font_size = 64
+font_color = Color(0, 0, 0, 1)
 
 [node name="Piece" type="Area2D"]
 scale = Vector2(0.5, 0.5)
@@ -16,5 +20,22 @@ texture = ExtResource("2_hisf2")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 scale = Vector2(6, 6)
 shape = SubResource("RectangleShape2D_hisf2")
+
+[node name="Label" type="Label" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -32.0
+offset_top = -44.5
+offset_right = 32.0
+offset_bottom = 44.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "歩"
+label_settings = SubResource("LabelSettings_hisf2")
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [connection signal="input_event" from="." to="." method="_on_input_event"]

@@ -1,6 +1,20 @@
 extends Area2D
 
 
+const PIECE_NAMES = {
+	"pawn": "歩",
+	"bishop": "角",
+	"rook": "飛",
+	"lance": "香",
+	"knight": "桂",
+	"silver": "銀",
+	"gold": "金",
+	"king": "玉"
+}
+
+
+@onready var label = $Label
+
 var piece_type = "pawn"
 var is_enemy = false
 var is_held = false
@@ -75,6 +89,8 @@ func init_pos(col: int, row: int, type: String, _is_enemy: bool) -> void:
 	current_row = row
 	piece_type = type
 	is_enemy = _is_enemy
+	
+	label.text = PIECE_NAMES.get(piece_type, "")
 	
 	if is_enemy:
 		rotation_degrees = 180
