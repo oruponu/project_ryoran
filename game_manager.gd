@@ -2,6 +2,7 @@ extends Node
 
 
 var board_grid = []
+var current_turn = false	# 現在の手番（false: 先手, true: 後手）
 var holding_piece = null
 var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
@@ -26,6 +27,10 @@ func initialize_board() -> void:
 		for y in range(GameConfig.BOARD_ROWS):
 			column.append(null)
 		board_grid.append(column)
+
+
+func change_turn() -> void:
+	current_turn = !current_turn
 
 
 func get_piece(col: int, row: int):

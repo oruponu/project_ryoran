@@ -81,11 +81,8 @@ func _process(_delta: float) -> void:
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.is_pressed():
-		if current_col == -1 or current_row == -1:
-			return
-		
 		# 敵駒の操作を禁止
-		if !is_held and is_enemy:
+		if is_enemy != GameManager.current_turn:
 			return
 		
 		# 他の駒が選択中の場合は何もしない
@@ -132,6 +129,8 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					await _handle_promotion(prev_row, current_row)
 					
 					request_clear_guides.emit()
+					
+					GameManager.change_turn()
 				else:
 					# 自駒があるため置けない
 					is_held = true
