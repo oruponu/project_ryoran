@@ -32,16 +32,22 @@ func _draw() -> void:
 func setup_starting_board() -> void:
 	for x in range(9):
 		spawn_piece(x, 6, "pawn", false)
+		spawn_piece(8 - x, 2, "pawn", true)
 	
 	spawn_piece(1, 7, "bishop", false)
 	spawn_piece(7, 7, "rook", false)
+	spawn_piece(7, 1, "bishop", true)
+	spawn_piece(1, 1, "rook", true)
 	
 	var bottom_row_types = [
 		"lance", "knight", "silver", "gold", "king",
 		"gold", "silver", "knight", "lance"
 	]
 	for x in range(9):
-		spawn_piece(x, 8, bottom_row_types[x], false)
+		var type = bottom_row_types[x]
+		spawn_piece(x, 8, type, false)
+		spawn_piece(8 - x, 0, type, true)
+		
 
 
 func spawn_piece(x: int, y: int, type: String, is_enemy: bool) -> void:
