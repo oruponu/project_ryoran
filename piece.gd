@@ -170,15 +170,45 @@ func show_move_guides() -> void:
 
 
 func show_drop_guides() -> void:
+	# TODO: 打ち歩詰めを禁止
 	var valid_moves: Array[Vector2i] = []
 	
 	for col in range(GameConfig.BOARD_COLS):
+		if is_nifu(col):
+			continue
+		
 		for row in range(GameConfig.BOARD_ROWS):
-			# TODO: 反則手のガイドを表示しないようにする
 			if GameManager.get_piece(col, row) == null:
+				if is_dead_end(row):
+					continue
+				
 				valid_moves.append(Vector2i(col, row))
 	
 	request_show_guides.emit(valid_moves)
+
+
+func is_nifu(target_col: int) -> bool:
+	if piece_type != Type.PAWN:
+		return false
+	
+	for row in range(GameConfig.BOARD_ROWS):
+		var target = GameManager.get_piece(target_col, row)
+		if target != null:
+			if target.is_enemy == self.is_enemy and target.piece_type == Type.PAWN and not target.is_promoted:
+				return true
+	
+	return false
+
+
+func is_dead_end(target_row: int) -> bool:
+	var relative_row = target_row if not is_enemy else GameConfig.BOARD_ROWS - 1 - target_row
+	match piece_type:
+		Type.PAWN, Type.LANCE:
+			return relative_row == 0
+		Type.KNIGHT:
+			return relative_row <= 1
+	
+	return false
 
 
 func promote() -> void:

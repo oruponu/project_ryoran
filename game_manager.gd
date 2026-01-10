@@ -94,6 +94,10 @@ func _try_drop(piece: Piece, col: int, row: int) -> bool:
 		return false
 	if get_piece(col, row) != null:
 		return false
+	if piece.is_nifu(col):
+		return false
+	if piece.is_dead_end(row):
+		return false
 	
 	piece.reparent(board)
 	_update_piece_data(piece, col, row)
