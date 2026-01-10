@@ -3,14 +3,19 @@ extends Node
 
 var board_grid = []
 var holding_piece = null
-var player_hand = []
-var enemy_hand = []
+var player_piece_stand: PieceStand = null
+var enemy_piece_stand: PieceStand = null
 var promotion_dialog: Node = null
 
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	promotion_dialog = get_tree().root.get_node("Main/PromotionDialog")
+	var main_node = get_tree().root.get_node("Main")
+	if main_node:
+		player_piece_stand = main_node.get_node("PlayerPieceStand")
+		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
+		promotion_dialog = main_node.get_node("PromotionDialog")
+	
 	initialize_board()
 
 
@@ -42,10 +47,10 @@ func capture_piece(piece) -> void:
 	if piece.current_col != -1 and piece.current_row != -1:
 		board_grid[piece.current_col][piece.current_row] = null
 	
-	if !piece.is_enemy:
-		player_hand.append(piece)
+	if piece.is_enemy:
+		player_piece_stand.add_piece(piece)
 	else:
-		enemy_hand.append(piece)
+		enemy_piece_stand.add_piece(piece)
 
 
 func request_promotion_decision() -> bool:
