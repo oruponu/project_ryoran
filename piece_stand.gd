@@ -60,14 +60,23 @@ func update_layout() -> void:
 	var stack_index = 0
 	var total_height = GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
 	
-	var center_x = GameConfig.GRID_SIZE / 2.0
+	var center_x = 0.0
+	if is_enemy:
+		center_x = GameConfig.GRID_SIZE / 2.0 + 20
+	else:
+		center_x = GameConfig.GRID_SIZE / 2.0
 	
 	for type in DISPLAY_ORDER:
 		var pieces = groups[type] as Array
 		if pieces.is_empty():
 			continue
 		
-		var center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
+		var center_y = 0.0
+		if is_enemy:
+			center_y = (stack_index * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
+		else:
+			center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
+		
 		var target_pos = Vector2(center_x, center_y)
 		
 		var representative = pieces[0]
