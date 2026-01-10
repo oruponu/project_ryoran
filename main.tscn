@@ -12,10 +12,10 @@ position = Vector2(325, 45)
 piece_scene = ExtResource("2_0xm2m")
 
 [node name="PlayerPieceStand" parent="." instance=ExtResource("4_1bvp3")]
-position = Vector2(980, 207.5)
+position = Vector2(1002.5, 207.5)
 
 [node name="EnemyPieceStand" parent="." instance=ExtResource("4_1bvp3")]
-position = Vector2(210, 22.5)
+position = Vector2(187.5, 22.5)
 is_enemy = true
 
 [node name="PromotionDialog" parent="." instance=ExtResource("3_h2yge")]
