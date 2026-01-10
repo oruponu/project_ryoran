@@ -8,7 +8,16 @@ font_size = 32
 [node name="PromotionDialog" type="CanvasLayer"]
 script = ExtResource("1_oskcv")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Overlay" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.5019608)
+
+[node name="Panel" type="Panel" parent="Overlay"]
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -21,7 +30,7 @@ offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Label" type="Label" parent="Panel"]
+[node name="Label" type="Label" parent="Overlay/Panel"]
 layout_mode = 0
 offset_left = 167.5
 offset_top = 27.5
@@ -32,7 +41,7 @@ label_settings = SubResource("LabelSettings_rfqr3")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="YesButton" type="Button" parent="Panel"]
+[node name="YesButton" type="Button" parent="Overlay/Panel"]
 layout_mode = 0
 offset_left = 270.0
 offset_top = 101.0
@@ -41,7 +50,7 @@ offset_bottom = 164.0
 theme_override_font_sizes/font_size = 40
 text = "成る"
 
-[node name="NoButton" type="Button" parent="Panel"]
+[node name="NoButton" type="Button" parent="Overlay/Panel"]
 layout_mode = 0
 offset_left = 70.0
 offset_top = 100.0
