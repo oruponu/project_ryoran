@@ -6,6 +6,10 @@ extends Node2D
 
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
+const GUIDE_COLOR = Color(0.0, 0.7, 1.0, 0.4)
+
+
+var active_guides: Array[ColorRect] = []
 
 
 # Called when the node enters the scene tree for the first time.
@@ -59,3 +63,24 @@ func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool) -> void:
 	var piece = piece_scene.instantiate()
 	add_child(piece)
 	piece.init_pos(x, y, type, is_enemy)
+	piece.request_show_guides.connect(show_guides)
+	piece.request_clear_guides.connect(clear_guides)
+
+
+func show_guides(coords_list: Array[Vector2i]) -> void:
+	clear_guides()
+	
+	for coord in coords_list:
+		var rect = ColorRect.new()
+		rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
+		rect.position = Vector2(coord.x * GameConfig.GRID_SIZE, coord.y * GameConfig.GRID_SIZE)
+		rect.color = GUIDE_COLOR
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(rect)
+		active_guides.append(rect)
+
+
+func clear_guides() -> void:
+	for rect in active_guides:
+		rect.queue_free()
+	active_guides.clear()

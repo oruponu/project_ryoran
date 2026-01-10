@@ -60,6 +60,11 @@ const MOVES = {
 
 @onready var label = $Label
 
+
+signal request_show_guides(coords: Array[Vector2i])
+signal request_clear_guides()
+
+
 var piece_type = Type.PAWN
 var is_enemy = false
 var is_promoted = false
@@ -91,6 +96,7 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 		if is_held:
 			z_index = 10
 			GameManager.holding_piece = self
+			_show_move_guides()
 		else:
 			z_index = 0
 			
@@ -125,6 +131,8 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					position = Vector2(new_x, new_y)
 					
 					await _handle_promotion(prev_row, current_row)
+					
+					request_clear_guides.emit()
 				else:
 					# 自駒があるため置けない
 					is_held = true
@@ -201,6 +209,21 @@ func _is_path_blocked(target_col: int, target_row: int) -> bool:
 		if GameManager.get_piece(check_col, check_row) != null:
 			return true
 	return false
+
+
+func _show_move_guides() -> void:
+	var valid_moves: Array[Vector2i] = []
+	
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			if _can_move_to(col, row):
+				if col == current_col and row == current_row:
+					continue
+				var target = GameManager.get_piece(col, row)
+				if target == null or target.is_enemy != self.is_enemy:
+					valid_moves.append(Vector2i(col, row))
+	
+	request_show_guides.emit(valid_moves)
 
 
 func _handle_promotion(prev_row: int, new_row: int) -> void:
