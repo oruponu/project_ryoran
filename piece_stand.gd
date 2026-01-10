@@ -42,10 +42,10 @@ func add_piece(piece: Piece) -> void:
 	piece.is_promoted = false
 	piece._update_display()
 	
-	_update_layout()
+	update_layout()
 
 
-func _update_layout() -> void:
+func update_layout() -> void:
 	var groups = {}
 	for type in DISPLAY_ORDER:
 		groups[type] = []

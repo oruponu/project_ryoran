@@ -79,79 +79,11 @@ func _process(_delta: float) -> void:
 		global_position = get_global_mouse_position()
 
 
-func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
-	if event is InputEventMouseButton and event.is_pressed():
-		# 敵駒の操作を禁止
-		if is_enemy != GameManager.current_turn:
-			return
-		
-		# 他の駒が選択中の場合は何もしない
-		if !is_held and GameManager.holding_piece != null:
-			return
-
-		is_held = !is_held
-		if is_held:
-			z_index = 10
-			GameManager.holding_piece = self
-			
-			if current_col == -1 and current_row == -1:
-				_show_drop_guides()
-			else:
-				_show_move_guides()
-		else:
-			z_index = 0
-			
-			var col = floor(position.x / GameConfig.GRID_SIZE)
-			var row = floor(position.y / GameConfig.GRID_SIZE)
-			
-			if col == current_col and row == current_row:
-				# 現在地が選択されたら移動をキャンセル
-				GameManager.holding_piece = null
-				
-				var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-				var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-				position = Vector2(new_x, new_y)
-				
-				request_clear_guides.emit()
-				return
-			
-			if col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS:
-				var target_piece = GameManager.get_piece(col, row)
-				var is_legal = _can_move_to(col, row)
-				var can_move = false
-				
-				if is_legal:
-					if target_piece == null:
-						can_move = true
-					elif target_piece.is_enemy != self.is_enemy:
-						can_move = true
-						GameManager.capture_piece(target_piece)
-				
-				if can_move:
-					GameManager.update_board_state(current_col, current_row, col, row, self)
-					var prev_row = current_row
-					current_col = col
-					current_row = row
-					GameManager.holding_piece = null
-					
-					# 駒をマスの中央に配置
-					var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-					var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-					position = Vector2(new_x, new_y)
-					
-					await _handle_promotion(prev_row, current_row)
-					
-					request_clear_guides.emit()
-					
-					GameManager.change_turn()
-				else:
-					# 自駒があるため置けない
-					is_held = true
-					z_index = 10
-			else:
-				# 盤外のため置けない
-				is_held = true
-				z_index = 10
+func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton:
+		if event.is_pressed():
+			GameManager.handle_piece_input(self)
+			viewport.set_input_as_handled()
 
 
 func _can_move_to(target_col: int, target_row: int) -> bool:
@@ -222,7 +154,7 @@ func _is_path_blocked(target_col: int, target_row: int) -> bool:
 	return false
 
 
-func _show_move_guides() -> void:
+func show_move_guides() -> void:
 	var valid_moves: Array[Vector2i] = []
 	
 	for col in range(GameConfig.BOARD_COLS):
@@ -237,7 +169,7 @@ func _show_move_guides() -> void:
 	request_show_guides.emit(valid_moves)
 
 
-func _show_drop_guides() -> void:
+func show_drop_guides() -> void:
 	var valid_moves: Array[Vector2i] = []
 	
 	for col in range(GameConfig.BOARD_COLS):
@@ -249,26 +181,7 @@ func _show_drop_guides() -> void:
 	request_show_guides.emit(valid_moves)
 
 
-func _handle_promotion(prev_row: int, new_row: int) -> void:
-	if is_promoted or piece_type == Type.KING or piece_type == Type.GOLD:
-		return
-	
-	var is_in_zone = false
-	
-	if !is_enemy:
-		if new_row <= 2 or prev_row <= 2:
-			is_in_zone = true
-	else:
-		if new_row >= 6 or prev_row >= 6:
-			is_in_zone = true
-	
-	if is_in_zone:
-		var should_promote = await GameManager.request_promotion_decision()
-		if should_promote:
-			_promote()
-
-
-func _promote() -> void:
+func promote() -> void:
 	is_promoted = true
 	_update_display()
 
