@@ -2,11 +2,12 @@ extends Node
 
 
 var board_grid = []
-var current_turn = false	# 現在の手番（false: 先手, true: 後手）
+var current_turn = 0
 var holding_piece = null
 var board: Node2D = null
 var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
+var turn_label: Label = null
 var promotion_dialog: Node = null
 
 
@@ -17,6 +18,7 @@ func _ready() -> void:
 		board = main_node.get_node("Board")
 		player_piece_stand = main_node.get_node("PlayerPieceStand")
 		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
+		turn_label = main_node.get_node("TurnLabel")
 		promotion_dialog = main_node.get_node("PromotionDialog")
 	
 	initialize_board()
@@ -39,7 +41,8 @@ func handle_piece_input(piece: Piece) -> void:
 
 
 func _pick_up(piece: Piece) -> void:
-	if piece.is_enemy != current_turn:
+	var is_enemy_turn = current_turn % 2 != 0
+	if piece.is_enemy != is_enemy_turn:
 		return
 	
 	holding_piece = piece
@@ -81,7 +84,9 @@ func _finish_turn(piece: Piece) -> void:
 	piece.z_index = 0
 	piece.request_clear_guides.emit()
 	holding_piece = null
-	change_turn()
+	
+	current_turn += 1
+	_update_turn_display()
 
 
 func _try_drop(piece: Piece, col: int, row: int) -> bool:
@@ -170,8 +175,12 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int) -> void:
 			piece.promote()
 
 
-func change_turn() -> void:
-	current_turn = !current_turn
+func _update_turn_display() -> void:
+	if turn_label == null:
+		return
+	
+	var current_side = "後手" if current_turn % 2 != 0 else "先手"
+	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
 
 
 func get_piece(col: int, row: int):

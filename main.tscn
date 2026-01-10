@@ -1,9 +1,12 @@
-[gd_scene load_steps=5 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene load_steps=6 format=3 uid="uid://btmhrda1vfqfd"]
 
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://board.tscn" id="1_ig7tw"]
 [ext_resource type="PackedScene" uid="uid://cn67r6mghyu06" path="res://piece.tscn" id="2_0xm2m"]
 [ext_resource type="PackedScene" uid="uid://bggfmoyu0ml3d" path="res://promotion_dialog.tscn" id="3_h2yge"]
 [ext_resource type="PackedScene" uid="uid://05d8ivxdfet5" path="res://piece_stand.tscn" id="4_1bvp3"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_1bvp3"]
+font_size = 24
 
 [node name="Main" type="Node2D"]
 
@@ -17,5 +20,15 @@ position = Vector2(1162.5, 297.5)
 [node name="EnemyPieceStand" parent="." instance=ExtResource("4_1bvp3")]
 position = Vector2(347.5, 112.5)
 is_enemy = true
+
+[node name="TurnLabel" type="Label" parent="."]
+offset_left = 697.5
+offset_top = 56.0
+offset_right = 902.5
+offset_bottom = 90.0
+text = "0 手目（先手）"
+label_settings = SubResource("LabelSettings_1bvp3")
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="PromotionDialog" parent="." instance=ExtResource("3_h2yge")]
