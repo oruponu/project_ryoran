@@ -16,6 +16,9 @@ func _process(_delta: float) -> void:
 
 func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton and event.is_pressed():
+		if current_col == -1 or current_row == -1:
+			return
+		
 		# 敵駒の操作を禁止
 		if !is_held and is_enemy:
 			return
@@ -35,7 +38,19 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 			var row = floor(position.y / GameConfig.GRID_SIZE)
 			
 			if col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS:
-				if GameManager.is_cell_empty(col, row) or (col == current_col and row == current_row):
+				var target_piece = GameManager.get_piece(col, row)
+				var can_move = false
+				
+				if target_piece == null:
+					can_move = true
+				elif col == current_col and row == current_row:
+					can_move = true
+				elif target_piece.is_enemy != self.is_enemy:
+					can_move = true
+					GameManager.capture_piece(target_piece)
+					target_piece.move_to_hand()
+				
+				if can_move:
 					GameManager.update_board_state(current_col, current_row, col, row, self)
 					current_col = col
 					current_row = row
@@ -46,7 +61,7 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 					position = Vector2(new_x, new_y)
 				else:
-					# 別の駒があるため置けない
+					# 自駒があるため置けない
 					is_held = true
 					z_index = 10
 			else:
@@ -71,3 +86,18 @@ func init_pos(col: int, row: int, type: String, _is_enemy: bool) -> void:
 	position = Vector2(new_x, new_y)
 	
 	GameManager.update_board_state(-1, -1, col, row, self)
+
+
+func move_to_hand() -> void:
+	current_col = -1
+	current_row = -1
+	
+	visible = false
+	position = Vector2(-100, -100)
+	
+	is_enemy = !is_enemy
+	
+	if is_enemy:
+		rotation_degrees = 180
+	else:
+		rotation_degrees = 0
