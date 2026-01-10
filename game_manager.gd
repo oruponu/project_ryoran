@@ -18,7 +18,7 @@ func _ready() -> void:
 		board = main_node.get_node("Board")
 		player_piece_stand = main_node.get_node("PlayerPieceStand")
 		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
-		turn_label = main_node.get_node("TurnLabel")
+		turn_label = main_node.get_node("CanvasLayer/TurnLabel")
 		promotion_dialog = main_node.get_node("PromotionDialog")
 	
 	initialize_board()

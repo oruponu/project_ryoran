@@ -21,11 +21,17 @@ position = Vector2(1162.5, 297.5)
 position = Vector2(347.5, 112.5)
 is_enemy = true
 
-[node name="TurnLabel" type="Label" parent="."]
-offset_left = 697.5
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="TurnLabel" type="Label" parent="CanvasLayer"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -102.5
 offset_top = 56.0
-offset_right = 902.5
+offset_right = 102.5
 offset_bottom = 90.0
+grow_horizontal = 2
 text = "0 手目（先手）"
 label_settings = SubResource("LabelSettings_1bvp3")
 horizontal_alignment = 1
