@@ -6,7 +6,10 @@ extends Node2D
 
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
+const TEXT_COLOR = Color(0.0, 0.0, 0.0)
 const GUIDE_COLOR = Color(0.0, 0.7, 1.0, 0.4)
+const MARGIN = 22.5
+const KANJI_NUMS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"]
 
 
 var active_guides: Array[ColorRect] = []
@@ -19,8 +22,14 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var board_rect = Rect2(0, 0, GameConfig.GRID_SIZE * GameConfig.BOARD_COLS, GameConfig.GRID_SIZE * GameConfig.BOARD_ROWS)
-	draw_rect(board_rect, BOARD_COLOR)
+	var board_width = GameConfig.GRID_SIZE * GameConfig.BOARD_COLS
+	var board_height = GameConfig.GRID_SIZE * GameConfig.BOARD_ROWS
+	var bg_rect = Rect2(
+		Vector2(-MARGIN, -MARGIN),
+		Vector2(board_width + MARGIN * 2, board_height + MARGIN * 2)
+	)
+	draw_rect(bg_rect, BOARD_COLOR)
+	draw_rect(bg_rect, LINE_COLOR, false, 2.0)
 	
 	for x in range(GameConfig.BOARD_COLS + 1):
 		var start_pos = Vector2(x * GameConfig.GRID_SIZE, 0)
@@ -31,6 +40,28 @@ func _draw() -> void:
 		var start_pos = Vector2(0, y * GameConfig.GRID_SIZE)
 		var end_pos = Vector2(GameConfig.BOARD_COLS * GameConfig.GRID_SIZE, y * GameConfig.GRID_SIZE)
 		draw_line(start_pos, end_pos, LINE_COLOR, 2.0)
+	
+	_draw_coordinates()
+
+
+func _draw_coordinates() -> void:
+	var font = ThemeDB.get_fallback_font()
+	var font_size = 16
+	var offset_y = -5
+	var offset_x = 3
+	
+	for x in range(GameConfig.BOARD_COLS):
+		var text = str(9 - x)
+		var pos_x = x * GameConfig.GRID_SIZE
+		var pos = Vector2(pos_x, offset_y)
+		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, GameConfig.GRID_SIZE, font_size, TEXT_COLOR)
+	
+	for y in range(GameConfig.BOARD_ROWS):
+		var text = KANJI_NUMS[y]
+		var pos_x = GameConfig.BOARD_COLS * GameConfig.GRID_SIZE + offset_x
+		var cell_center_y = y * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
+		var pos = Vector2(pos_x, cell_center_y)
+		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
 
 func setup_starting_board() -> void:
