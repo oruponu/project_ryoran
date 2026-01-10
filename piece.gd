@@ -116,7 +116,6 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					elif target_piece.is_enemy != self.is_enemy:
 						can_move = true
 						GameManager.capture_piece(target_piece)
-						target_piece.move_to_hand()
 				
 				if can_move:
 					GameManager.update_board_state(current_col, current_row, col, row, self)
@@ -282,21 +281,6 @@ func _update_display() -> void:
 		label.modulate = Color(0.8, 0, 0)
 	else:
 		label.modulate = Color.BLACK
-	
-	if is_enemy:
-		rotation_degrees = 180
-	else:
-		rotation_degrees = 0
-
-
-func move_to_hand() -> void:
-	current_col = -1
-	current_row = -1
-	
-	visible = false
-	position = Vector2(-100, -100)
-	
-	is_enemy = !is_enemy
 	
 	if is_enemy:
 		rotation_degrees = 180
