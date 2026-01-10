@@ -114,6 +114,7 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				
 				if can_move:
 					GameManager.update_board_state(current_col, current_row, col, row, self)
+					var prev_row = current_row
 					current_col = col
 					current_row = row
 					GameManager.holding_piece = null
@@ -122,6 +123,8 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 					var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 					var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 					position = Vector2(new_x, new_y)
+					
+					await _handle_promotion(prev_row, current_row)
 				else:
 					# 自駒があるため置けない
 					is_held = true
@@ -198,6 +201,30 @@ func _is_path_blocked(target_col: int, target_row: int) -> bool:
 		if GameManager.get_piece(check_col, check_row) != null:
 			return true
 	return false
+
+
+func _handle_promotion(prev_row: int, new_row: int) -> void:
+	if is_promoted or piece_type == Type.KING or piece_type == Type.GOLD:
+		return
+	
+	var is_in_zone = false
+	
+	if !is_enemy:
+		if new_row <= 2 or prev_row <= 2:
+			is_in_zone = true
+	else:
+		if new_row >= 6 or prev_row >= 6:
+			is_in_zone = true
+	
+	if is_in_zone:
+		var should_promote = await GameManager.request_promotion_decision()
+		if should_promote:
+			_promote()
+
+
+func _promote() -> void:
+	is_promoted = true
+	_update_display()
 
 
 func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:

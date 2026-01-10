@@ -5,10 +5,12 @@ var board_grid = []
 var holding_piece = null
 var player_hand = []
 var enemy_hand = []
+var promotion_dialog: Node = null
 
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	promotion_dialog = get_tree().root.get_node("Main/PromotionDialog")
 	initialize_board()
 
 
@@ -44,3 +46,9 @@ func capture_piece(piece) -> void:
 		player_hand.append(piece)
 	else:
 		enemy_hand.append(piece)
+
+
+func request_promotion_decision() -> bool:
+	if promotion_dialog:
+		return await promotion_dialog.ask_user()
+	return false
