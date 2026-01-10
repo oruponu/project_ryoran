@@ -93,7 +93,11 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 		if is_held:
 			z_index = 10
 			GameManager.holding_piece = self
-			_show_move_guides()
+			
+			if current_col == -1 and current_row == -1:
+				_show_drop_guides()
+			else:
+				_show_move_guides()
 		else:
 			z_index = 0
 			
@@ -229,6 +233,18 @@ func _show_move_guides() -> void:
 				var target = GameManager.get_piece(col, row)
 				if target == null or target.is_enemy != self.is_enemy:
 					valid_moves.append(Vector2i(col, row))
+	
+	request_show_guides.emit(valid_moves)
+
+
+func _show_drop_guides() -> void:
+	var valid_moves: Array[Vector2i] = []
+	
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			# TODO: 反則手のガイドを表示しないようにする
+			if GameManager.get_piece(col, row) == null:
+				valid_moves.append(Vector2i(col, row))
 	
 	request_show_guides.emit(valid_moves)
 
