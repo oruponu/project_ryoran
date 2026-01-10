@@ -2,6 +2,7 @@ extends Area2D
 
 
 var piece_type = "pawn"
+var is_enemy = false
 var is_held = false
 var current_col = -1
 var current_row = -1
@@ -50,10 +51,16 @@ func _on_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> voi
 				z_index = 10
 
 
-func init_pos(col: int, row: int, type: String) -> void:
+func init_pos(col: int, row: int, type: String, _is_enemy: bool) -> void:
 	current_col = col
 	current_row = row
 	piece_type = type
+	is_enemy = _is_enemy
+	
+	if is_enemy:
+		rotation_degrees = 180
+	else:
+		rotation_degrees = 0
 	
 	var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)

@@ -31,24 +31,24 @@ func _draw() -> void:
 
 func setup_starting_board() -> void:
 	for x in range(9):
-		spawn_piece(x, 6, "pawn")
+		spawn_piece(x, 6, "pawn", false)
 	
-	spawn_piece(1, 7, "bishop")
-	spawn_piece(7, 7, "rook")
+	spawn_piece(1, 7, "bishop", false)
+	spawn_piece(7, 7, "rook", false)
 	
 	var bottom_row_types = [
 		"lance", "knight", "silver", "gold", "king",
 		"gold", "silver", "knight", "lance"
 	]
 	for x in range(9):
-		spawn_piece(x, 8, bottom_row_types[x])
+		spawn_piece(x, 8, bottom_row_types[x], false)
 
 
-func spawn_piece(x: int, y: int, type: String) -> void:
+func spawn_piece(x: int, y: int, type: String, is_enemy: bool) -> void:
 	if piece_scene == null:
 		push_error("Piece Scene が設定されていません")
 		return
 	
 	var piece = piece_scene.instantiate()
 	add_child(piece)
-	piece.init_pos(x, y, type)
+	piece.init_pos(x, y, type, is_enemy)
