@@ -16,5 +16,6 @@ position = Vector2(980, 207.5)
 
 [node name="EnemyPieceStand" parent="." instance=ExtResource("4_1bvp3")]
 position = Vector2(210, 22.5)
+is_enemy = true
 
 [node name="PromotionDialog" parent="." instance=ExtResource("3_h2yge")]
