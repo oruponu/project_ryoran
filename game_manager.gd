@@ -8,6 +8,7 @@ var board: Node2D = null
 var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
 var turn_label: Label = null
+var check_label: Label = null
 var promotion_dialog: Node = null
 
 
@@ -19,6 +20,7 @@ func _ready() -> void:
 		player_piece_stand = main_node.get_node("PlayerPieceStand")
 		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
 		turn_label = main_node.get_node("CanvasLayer/TurnLabel")
+		check_label = main_node.get_node("CanvasLayer/CheckLabel")
 		promotion_dialog = main_node.get_node("PromotionDialog")
 	
 	initialize_board()
@@ -87,6 +89,38 @@ func _finish_turn(piece: Piece) -> void:
 	
 	current_turn += 1
 	_update_turn_display()
+	
+	var is_enemy_turn = current_turn % 2 != 0
+	if _is_king_in_check(is_enemy_turn):
+		_play_check_animation()
+
+
+func _play_check_animation() -> void:
+	if check_label == null:
+		return
+	
+	check_label.visible = true
+	check_label.modulate.a = 1.0
+	
+	var viewport_rect = get_viewport().get_visible_rect()
+	var screen_width = viewport_rect.size.x
+	var label_width = check_label.size.x
+	
+	var start_pos_x = screen_width + label_width
+	var center_pos_x = screen_width / 2.0 - label_width / 2.0
+	var end_pos_x = -label_width * 1.5
+	
+	var current_y = check_label.position.y
+	
+	check_label.position = Vector2(start_pos_x, current_y)
+	
+	var tween = create_tween()
+	tween.tween_property(check_label, "position:x", center_pos_x, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(1)
+	tween.tween_property(check_label, "position:x", end_pos_x, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(check_label, "modulate:a", 0.0, 0.5)
+	
+	tween.tween_callback(func(): check_label.visible = false)
 
 
 func _try_drop(piece: Piece, col: int, row: int) -> bool:
@@ -185,6 +219,37 @@ func _update_turn_display() -> void:
 	
 	var current_side = "後手" if current_turn % 2 != 0 else "先手"
 	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
+
+
+func _is_king_in_check(target_is_enemy: bool) -> bool:
+	var king_pos = _find_king_grid_position(target_is_enemy)
+	if king_pos == Vector2i(-1, -1):
+		return false
+	
+	var king_col = king_pos.x
+	var king_row = king_pos.y
+	
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			var attacker = get_piece(col, row)
+			if attacker == null or attacker.is_enemy == target_is_enemy:
+				continue
+			
+			if attacker.can_move_to(king_col, king_row):
+				return true
+	
+	return false
+
+
+func _find_king_grid_position(is_enemy_king: bool) -> Vector2i:
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			var piece = get_piece(col, row)
+			if piece != null:
+				if piece.piece_type == Piece.Type.KING and piece.is_enemy == is_enemy_king:
+					return Vector2i(col, row)
+	
+	return Vector2i(-1, -1)
 
 
 func get_piece(col: int, row: int):
