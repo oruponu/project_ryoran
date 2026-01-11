@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene load_steps=10 format=3 uid="uid://btmhrda1vfqfd"]
 
 [ext_resource type="Script" uid="uid://d17qum8nm311a" path="res://main.gd" id="1_7mycd"]
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://board.tscn" id="1_ig7tw"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://bggfmoyu0ml3d" path="res://common_dialog.tscn" id="3_h2yge"]
 [ext_resource type="PackedScene" uid="uid://05d8ivxdfet5" path="res://piece_stand.tscn" id="4_1bvp3"]
 [ext_resource type="Script" uid="uid://dynaos3fx5qx7" path="res://check_label.gd" id="4_lquwl"]
+[ext_resource type="PackedScene" uid="uid://v4mqg4kxgku2" path="res://move_history_panel.tscn" id="5_272bh"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_1bvp3"]
 font_size = 24
@@ -28,6 +29,12 @@ position = Vector2(1162.5, 297.5)
 [node name="EnemyPieceStand" parent="." instance=ExtResource("4_1bvp3")]
 position = Vector2(347.5, 112.5)
 is_enemy = true
+
+[node name="MoveHistoryPanel" parent="." instance=ExtResource("5_272bh")]
+offset_left = 1300.0
+offset_top = 112.5
+offset_right = 1525.0
+offset_bottom = 787.5
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 offset_left = 32.0
