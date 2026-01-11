@@ -9,7 +9,6 @@ const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const TEXT_COLOR = Color(0.0, 0.0, 0.0)
 const GUIDE_COLOR = Color(0.0, 0.7, 1.0, 0.4)
 const MARGIN = 22.5
-const KANJI_NUMS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"]
 
 
 var active_guides: Array[ColorRect] = []
@@ -50,13 +49,13 @@ func _draw_coordinates() -> void:
 	var offset_x = 3
 	
 	for x in range(GameConfig.BOARD_COLS):
-		var text = str(9 - x)
+		var text = GameConfig.ARABIC_NUMS[9 - x - 1]
 		var pos_x = x * GameConfig.GRID_SIZE
 		var pos = Vector2(pos_x, offset_y)
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, GameConfig.GRID_SIZE, font_size, TEXT_COLOR)
 	
 	for y in range(GameConfig.BOARD_ROWS):
-		var text = KANJI_NUMS[y]
+		var text = GameConfig.KANJI_NUMS[y]
 		var pos_x = GameConfig.BOARD_COLS * GameConfig.GRID_SIZE + offset_x
 		var cell_center_y = y * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
 		var pos = Vector2(pos_x, cell_center_y)
