@@ -42,6 +42,7 @@ func _on_undo_button_pressed() -> void:
 
 
 func _on_resign_button_pressed() -> void:
+	check_label.cancel_animation()
 	var is_enemy_turn = current_turn % 2 != 0
 	await show_game_result(current_turn, is_enemy_turn)
 	is_game_active = false
@@ -67,6 +68,7 @@ func _reset_game() -> void:
 	
 	_update_turn_display()
 	board.setup_starting_board(self)
+	check_label.cancel_animation()
 
 
 func handle_piece_input(piece: Piece) -> void:
@@ -143,6 +145,7 @@ func _finish_turn(piece: Piece) -> void:
 		if _is_checkmate(target_is_enemy):
 			var chose_to_resign = await request_checkmate_decision(target_is_enemy)
 			if chose_to_resign:
+				check_label.cancel_animation()
 				await show_game_result(current_turn, target_is_enemy)
 				is_game_active = false
 				return
@@ -270,6 +273,7 @@ func _undo_last_move() -> void:
 	current_turn -= 1
 	is_game_active = true
 	_update_turn_display()
+	check_label.cancel_animation()
 
 
 func _update_turn_display() -> void:
