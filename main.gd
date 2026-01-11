@@ -145,7 +145,14 @@ func _finish_turn(piece: Piece) -> void:
 	
 	holding_piece = null
 	
-	var target_is_enemy = current_turn % 2 == 0
+	current_turn += 1
+	_update_turn_display()
+	
+	var record = move_history.back()
+	var prev_record = move_history[-2] if move_history.size() >= 2 else null
+	move_history_panel.add_move(current_turn, record, prev_record)
+	
+	var target_is_enemy = current_turn % 2 != 0
 	if _is_king_in_check(target_is_enemy):
 		if _is_checkmate(target_is_enemy):
 			var chose_to_resign = await request_checkmate_decision(target_is_enemy)
@@ -156,13 +163,6 @@ func _finish_turn(piece: Piece) -> void:
 				_undo_last_move()
 		else:
 			check_label.play_animation()
-	
-	current_turn += 1
-	_update_turn_display()
-	
-	var record = move_history.back()
-	var prev_record = move_history[-2] if move_history.size() >= 2 else null
-	move_history_panel.add_move(current_turn, record, prev_record)
 
 
 func _finish_game(is_player_win: bool) -> void:
