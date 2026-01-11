@@ -4,6 +4,7 @@ extends Node2D
 @onready var board = $Board
 @onready var player_piece_stand = $PlayerPieceStand
 @onready var enemy_piece_stand = $EnemyPieceStand
+@onready var move_history_panel = $MoveHistoryPanel
 @onready var new_game_button = $HBoxContainer/NewGameButton
 @onready var undo_button = $HBoxContainer/UndoButton
 @onready var resign_button = $HBoxContainer/ResignButton
@@ -70,6 +71,8 @@ func _reset_game() -> void:
 	
 	_update_turn_display()
 	board.setup_starting_board(self)
+	move_history_panel.clear()
+	move_history_panel.add_game_start(current_turn)
 	check_label.cancel_animation()
 
 
@@ -156,11 +159,18 @@ func _finish_turn(piece: Piece) -> void:
 	
 	current_turn += 1
 	_update_turn_display()
+	
+	var record = move_history.back()
+	var prev_record = move_history[-2] if move_history.size() >= 2 else null
+	move_history_panel.add_move(current_turn, record, prev_record)
 
 
 func _finish_game(is_player_win: bool) -> void:
+	current_turn += 1
+	_update_turn_display()
+	move_history_panel.add_resignation(current_turn)
 	check_label.cancel_animation()
-	await show_game_result(current_turn, is_player_win)
+	await show_game_result(current_turn - 1, is_player_win)
 	is_game_active = false
 
 
@@ -279,6 +289,7 @@ func _undo_last_move() -> void:
 	current_turn -= 1
 	is_game_active = true
 	_update_turn_display()
+	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
 
 
