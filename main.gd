@@ -129,7 +129,7 @@ func _attempt_place(piece: Piece) -> void:
 	if piece.current_col == -1 and piece.current_row == -1:
 		_drop_piece(piece, col, row)
 	else:
-		await _move_piece(piece, col, row, move_record)
+		await _move_piece(piece, col, row, move_record, PromotionMode.Type.ASK_USER)
 	
 	move_history.append(move_record)
 	
@@ -174,18 +174,18 @@ func _finish_game(is_player_win: bool) -> void:
 	is_game_active = false
 
 
-func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord) -> void:
+func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
 		move_record.captured_promoted = target_piece.is_promoted
 		capture_piece(target_piece)
 		move_record.captured_piece = target_piece
-	
-	var prev_row = piece.current_row
+
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
 	
-	await _handle_promotion(piece, prev_row, row, move_record)
+	var prev_row = piece.current_row
+	await _handle_promotion(piece, prev_row, row, move_record, mode)
 
 
 func _drop_piece(piece: Piece, col: int, row: int) -> void:
@@ -221,7 +221,7 @@ func _update_piece_position(piece: Piece, col: int, row: int) -> void:
 	piece.position = Vector2(new_x, new_y)
 
 
-func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord) -> void:
+func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	if piece.is_promoted or piece.piece_type == Piece.Type.KING or piece.piece_type == Piece.Type.GOLD:
 		return
 	
@@ -235,7 +235,16 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 	
 	if is_in_zone:
 		piece.is_held = false
-		var should_promote = await request_promotion_decision()
+		
+		var should_promote = false
+		match mode:
+			PromotionMode.Type.ASK_USER:
+				should_promote = await request_promotion_decision()
+			PromotionMode.Type.FORCE_PROMOTE:
+				should_promote = true
+			PromotionMode.Type.FORCE_STAY:
+				should_promote = false
+		
 		if should_promote:
 			piece.set_promoted(true)
 			move_record.is_promotion = true
