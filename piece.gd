@@ -241,8 +241,8 @@ func _is_nifu(target_col: int) -> bool:
 	return false
 
 
-func promote() -> void:
-	is_promoted = true
+func set_promoted(_is_promoted: bool) -> void:
+	is_promoted = _is_promoted
 	_update_display()
 
 

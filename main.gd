@@ -197,7 +197,7 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 		piece.is_held = false
 		var should_promote = await request_promotion_decision()
 		if should_promote:
-			piece.promote()
+			piece.set_promoted(true)
 			move_record.is_promotion = true
 
 
