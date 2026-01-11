@@ -51,13 +51,19 @@ func _pick_up(piece: Piece) -> void:
 	piece.is_held = true
 	piece.z_index = 10
 	
-	var legal_coords: Array[Vector2i] = []
+	var raw_coords: Array[Vector2i] = []
 	if piece.current_col == -1 and piece.current_row == -1:
 		if piece.get_parent() is PieceStand:
 			piece.get_parent().update_layout()
-		legal_coords = piece.get_legal_drops()
+		raw_coords = piece.get_legal_drops()
 	else:
-		legal_coords = piece.get_legal_moves()
+		raw_coords = piece.get_legal_moves()
+	
+	# 王手放置になる手を除外
+	var legal_coords: Array[Vector2i] = []
+	for coord in raw_coords:
+		if _is_king_safe_after_move(piece, coord.x, coord.y):
+			legal_coords.append(coord)
 	
 	board.show_guides(legal_coords)
 
@@ -70,6 +76,11 @@ func _attempt_place(piece: Piece) -> void:
 	var local_pos = board.to_local(piece.global_position)
 	var col = floor(local_pos.x / GameConfig.GRID_SIZE)
 	var row = floor(local_pos.y / GameConfig.GRID_SIZE)
+	
+	# 王手放置になる手を禁止
+	if not _is_king_safe_after_move(piece, col, row):
+		_cancel_move(piece)
+		return
 	
 	var success = false
 	if piece.current_col == -1 and piece.current_row == -1:
@@ -183,6 +194,30 @@ func _update_turn_display() -> void:
 	
 	var current_side = "後手" if current_turn % 2 != 0 else "先手"
 	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
+
+
+func _is_king_safe_after_move(piece: Piece, target_col: int, target_row: int) -> bool:
+	var original_col = piece.current_col
+	var original_row = piece.current_row
+	var captured_piece = board_grid[target_col][target_row]
+	
+	if original_col != -1 and original_row != -1:
+		board_grid[original_col][original_row] = null
+	
+	board_grid[target_col][target_row] = piece
+	piece.current_col = target_col
+	piece.current_row = target_row
+	
+	var is_safe = not _is_king_in_check(piece.is_enemy)
+	
+	piece.current_col = original_col
+	piece.current_row = original_row
+	if original_col != -1 and original_row != -1:
+		board_grid[original_col][original_row] = piece
+	
+	board_grid[target_col][target_row] = captured_piece
+	
+	return is_safe
 
 
 func _is_king_in_check(target_is_enemy: bool) -> bool:
