@@ -9,22 +9,22 @@ var from_row: int
 var to_col: int
 var to_row: int
 var captured_piece: Piece = null
-var promoted: bool = false
+var is_promotion: bool = false
 
 
 func _init(
-	p_piece: Piece,
-	p_from_col: int,
-	p_from_row: int,
-	p_to_col: int,
-	p_to_row: int,
-	p_captured_piece: Piece,
-	p_promoted: bool
+	_piece: Piece,
+	_from_col: int,
+	_from_row: int,
+	_to_col: int,
+	_to_row: int,
+	_captured_piece: Piece,
+	_is_promotion: bool
 ) -> void:
-	piece = p_piece
-	from_col = p_from_col
-	from_row = p_from_row
-	to_col = p_to_col
-	to_row = p_to_row
-	captured_piece = p_captured_piece
-	promoted = p_promoted
+	piece = _piece
+	from_col = _from_col
+	from_row = _from_row
+	to_col = _to_col
+	to_row = _to_row
+	captured_piece = _captured_piece
+	is_promotion = is_promotion

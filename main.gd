@@ -197,7 +197,7 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 		var should_promote = await request_promotion_decision()
 		if should_promote:
 			piece.promote()
-			move_record.promoted = true
+			move_record.is_promotion = true
 
 
 func _update_turn_display() -> void:
