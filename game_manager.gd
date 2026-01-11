@@ -83,7 +83,7 @@ func _attempt_place(piece: Piece) -> void:
 	else:
 		_cancel_move(piece)
 
-	
+
 func _finish_turn(piece: Piece) -> void:
 	piece.is_held = false
 	piece.z_index = 0
