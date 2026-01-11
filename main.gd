@@ -42,6 +42,10 @@ func _on_undo_button_pressed() -> void:
 
 
 func _on_resign_button_pressed() -> void:
+	var result = await request_resign_decision()
+	if not result:
+		return
+	
 	var is_player_win = current_turn % 2 != 0
 	await _finish_game(is_player_win)
 
@@ -387,6 +391,10 @@ func capture_piece(piece) -> void:
 
 func request_new_game_decision() -> bool:
 	return await common_dialog.ask_user("対局をはじめますか？", "はい", "いいえ")
+
+
+func request_resign_decision() -> bool:
+	return await common_dialog.ask_user("投了しますか？", "投了する", "投了しない")
 
 
 func request_checkmate_decision(is_enemy_mated: bool) -> bool:
