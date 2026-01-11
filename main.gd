@@ -18,12 +18,20 @@ var move_history: Array[MoveRecord] = []
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	initialize_board()
+	_reset_game()
 
 
-func initialize_board() -> void:
-	board_grid = []
-	move_history = []
+func _reset_game() -> void:
+	board_grid.clear()
+	current_turn = 0
+	holding_piece = null
+	current_legal_coords.clear()
+	move_history.clear()
+	
+	board.clear_pieces()
+	player_piece_stand.clear_pieces()
+	enemy_piece_stand.clear_pieces()
+	
 	for x in range(GameConfig.BOARD_COLS):
 		var column = []
 		for y in range(GameConfig.BOARD_ROWS):

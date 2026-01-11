@@ -94,6 +94,14 @@ func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool, main: Node) -
 	piece.init_pos(x, y, type, is_enemy, main)
 
 
+func clear_pieces() -> void:
+	clear_guides()
+	
+	for child in get_children():
+		if child is Piece:
+			child.queue_free()
+
+
 func show_guides(coords_list: Array[Vector2i]) -> void:
 	clear_guides()
 	

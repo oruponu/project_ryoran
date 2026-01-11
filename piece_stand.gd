@@ -47,6 +47,12 @@ func add_piece(piece: Piece) -> void:
 	update_layout()
 
 
+func clear_pieces() -> void:
+	for child in get_children():
+		if child is Piece:
+			child.queue_free()
+
+
 func update_layout() -> void:
 	var groups = {}
 	for type in DISPLAY_ORDER:
