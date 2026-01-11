@@ -51,6 +51,9 @@ func clear_pieces() -> void:
 	for child in get_children():
 		if child is Piece:
 			child.queue_free()
+	
+	for label in _labels.values():
+		label.visible = false
 
 
 func update_layout() -> void:
