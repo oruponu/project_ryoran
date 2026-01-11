@@ -82,7 +82,6 @@ func setup_starting_board(main: Node) -> void:
 		var type = bottom_row_types[x]
 		spawn_piece(x, 8, type, false, main)
 		spawn_piece(8 - x, 0, type, true, main)
-		
 
 
 func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool, main: Node) -> void:
