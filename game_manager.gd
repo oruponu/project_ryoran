@@ -5,6 +5,7 @@ var board_grid = []
 var current_turn = 0
 var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
+var move_history: Array[MoveRecord] = []
 var board: Node2D = null
 var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
@@ -29,6 +30,7 @@ func _ready() -> void:
 
 func initialize_board() -> void:
 	board_grid = []
+	move_history = []
 	for x in range(GameConfig.BOARD_COLS):
 		var column = []
 		for y in range(GameConfig.BOARD_ROWS):
@@ -85,10 +87,14 @@ func _attempt_place(piece: Piece) -> void:
 		_cancel_move(piece)
 		return
 	
+	var move_record = MoveRecord.new(piece, piece.current_col, piece.current_row, col, row, null, false)
+	
 	if piece.current_col == -1 and piece.current_row == -1:
 		_drop_piece(piece, col, row)
 	else:
-		await _move_piece(piece, col, row)
+		await _move_piece(piece, col, row, move_record)
+	
+	move_history.append(move_record)
 	
 	holding_piece = null
 	_finish_turn(piece)
@@ -121,16 +127,17 @@ func _finish_turn(piece: Piece) -> void:
 			check_label.play_animation()
 
 
-func _move_piece(piece: Piece, col: int, row: int) -> void:
+func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord) -> void:
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
 		capture_piece(target_piece)
+		move_record.captured_piece = target_piece
 	
 	var prev_row = piece.current_row
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
 	
-	await _handle_promotion(piece, prev_row, row)
+	await _handle_promotion(piece, prev_row, row, move_record)
 
 
 func _drop_piece(piece: Piece, col: int, row: int) -> void:
@@ -166,7 +173,7 @@ func _update_piece_position(piece: Piece, col: int, row: int) -> void:
 	piece.position = Vector2(new_x, new_y)
 
 
-func _handle_promotion(piece: Piece, prev_row: int, current_row: int) -> void:
+func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord) -> void:
 	if piece.is_promoted or piece.piece_type == Piece.Type.KING or piece.piece_type == Piece.Type.GOLD:
 		return
 	
@@ -183,6 +190,7 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int) -> void:
 		var should_promote = await request_promotion_decision()
 		if should_promote:
 			piece.promote()
+			move_record.promoted = true
 
 
 func _update_turn_display() -> void:
