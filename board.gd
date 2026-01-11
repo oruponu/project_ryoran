@@ -18,7 +18,6 @@ var active_guides: Array[ColorRect] = []
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	queue_redraw()
-	setup_starting_board()
 
 
 func _draw() -> void:
@@ -64,15 +63,15 @@ func _draw_coordinates() -> void:
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
 
-func setup_starting_board() -> void:
+func setup_starting_board(main: Node) -> void:
 	for x in range(9):
-		spawn_piece(x, 6, Piece.Type.PAWN, false)
-		spawn_piece(8 - x, 2, Piece.Type.PAWN, true)
+		spawn_piece(x, 6, Piece.Type.PAWN, false, main)
+		spawn_piece(8 - x, 2, Piece.Type.PAWN, true, main)
 	
-	spawn_piece(1, 7, Piece.Type.BISHOP, false)
-	spawn_piece(7, 7, Piece.Type.ROOK, false)
-	spawn_piece(7, 1, Piece.Type.BISHOP, true)
-	spawn_piece(1, 1, Piece.Type.ROOK, true)
+	spawn_piece(1, 7, Piece.Type.BISHOP, false, main)
+	spawn_piece(7, 7, Piece.Type.ROOK, false, main)
+	spawn_piece(7, 1, Piece.Type.BISHOP, true, main)
+	spawn_piece(1, 1, Piece.Type.ROOK, true, main)
 	
 	var bottom_row_types = [
 		Piece.Type.LANCE, Piece.Type.KNIGHT, Piece.Type.SILVER, Piece.Type.GOLD,
@@ -81,19 +80,19 @@ func setup_starting_board() -> void:
 	]
 	for x in range(9):
 		var type = bottom_row_types[x]
-		spawn_piece(x, 8, type, false)
-		spawn_piece(8 - x, 0, type, true)
+		spawn_piece(x, 8, type, false, main)
+		spawn_piece(8 - x, 0, type, true, main)
 		
 
 
-func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool) -> void:
+func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool, main: Node) -> void:
 	if piece_scene == null:
 		push_error("Piece Scene が設定されていません")
 		return
 	
 	var piece = piece_scene.instantiate()
 	add_child(piece)
-	piece.init_pos(x, y, type, is_enemy)
+	piece.init_pos(x, y, type, is_enemy, main)
 
 
 func show_guides(coords_list: Array[Vector2i]) -> void:

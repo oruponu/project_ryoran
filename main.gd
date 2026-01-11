@@ -1,4 +1,12 @@
-extends Node
+extends Node2D
+
+
+@onready var board = $Board
+@onready var player_piece_stand = $PlayerPieceStand
+@onready var enemy_piece_stand = $EnemyPieceStand
+@onready var turn_label = $CanvasLayer/TurnLabel
+@onready var check_label = $CanvasLayer/CheckLabel
+@onready var common_dialog = $CommonDialog
 
 
 var board_grid = []
@@ -6,25 +14,10 @@ var current_turn = 0
 var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
-var board: Node2D = null
-var player_piece_stand: PieceStand = null
-var enemy_piece_stand: PieceStand = null
-var turn_label: Label = null
-var check_label: Label = null
-var common_dialog: Node = null
 
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	var main_node = get_tree().root.get_node("Main")
-	if main_node:
-		board = main_node.get_node("Board")
-		player_piece_stand = main_node.get_node("PlayerPieceStand")
-		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
-		turn_label = main_node.get_node("CanvasLayer/TurnLabel")
-		check_label = main_node.get_node("CanvasLayer/CheckLabel")
-		common_dialog = main_node.get_node("CommonDialog")
-	
 	initialize_board()
 
 
@@ -36,6 +29,8 @@ func initialize_board() -> void:
 		for y in range(GameConfig.BOARD_ROWS):
 			column.append(null)
 		board_grid.append(column)
+	
+	board.setup_starting_board(self)
 
 
 func handle_piece_input(piece: Piece) -> void:
@@ -73,10 +68,6 @@ func _pick_up(piece: Piece) -> void:
 
 
 func _attempt_place(piece: Piece) -> void:
-	if board == null:
-		_cancel_move(piece)
-		return
-	
 	var local_pos = board.to_local(piece.global_position)
 	var col = floor(local_pos.x / GameConfig.GRID_SIZE)
 	var row = floor(local_pos.y / GameConfig.GRID_SIZE)
@@ -121,9 +112,6 @@ func _finish_turn(piece: Piece) -> void:
 				# TODO: 待ったの処理を実装
 				pass
 		else:
-			if check_label == null:
-				return
-	
 			check_label.play_animation()
 
 
@@ -194,9 +182,6 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 
 
 func _update_turn_display() -> void:
-	if turn_label == null:
-		return
-	
 	var current_side = "後手" if current_turn % 2 != 0 else "先手"
 	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
 
@@ -304,21 +289,16 @@ func capture_piece(piece) -> void:
 
 
 func request_checkmate_decision(is_enemy_mated: bool) -> bool:
-	if common_dialog:
-		var side_text = "後手" if is_enemy_mated else "先手"
-		var message = "%sの玉が詰まされました。\n投了しますか？" % side_text
-		return await common_dialog.ask_user(message, "投了する", "待った")
-	return true
+	var side_text = "後手" if is_enemy_mated else "先手"
+	var message = "%sの玉が詰まされました。\n投了しますか？" % side_text
+	return await common_dialog.ask_user(message, "投了する", "待った")
 
 
 func request_promotion_decision() -> bool:
-	if common_dialog:
-		return await common_dialog.ask_user("成りますか？", "成る", "成らない")
-	return false
+	return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 
 
 func show_game_result(move_count: int, is_enemy_mated: bool) -> void:
-	if common_dialog:
-		var side_text = "先手" if is_enemy_mated else "後手"
-		var message = "まで、%d手で%sの勝ち。" % [move_count, side_text]
-		await common_dialog.ask_user(message, "OK", "")
+	var side_text = "先手" if is_enemy_mated else "後手"
+	var message = "まで、%d手で%sの勝ち。" % [move_count, side_text]
+	await common_dialog.ask_user(message, "OK", "")

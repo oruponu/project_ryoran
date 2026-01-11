@@ -1,5 +1,6 @@
-[gd_scene load_steps=8 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene load_steps=9 format=3 uid="uid://btmhrda1vfqfd"]
 
+[ext_resource type="Script" uid="uid://d17qum8nm311a" path="res://main.gd" id="1_7mycd"]
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://board.tscn" id="1_ig7tw"]
 [ext_resource type="PackedScene" uid="uid://cn67r6mghyu06" path="res://piece.tscn" id="2_0xm2m"]
 [ext_resource type="PackedScene" uid="uid://bggfmoyu0ml3d" path="res://common_dialog.tscn" id="3_h2yge"]
@@ -15,6 +16,7 @@ font_color = Color(1, 0.2, 0.2, 1)
 outline_size = 32
 
 [node name="Main" type="Node2D"]
+script = ExtResource("1_7mycd")
 
 [node name="Board" parent="." instance=ExtResource("1_ig7tw")]
 position = Vector2(485, 135)

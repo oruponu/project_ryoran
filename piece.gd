@@ -67,6 +67,7 @@ var is_promoted = false
 var is_held = false
 var current_col = -1
 var current_row = -1
+var main: Node
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -78,7 +79,7 @@ func _process(_delta: float) -> void:
 func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		if event.is_pressed():
-			GameManager.handle_piece_input(self)
+			main.handle_piece_input(self)
 			viewport.set_input_as_handled()
 
 
@@ -96,7 +97,7 @@ func is_legal_move(target_col: int, target_row: int) -> bool:
 		return false
 	
 	# 味方の駒がある場所には移動不可
-	var target_piece = GameManager.get_piece(target_col, target_row)
+	var target_piece = main.get_piece(target_col, target_row)
 	if target_piece != null:
 		if target_piece.is_enemy == is_enemy:
 			return false
@@ -110,7 +111,7 @@ func is_legal_drop(target_col: int, target_row: int) -> bool:
 		return false
 	
 	# すでに駒がある場所には配置不可
-	if GameManager.get_piece(target_col, target_row):
+	if main.get_piece(target_col, target_row):
 		return false
 	
 	# 行き所のない場所には配置不可
@@ -211,7 +212,7 @@ func _is_path_blocked(target_col: int, target_row: int) -> bool:
 		var check_col = current_col + (step_x * i)
 		var check_row = current_row + (step_y * i)
 		
-		if GameManager.get_piece(check_col, check_row) != null:
+		if main.get_piece(check_col, check_row) != null:
 			return true
 	return false
 
@@ -232,7 +233,7 @@ func _is_nifu(target_col: int) -> bool:
 		return false
 	
 	for row in range(GameConfig.BOARD_ROWS):
-		var target = GameManager.get_piece(target_col, row)
+		var target = main.get_piece(target_col, row)
 		if target != null:
 			if target.is_enemy == self.is_enemy and target.piece_type == Type.PAWN and not target.is_promoted:
 				return true
@@ -245,11 +246,12 @@ func promote() -> void:
 	_update_display()
 
 
-func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
+func init_pos(col: int, row: int, type: Type, _is_enemy: bool, _main: Node) -> void:
 	current_col = col
 	current_row = row
 	piece_type = type
 	is_enemy = _is_enemy
+	main = _main
 	
 	_update_display()
 	
@@ -257,7 +259,7 @@ func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
 	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	position = Vector2(new_x, new_y)
 	
-	GameManager.update_board_state(-1, -1, col, row, self)
+	main.update_board_state(-1, -1, col, row, self)
 
 
 func _update_display() -> void:
