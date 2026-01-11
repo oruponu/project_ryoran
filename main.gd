@@ -129,12 +129,12 @@ func _finish_turn(piece: Piece) -> void:
 	
 	holding_piece = null
 	
-	var is_enemy_turn = current_turn % 2 == 0
-	if _is_king_in_check(is_enemy_turn):
-		if _is_checkmate(is_enemy_turn):
-			var chose_to_resign = await request_checkmate_decision(is_enemy_turn)
+	var target_is_enemy = current_turn % 2 == 0
+	if _is_king_in_check(target_is_enemy):
+		if _is_checkmate(target_is_enemy):
+			var chose_to_resign = await request_checkmate_decision(target_is_enemy)
 			if chose_to_resign:
-				await show_game_result(current_turn, is_enemy_turn)
+				await show_game_result(current_turn, target_is_enemy)
 				is_game_active = false
 				return
 			else:
@@ -268,18 +268,18 @@ func _update_turn_display() -> void:
 	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
 
 
-func _is_checkmate(is_enemy_turn: bool) -> bool:
+func _is_checkmate(target_is_enemy: bool) -> bool:
 	for col in range(GameConfig.BOARD_COLS):
 		for row in range(GameConfig.BOARD_ROWS):
 			var piece = get_piece(col, row)
 			
-			if piece != null and piece.is_enemy == is_enemy_turn:
+			if piece != null and piece.is_enemy == target_is_enemy:
 				var moves = piece.get_legal_moves()
 				for move in moves:
 					if _is_king_safe_after_move(piece, move.x, move.y):
 						return false
 	
-	var target_stand = enemy_piece_stand if is_enemy_turn else player_piece_stand
+	var target_stand = enemy_piece_stand if target_is_enemy else player_piece_stand
 	for piece in target_stand.get_children():
 		if piece is Piece:
 			var drops = piece.get_legal_drops()
