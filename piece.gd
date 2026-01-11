@@ -61,10 +61,6 @@ const MOVES = {
 @onready var label = $Label
 
 
-signal request_show_guides(coords: Array[Vector2i])
-signal request_clear_guides()
-
-
 var piece_type = Type.PAWN
 var is_enemy = false
 var is_promoted = false
@@ -128,27 +124,27 @@ func is_legal_drop(target_col: int, target_row: int) -> bool:
 	return true
 
 
-func show_move_guides() -> void:
-	var valid_moves: Array[Vector2i] = []
+func get_legal_moves() -> Array[Vector2i]:
+	var legal_moves: Array[Vector2i] = []
 	
 	for col in range(GameConfig.BOARD_COLS):
 		for row in range(GameConfig.BOARD_ROWS):
 			if is_legal_move(col, row):
-				valid_moves.append(Vector2i(col, row))
+				legal_moves.append(Vector2i(col, row))
 	
-	request_show_guides.emit(valid_moves)
+	return legal_moves
 
 
-func show_drop_guides() -> void:
-	var valid_moves: Array[Vector2i] = []
+func get_legal_drops() -> Array[Vector2i]:
+	var legal_drops: Array[Vector2i] = []
 	
 	for col in range(GameConfig.BOARD_COLS):
 		for row in range(GameConfig.BOARD_ROWS):
 			if is_legal_drop(col, row):
-				valid_moves.append(Vector2i(col, row))
+				legal_drops.append(Vector2i(col, row))
 	
 	# TODO: 打ち歩詰めを禁止
-	request_show_guides.emit(valid_moves)
+	return legal_drops
 
 
 func can_move_geometry(target_col: int, target_row: int) -> bool:

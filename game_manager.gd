@@ -52,12 +52,15 @@ func _pick_up(piece: Piece) -> void:
 	piece.is_held = true
 	piece.z_index = 10
 	
+	var legal_coords: Array[Vector2i] = []
 	if piece.current_col == -1 and piece.current_row == -1:
 		if piece.get_parent() is PieceStand:
 			piece.get_parent().update_layout()
-		piece.show_drop_guides()
+		legal_coords = piece.get_legal_drops()
 	else:
-		piece.show_move_guides()
+		legal_coords = piece.get_legal_moves()
+	
+	board.show_guides(legal_coords)
 
 
 func _attempt_place(piece: Piece) -> void:
@@ -85,7 +88,9 @@ func _attempt_place(piece: Piece) -> void:
 func _finish_turn(piece: Piece) -> void:
 	piece.is_held = false
 	piece.z_index = 0
-	piece.request_clear_guides.emit()
+	
+	board.clear_guides()
+	
 	holding_piece = null
 	
 	current_turn += 1
@@ -158,7 +163,8 @@ func _try_drop(piece: Piece, col: int, row: int) -> bool:
 func _cancel_move(piece: Piece) -> void:
 	piece.is_held = false
 	piece.z_index = 0
-	piece.request_clear_guides.emit()
+	
+	board.clear_guides()
 	
 	holding_piece = null
 	

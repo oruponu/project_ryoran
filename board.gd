@@ -94,8 +94,6 @@ func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool) -> void:
 	var piece = piece_scene.instantiate()
 	add_child(piece)
 	piece.init_pos(x, y, type, is_enemy)
-	piece.request_show_guides.connect(show_guides)
-	piece.request_clear_guides.connect(clear_guides)
 
 
 func show_guides(coords_list: Array[Vector2i]) -> void:
