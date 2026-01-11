@@ -10,7 +10,7 @@ var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
 var turn_label: Label = null
 var check_label: Label = null
-var promotion_dialog: Node = null
+var common_dialog: Node = null
 
 
 # Called when the node enters the scene tree for the first time.
@@ -22,7 +22,7 @@ func _ready() -> void:
 		enemy_piece_stand = main_node.get_node("EnemyPieceStand")
 		turn_label = main_node.get_node("CanvasLayer/TurnLabel")
 		check_label = main_node.get_node("CanvasLayer/CheckLabel")
-		promotion_dialog = main_node.get_node("PromotionDialog")
+		common_dialog = main_node.get_node("CommonDialog")
 	
 	initialize_board()
 
@@ -266,6 +266,6 @@ func capture_piece(piece) -> void:
 
 
 func request_promotion_decision() -> bool:
-	if promotion_dialog:
-		return await promotion_dialog.ask_user()
+	if common_dialog:
+		return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 	return false

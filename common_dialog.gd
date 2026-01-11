@@ -4,6 +4,7 @@ extends CanvasLayer
 signal decision_mode(result: bool)
 
 
+@onready var message_label = $Overlay/Panel/MessageLabel
 @onready var yes_button = $Overlay/Panel/YesButton
 @onready var no_button = $Overlay/Panel/NoButton
 
@@ -15,7 +16,11 @@ func _ready() -> void:
 	hide()
 
 
-func ask_user() -> bool:
+func ask_user(message: String, yes_text: String = "はい", no_text: String = "いいえ") -> bool:
+	message_label.text = message
+	yes_button.text = yes_text
+	no_button.text = no_text
+	
 	show()
 	var result = await decision_mode
 	return result

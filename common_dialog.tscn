@@ -1,11 +1,11 @@
 [gd_scene load_steps=3 format=3 uid="uid://bggfmoyu0ml3d"]
 
-[ext_resource type="Script" uid="uid://nobcwf5mupsa" path="res://promotion_dialog.gd" id="1_oskcv"]
+[ext_resource type="Script" uid="uid://nobcwf5mupsa" path="res://common_dialog.gd" id="1_oskcv"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_rfqr3"]
 font_size = 32
 
-[node name="PromotionDialog" type="CanvasLayer"]
+[node name="CommonDialog" type="CanvasLayer"]
 script = ExtResource("1_oskcv")
 
 [node name="Overlay" type="ColorRect" parent="."]
@@ -30,13 +30,13 @@ offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Label" type="Label" parent="Overlay/Panel"]
+[node name="MessageLabel" type="Label" parent="Overlay/Panel"]
 layout_mode = 0
 offset_left = 167.5
 offset_top = 27.5
 offset_right = 332.5
 offset_bottom = 72.5
-text = "成りますか？"
+text = "メッセージ"
 label_settings = SubResource("LabelSettings_rfqr3")
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -48,7 +48,7 @@ offset_top = 101.0
 offset_right = 430.0
 offset_bottom = 164.0
 theme_override_font_sizes/font_size = 40
-text = "成る"
+text = "はい"
 
 [node name="NoButton" type="Button" parent="Overlay/Panel"]
 layout_mode = 0
@@ -57,4 +57,4 @@ offset_top = 100.0
 offset_right = 230.0
 offset_bottom = 163.0
 theme_override_font_sizes/font_size = 40
-text = "成らない"
+text = "いいえ"
