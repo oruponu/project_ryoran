@@ -1,9 +1,21 @@
-[gd_scene load_steps=3 format=3 uid="uid://bggfmoyu0ml3d"]
+[gd_scene load_steps=4 format=3 uid="uid://bggfmoyu0ml3d"]
 
 [ext_resource type="Script" uid="uid://nobcwf5mupsa" path="res://common_dialog.gd" id="1_oskcv"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4e2jo"]
+content_margin_left = 64.0
+content_margin_top = 64.0
+content_margin_right = 64.0
+content_margin_bottom = 64.0
+bg_color = Color(0, 0, 0, 0.2509804)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
 [sub_resource type="LabelSettings" id="LabelSettings_rfqr3"]
-font_size = 32
+line_spacing = 16.0
+font_size = 28
 
 [node name="CommonDialog" type="CanvasLayer"]
 script = ExtResource("1_oskcv")
@@ -16,45 +28,45 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.5019608)
 
-[node name="Panel" type="Panel" parent="Overlay"]
+[node name="PanelContainer" type="PanelContainer" parent="Overlay"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -100.0
-offset_right = 250.0
-offset_bottom = 100.0
+offset_left = -93.0
+offset_top = -64.5
+offset_right = 93.0
+offset_bottom = 64.5
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_4e2jo")
 
-[node name="MessageLabel" type="Label" parent="Overlay/Panel"]
-layout_mode = 0
-offset_left = 167.5
-offset_top = 27.5
-offset_right = 332.5
-offset_bottom = 72.5
+[node name="VBoxContainer" type="VBoxContainer" parent="Overlay/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 64
+
+[node name="MessageLabel" type="Label" parent="Overlay/PanelContainer/VBoxContainer"]
+layout_mode = 2
 text = "メッセージ"
 label_settings = SubResource("LabelSettings_rfqr3")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="YesButton" type="Button" parent="Overlay/Panel"]
-layout_mode = 0
-offset_left = 270.0
-offset_top = 101.0
-offset_right = 430.0
-offset_bottom = 164.0
-theme_override_font_sizes/font_size = 40
-text = "はい"
+[node name="HBoxContainer" type="HBoxContainer" parent="Overlay/PanelContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 32
+alignment = 1
 
-[node name="NoButton" type="Button" parent="Overlay/Panel"]
-layout_mode = 0
-offset_left = 70.0
-offset_top = 100.0
-offset_right = 230.0
-offset_bottom = 163.0
-theme_override_font_sizes/font_size = 40
+[node name="NoButton" type="Button" parent="Overlay/PanelContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
 text = "いいえ"
+
+[node name="YesButton" type="Button" parent="Overlay/PanelContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "はい"

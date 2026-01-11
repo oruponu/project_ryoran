@@ -4,9 +4,9 @@ extends CanvasLayer
 signal decision_mode(result: bool)
 
 
-@onready var message_label = $Overlay/Panel/MessageLabel
-@onready var yes_button = $Overlay/Panel/YesButton
-@onready var no_button = $Overlay/Panel/NoButton
+@onready var message_label = $Overlay/PanelContainer/VBoxContainer/MessageLabel
+@onready var yes_button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/YesButton
+@onready var no_button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/NoButton
 
 
 # Called when the node enters the scene tree for the first time.
