@@ -16,6 +16,7 @@ var current_turn = 0
 var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
+var is_game_active: bool = false
 
 
 # Called when the node enters the scene tree for the first time.
@@ -44,6 +45,7 @@ func _reset_game() -> void:
 	holding_piece = null
 	current_legal_coords.clear()
 	move_history.clear()
+	is_game_active = true
 	
 	board.clear_pieces()
 	player_piece_stand.clear_pieces()
@@ -59,6 +61,9 @@ func _reset_game() -> void:
 
 
 func handle_piece_input(piece: Piece) -> void:
+	if not is_game_active:
+		return
+	
 	if holding_piece == null:
 		_pick_up(piece)
 	else:
@@ -130,6 +135,7 @@ func _finish_turn(piece: Piece) -> void:
 			var chose_to_resign = await request_checkmate_decision(is_enemy_turn)
 			if chose_to_resign:
 				await show_game_result(current_turn, is_enemy_turn)
+				is_game_active = false
 				return
 			else:
 				_undo_last_move()
@@ -253,6 +259,7 @@ func _undo_last_move() -> void:
 		_update_piece_position(captured, captured.current_col, captured.current_row)
 	
 	current_turn -= 1
+	is_game_active = true
 	_update_turn_display()
 
 
