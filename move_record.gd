@@ -18,14 +18,10 @@ func _init(
 	_from_col: int,
 	_from_row: int,
 	_to_col: int,
-	_to_row: int,
-	_captured_piece: Piece,
-	_is_promotion: bool
+	_to_row: int
 ) -> void:
 	piece = _piece
 	from_col = _from_col
 	from_row = _from_row
 	to_col = _to_col
 	to_row = _to_row
-	captured_piece = _captured_piece
-	is_promotion = is_promotion

@@ -97,7 +97,7 @@ func _attempt_place(piece: Piece) -> void:
 		_cancel_move(piece)
 		return
 	
-	var move_record = MoveRecord.new(piece, piece.current_col, piece.current_row, col, row, null, false)
+	var move_record = MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
 	
 	if piece.current_col == -1 and piece.current_row == -1:
 		_drop_piece(piece, col, row)
