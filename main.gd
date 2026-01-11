@@ -4,6 +4,7 @@ extends Node2D
 @onready var board = $Board
 @onready var player_piece_stand = $PlayerPieceStand
 @onready var enemy_piece_stand = $EnemyPieceStand
+@onready var new_game_button = $HBoxContainer/NewGameButton
 @onready var turn_label = $CanvasLayer/TurnLabel
 @onready var check_label = $CanvasLayer/CheckLabel
 @onready var common_dialog = $CommonDialog
@@ -18,6 +19,16 @@ var move_history: Array[MoveRecord] = []
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+	new_game_button.pressed.connect(_on_new_game_button_pressed)
+	
+	_reset_game()
+
+
+func _on_new_game_button_pressed() -> void:
+	var result = await request_new_game_decision()
+	if not result:
+		return
+	
 	_reset_game()
 
 
@@ -294,6 +305,10 @@ func capture_piece(piece) -> void:
 		player_piece_stand.add_piece(piece)
 	else:
 		enemy_piece_stand.add_piece(piece)
+
+
+func request_new_game_decision() -> bool:
+	return await common_dialog.ask_user("対局をはじめますか？", "はい", "いいえ")
 
 
 func request_checkmate_decision(is_enemy_mated: bool) -> bool:
