@@ -4,6 +4,7 @@ extends Node
 var board_grid = []
 var current_turn = 0
 var holding_piece = null
+var current_legal_coords: Array[Vector2i] = []
 var board: Node2D = null
 var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
@@ -51,21 +52,22 @@ func _pick_up(piece: Piece) -> void:
 	piece.is_held = true
 	piece.z_index = 10
 	
-	var raw_coords: Array[Vector2i] = []
+	var legal_coords: Array[Vector2i] = []
 	if piece.current_col == -1 and piece.current_row == -1:
 		if piece.get_parent() is PieceStand:
 			piece.get_parent().update_layout()
-		raw_coords = piece.get_legal_drops()
+		legal_coords = piece.get_legal_drops()
 	else:
-		raw_coords = piece.get_legal_moves()
+		legal_coords = piece.get_legal_moves()
+	
+	current_legal_coords = []
 	
 	# 王手放置になる手を除外
-	var legal_coords: Array[Vector2i] = []
-	for coord in raw_coords:
+	for coord in legal_coords:
 		if _is_king_safe_after_move(piece, coord.x, coord.y):
-			legal_coords.append(coord)
+			current_legal_coords.append(coord)
 	
-	board.show_guides(legal_coords)
+	board.show_guides(current_legal_coords)
 
 
 func _attempt_place(piece: Piece) -> void:
@@ -77,22 +79,19 @@ func _attempt_place(piece: Piece) -> void:
 	var col = floor(local_pos.x / GameConfig.GRID_SIZE)
 	var row = floor(local_pos.y / GameConfig.GRID_SIZE)
 	
-	# 王手放置になる手を禁止
-	if not _is_king_safe_after_move(piece, col, row):
+	# 合法手でないならャンセル
+	var target_pos = Vector2i(col, row)
+	if not target_pos in current_legal_coords:
 		_cancel_move(piece)
 		return
 	
-	var success = false
 	if piece.current_col == -1 and piece.current_row == -1:
-		success = _try_drop(piece, col, row)
+		_drop_piece(piece, col, row)
 	else:
-		success = await _try_move(piece, col, row)
+		await _move_piece(piece, col, row)
 	
-	if success:
-		holding_piece = null
-		_finish_turn(piece)
-	else:
-		_cancel_move(piece)
+	holding_piece = null
+	_finish_turn(piece)
 
 
 func _finish_turn(piece: Piece) -> void:
@@ -114,10 +113,7 @@ func _finish_turn(piece: Piece) -> void:
 		check_label.play_animation()
 
 
-func _try_move(piece: Piece, col: int, row: int) -> bool:
-	if not piece.is_legal_move(col, row):
-		return false
-	
+func _move_piece(piece: Piece, col: int, row: int) -> void:
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
 		capture_piece(target_piece)
@@ -127,19 +123,12 @@ func _try_move(piece: Piece, col: int, row: int) -> bool:
 	_update_piece_position(piece, col, row)
 	
 	await _handle_promotion(piece, prev_row, row)
-	
-	return true
 
 
-func _try_drop(piece: Piece, col: int, row: int) -> bool:
-	if not piece.is_legal_drop(col, row):
-		return false
-	
+func _drop_piece(piece: Piece, col: int, row: int) -> void:
 	piece.reparent(board)
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
-	
-	return true
 
 
 func _cancel_move(piece: Piece) -> void:
