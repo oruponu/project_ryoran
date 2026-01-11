@@ -5,6 +5,7 @@ extends Node2D
 @onready var player_piece_stand = $PlayerPieceStand
 @onready var enemy_piece_stand = $EnemyPieceStand
 @onready var new_game_button = $HBoxContainer/NewGameButton
+@onready var undo_button = $HBoxContainer/UndoButton
 @onready var turn_label = $CanvasLayer/TurnLabel
 @onready var check_label = $CanvasLayer/CheckLabel
 @onready var common_dialog = $CommonDialog
@@ -20,6 +21,7 @@ var move_history: Array[MoveRecord] = []
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
+	undo_button.pressed.connect(_on_undo_button_pressed)
 	
 	_reset_game()
 
@@ -30,6 +32,10 @@ func _on_new_game_button_pressed() -> void:
 		return
 	
 	_reset_game()
+
+
+func _on_undo_button_pressed() -> void:
+	_undo_last_move()
 
 
 func _reset_game() -> void:
@@ -128,8 +134,7 @@ func _finish_turn(piece: Piece) -> void:
 			if chose_to_resign:
 				await show_game_result(current_turn, is_enemy_turn)
 			else:
-				# TODO: 待ったの処理を実装
-				pass
+				_undo_last_move()
 		else:
 			check_label.play_animation()
 
@@ -199,6 +204,55 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 		if should_promote:
 			piece.set_promoted(true)
 			move_record.is_promotion = true
+
+
+func _undo_last_move() -> void:
+	if move_history.is_empty():
+		return
+	
+	var last_move = move_history.pop_back()
+	var piece = last_move.piece
+	
+	if last_move.from_col == -1 and last_move.from_row == -1:
+		# 持ち駒から打った
+		board_grid[last_move.to_col][last_move.to_row] = null
+		
+		piece.current_col = -1
+		piece.current_row = -1
+		
+		if piece.is_enemy:
+			enemy_piece_stand.add_piece(piece)
+		else:
+			player_piece_stand.add_piece(piece)
+	else:
+		# 盤上の移動
+		update_board_state(piece.current_col, piece.current_row, last_move.from_col, last_move.from_row, piece)
+		piece.current_col = last_move.from_col
+		piece.current_row = last_move.from_row
+		
+		_update_piece_position(piece, piece.current_col, piece.current_row)
+		
+		if last_move.is_promotion:
+			piece.set_promoted(false)
+	
+	if last_move.captured_piece != null:
+		var captured = last_move.captured_piece
+		
+		captured.reparent(board)
+		captured.is_enemy = !captured.is_enemy
+		captured.rotation_degrees = 180 if captured.is_enemy else 0
+		
+		if last_move.captured_promoted:
+			captured.set_promoted(true)
+		
+		captured.current_col = last_move.to_col
+		captured.current_row = last_move.to_row
+		board_grid[captured.current_col][captured.current_row] = captured
+		
+		_update_piece_position(captured, captured.current_col, captured.current_row)
+	
+	current_turn -= 1
+	_update_turn_display()
 
 
 func _update_turn_display() -> void:
