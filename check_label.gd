@@ -5,8 +5,7 @@ var _tween: Tween = null
 
 
 func play_animation() -> void:
-	if _tween != null and _tween.is_valid():
-		_tween.kill()
+	cancel_animation()
 	
 	visible = true
 	modulate.a = 1.0
@@ -30,3 +29,9 @@ func play_animation() -> void:
 	_tween.parallel().tween_property(self, "modulate:a", 0.0, 0.5)
 	
 	_tween.tween_callback(func(): visible = false)
+
+
+func cancel_animation() -> void:
+	visible = false
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
