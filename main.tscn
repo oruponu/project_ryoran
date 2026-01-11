@@ -27,6 +27,28 @@ position = Vector2(1162.5, 297.5)
 position = Vector2(347.5, 112.5)
 is_enemy = true
 
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+offset_left = 32.0
+offset_top = 32.0
+offset_right = 359.0
+offset_bottom = 85.0
+theme_override_constants/separation = 16
+
+[node name="NewGameButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "新規対局"
+
+[node name="UndoButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "待った"
+
+[node name="ResignButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "投了"
+
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="TurnLabel" type="Label" parent="CanvasLayer"]
