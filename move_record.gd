@@ -10,6 +10,7 @@ var to_col: int
 var to_row: int
 var captured_piece: Piece = null
 var is_promotion: bool = false
+var captured_promoted: bool = false
 
 
 func _init(

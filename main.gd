@@ -137,6 +137,7 @@ func _finish_turn(piece: Piece) -> void:
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord) -> void:
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
+		move_record.captured_promoted = target_piece.is_promoted
 		capture_piece(target_piece)
 		move_record.captured_piece = target_piece
 	
