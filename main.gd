@@ -107,7 +107,7 @@ func _pick_up(piece: Piece) -> void:
 	
 	# 王手放置になる手を除外
 	for coord in legal_coords:
-		if _is_king_safe_after_move(piece, coord.x, coord.y):
+		if is_king_safe_after_move(piece, coord.x, coord.y):
 			current_legal_coords.append(coord)
 	
 	board.show_guides(current_legal_coords)
@@ -306,7 +306,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 			if piece != null and piece.is_enemy == target_is_enemy:
 				var moves = piece.get_legal_moves()
 				for move in moves:
-					if _is_king_safe_after_move(piece, move.x, move.y):
+					if is_king_safe_after_move(piece, move.x, move.y):
 						return false
 	
 	var target_stand = enemy_piece_stand if target_is_enemy else player_piece_stand
@@ -314,13 +314,13 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 		if piece is Piece:
 			var drops = piece.get_legal_drops()
 			for drop in drops:
-				if _is_king_safe_after_move(piece, drop.x, drop.y):
+				if is_king_safe_after_move(piece, drop.x, drop.y):
 					return false
 	
 	return true
 
 
-func _is_king_safe_after_move(piece: Piece, target_col: int, target_row: int) -> bool:
+func is_king_safe_after_move(piece: Piece, target_col: int, target_row: int) -> bool:
 	var original_col = piece.current_col
 	var original_row = piece.current_row
 	var captured_piece = board_grid[target_col][target_row]
