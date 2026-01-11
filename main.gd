@@ -65,6 +65,7 @@ func _reset_game() -> void:
 			column.append(null)
 		board_grid.append(column)
 	
+	_update_turn_display()
 	board.setup_starting_board(self)
 
 
