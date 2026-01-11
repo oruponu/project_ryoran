@@ -86,10 +86,72 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 			viewport.set_input_as_handled()
 
 
-func can_move_to(target_col: int, target_row: int) -> bool:
-	if target_col == current_col and target_row == current_row:
-		return true
+func is_legal_move(target_col: int, target_row: int) -> bool:
+	# 盤面の範囲外には移動不可
+	if not _is_inside_board(target_col, target_row):
+		return false
 	
+	# 現在地と同じ場所には移動不可
+	if target_col == current_col and target_row == current_row:
+		return false
+	
+	# ルールで認められていない場所には移動不可
+	if not can_move_geometry(target_col, target_row):
+		return false
+	
+	# 味方の駒がある場所には移動不可
+	var target_piece = GameManager.get_piece(target_col, target_row)
+	if target_piece != null:
+		if target_piece.is_enemy == is_enemy:
+			return false
+	
+	return true
+
+
+func is_legal_drop(target_col: int, target_row: int) -> bool:
+	# 盤面の範囲外には配置不可
+	if not _is_inside_board(target_col, target_row):
+		return false
+	
+	# すでに駒がある場所には配置不可
+	if GameManager.get_piece(target_col, target_row):
+		return false
+	
+	# 行き所のない場所には配置不可
+	if _is_dead_end(target_row):
+		return false
+	
+	# 二歩になる場所には配置不可
+	if _is_nifu(target_col):
+		return false
+	
+	return true
+
+
+func show_move_guides() -> void:
+	var valid_moves: Array[Vector2i] = []
+	
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			if is_legal_move(col, row):
+				valid_moves.append(Vector2i(col, row))
+	
+	request_show_guides.emit(valid_moves)
+
+
+func show_drop_guides() -> void:
+	var valid_moves: Array[Vector2i] = []
+	
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			if is_legal_drop(col, row):
+				valid_moves.append(Vector2i(col, row))
+	
+	# TODO: 打ち歩詰めを禁止
+	request_show_guides.emit(valid_moves)
+
+
+func can_move_geometry(target_col: int, target_row: int) -> bool:
 	var dx = target_col - current_col
 	var dy = target_row - current_row
 	
@@ -136,6 +198,10 @@ func can_move_to(target_col: int, target_row: int) -> bool:
 	return false
 
 
+func _is_inside_board(col: int, row: int) -> bool:
+	return col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS
+
+
 func _is_path_blocked(target_col: int, target_row: int) -> bool:
 	var dx = target_col - current_col
 	var dy = target_row - current_row
@@ -154,40 +220,18 @@ func _is_path_blocked(target_col: int, target_row: int) -> bool:
 	return false
 
 
-func show_move_guides() -> void:
-	var valid_moves: Array[Vector2i] = []
+func _is_dead_end(target_row: int) -> bool:
+	var relative_row = target_row if not is_enemy else GameConfig.BOARD_ROWS - 1 - target_row
+	match piece_type:
+		Type.PAWN, Type.LANCE:
+			return relative_row == 0
+		Type.KNIGHT:
+			return relative_row <= 1
 	
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			if can_move_to(col, row):
-				if col == current_col and row == current_row:
-					continue
-				var target = GameManager.get_piece(col, row)
-				if target == null or target.is_enemy != self.is_enemy:
-					valid_moves.append(Vector2i(col, row))
-	
-	request_show_guides.emit(valid_moves)
+	return false
 
 
-func show_drop_guides() -> void:
-	# TODO: 打ち歩詰めを禁止
-	var valid_moves: Array[Vector2i] = []
-	
-	for col in range(GameConfig.BOARD_COLS):
-		if is_nifu(col):
-			continue
-		
-		for row in range(GameConfig.BOARD_ROWS):
-			if GameManager.get_piece(col, row) == null:
-				if is_dead_end(row):
-					continue
-				
-				valid_moves.append(Vector2i(col, row))
-	
-	request_show_guides.emit(valid_moves)
-
-
-func is_nifu(target_col: int) -> bool:
+func _is_nifu(target_col: int) -> bool:
 	if piece_type != Type.PAWN:
 		return false
 	
@@ -196,17 +240,6 @@ func is_nifu(target_col: int) -> bool:
 		if target != null:
 			if target.is_enemy == self.is_enemy and target.piece_type == Type.PAWN and not target.is_promoted:
 				return true
-	
-	return false
-
-
-func is_dead_end(target_row: int) -> bool:
-	var relative_row = target_row if not is_enemy else GameConfig.BOARD_ROWS - 1 - target_row
-	match piece_type:
-		Type.PAWN, Type.LANCE:
-			return relative_row == 0
-		Type.KNIGHT:
-			return relative_row <= 1
 	
 	return false
 

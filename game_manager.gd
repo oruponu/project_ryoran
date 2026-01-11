@@ -127,36 +127,12 @@ func _play_check_animation() -> void:
 	check_tween.tween_callback(func(): check_label.visible = false)
 
 
-func _try_drop(piece: Piece, col: int, row: int) -> bool:
-	if !_is_valid_coord(col, row):
-		return false
-	if get_piece(col, row) != null:
-		return false
-	if piece.is_nifu(col):
-		return false
-	if piece.is_dead_end(row):
-		return false
-	
-	piece.reparent(board)
-	_update_piece_data(piece, col, row)
-	_update_piece_position(piece, col, row)
-	
-	return true
-
-
 func _try_move(piece: Piece, col: int, row: int) -> bool:
-	if !_is_valid_coord(col, row):
-		return false
-	if col == piece.current_col and row == piece.current_row:
-		return false
-	if not piece.can_move_to(col, row):
+	if not piece.is_legal_move(col, row):
 		return false
 	
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
-		if target_piece.is_enemy == piece.is_enemy:
-			return false
-		
 		capture_piece(target_piece)
 	
 	var prev_row = piece.current_row
@@ -164,6 +140,17 @@ func _try_move(piece: Piece, col: int, row: int) -> bool:
 	_update_piece_position(piece, col, row)
 	
 	await _handle_promotion(piece, prev_row, row)
+	
+	return true
+
+
+func _try_drop(piece: Piece, col: int, row: int) -> bool:
+	if not piece.is_legal_drop(col, row):
+		return false
+	
+	piece.reparent(board)
+	_update_piece_data(piece, col, row)
+	_update_piece_position(piece, col, row)
 	
 	return true
 
@@ -180,10 +167,6 @@ func _cancel_move(piece: Piece) -> void:
 			piece.get_parent().update_layout()
 	else:
 		_update_piece_position(piece, piece.current_col, piece.current_row)
-
-
-func _is_valid_coord(col: int, row: int) -> bool:
-	return col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS
 
 
 func _update_piece_data(piece: Piece, col: int, row: int) -> void:
@@ -239,7 +222,7 @@ func _is_king_in_check(target_is_enemy: bool) -> bool:
 			if attacker == null or attacker.is_enemy == target_is_enemy:
 				continue
 			
-			if attacker.can_move_to(king_col, king_row):
+			if attacker.can_move_geometry(king_col, king_row):
 				return true
 	
 	return false
