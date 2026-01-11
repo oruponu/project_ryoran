@@ -107,10 +107,18 @@ func _finish_turn(piece: Piece) -> void:
 	
 	var is_enemy_turn = current_turn % 2 != 0
 	if _is_king_in_check(is_enemy_turn):
-		if check_label == null:
-			return
+		if _is_checkmate(is_enemy_turn):
+			var chose_to_resign = await request_checkmate_decision(is_enemy_turn)
+			if chose_to_resign:
+				await show_game_result(current_turn, is_enemy_turn)
+			else:
+				# TODO: 待ったの処理を実装
+				pass
+		else:
+			if check_label == null:
+				return
 	
-		check_label.play_animation()
+			check_label.play_animation()
 
 
 func _move_piece(piece: Piece, col: int, row: int) -> void:
@@ -183,6 +191,28 @@ func _update_turn_display() -> void:
 	
 	var current_side = "後手" if current_turn % 2 != 0 else "先手"
 	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
+
+
+func _is_checkmate(is_enemy_turn: bool) -> bool:
+	for col in range(GameConfig.BOARD_COLS):
+		for row in range(GameConfig.BOARD_ROWS):
+			var piece = get_piece(col, row)
+			
+			if piece != null and piece.is_enemy == is_enemy_turn:
+				var moves = piece.get_legal_moves()
+				for move in moves:
+					if _is_king_safe_after_move(piece, move.x, move.y):
+						return false
+	
+	var target_stand = enemy_piece_stand if is_enemy_turn else player_piece_stand
+	for piece in target_stand.get_children():
+		if piece is Piece:
+			var drops = piece.get_legal_drops()
+			for drop in drops:
+				if _is_king_safe_after_move(piece, drop.x, drop.y):
+					return false
+	
+	return true
 
 
 func _is_king_safe_after_move(piece: Piece, target_col: int, target_row: int) -> bool:
@@ -265,7 +295,22 @@ func capture_piece(piece) -> void:
 		enemy_piece_stand.add_piece(piece)
 
 
+func request_checkmate_decision(is_enemy_mated: bool) -> bool:
+	if common_dialog:
+		var side_text = "後手" if is_enemy_mated else "先手"
+		var message = "%sの玉が詰まされました。\n投了しますか？" % side_text
+		return await common_dialog.ask_user(message, "投了する", "待った")
+	return true
+
+
 func request_promotion_decision() -> bool:
 	if common_dialog:
 		return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 	return false
+
+
+func show_game_result(move_count: int, is_enemy_mated: bool) -> void:
+	if common_dialog:
+		var side_text = "先手" if is_enemy_mated else "後手"
+		var message = "まで、%d手で%sの勝ち。" % [move_count, side_text]
+		await common_dialog.ask_user(message, "OK", "")
