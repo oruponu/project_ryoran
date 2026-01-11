@@ -19,6 +19,8 @@ var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
 var is_game_active: bool = false
+var ai_player: AIPlayer = null
+var is_ai_thinking: bool = false
 
 
 # Called when the node enters the scene tree for the first time.
@@ -26,6 +28,9 @@ func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
+	
+	ai_player = AIPlayer.new()
+	ai_player.is_enemy_side = true
 	
 	_reset_game()
 
@@ -58,6 +63,7 @@ func _reset_game() -> void:
 	current_legal_coords.clear()
 	move_history.clear()
 	is_game_active = true
+	is_ai_thinking = false
 	
 	board.clear_pieces()
 	player_piece_stand.clear_pieces()
@@ -77,7 +83,7 @@ func _reset_game() -> void:
 
 
 func handle_piece_input(piece: Piece) -> void:
-	if not is_game_active:
+	if not is_game_active or is_ai_thinking:
 		return
 	
 	if holding_piece == null:
@@ -155,6 +161,10 @@ func _finish_turn(piece: Piece) -> void:
 	var target_is_enemy = current_turn % 2 != 0
 	if _is_king_in_check(target_is_enemy):
 		if _is_checkmate(target_is_enemy):
+			if ai_player != null and target_is_enemy == ai_player.is_enemy_side:
+				await _finish_game(target_is_enemy)
+				return
+			
 			var chose_to_resign = await request_checkmate_decision(target_is_enemy)
 			if chose_to_resign:
 				await _finish_game(target_is_enemy)
@@ -163,6 +173,40 @@ func _finish_turn(piece: Piece) -> void:
 				_undo_last_move()
 		else:
 			check_label.play_animation()
+	
+	var next_is_enemy = current_turn % 2 != 0
+	if is_game_active and next_is_enemy == ai_player.is_enemy_side:
+		_play_ai_turn()
+
+
+func _play_ai_turn() -> void:
+	is_ai_thinking = true
+	
+	await get_tree().create_timer(1.0).timeout
+	
+	var move = ai_player.get_next_move(self)
+	
+	# 投了かどうか
+	if move == null:
+		await _finish_game(!ai_player.is_enemy_side)
+		is_ai_thinking = false
+		return
+	
+	var piece = move.piece
+	var col = move.to_col
+	var row = move.to_row
+	var move_record = MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
+	
+	if piece.current_col == -1 and piece.current_row == -1:
+		_drop_piece(piece, col, row)
+	else:
+		var mode = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
+		await _move_piece(piece, col, row, move_record, mode)
+	
+	move_history.append(move_record)
+	
+	_finish_turn(piece)
+	is_ai_thinking = false
 
 
 func _finish_game(is_player_win: bool) -> void:
