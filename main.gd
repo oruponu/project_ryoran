@@ -42,10 +42,8 @@ func _on_undo_button_pressed() -> void:
 
 
 func _on_resign_button_pressed() -> void:
-	check_label.cancel_animation()
-	var is_enemy_turn = current_turn % 2 != 0
-	await show_game_result(current_turn, is_enemy_turn)
-	is_game_active = false
+	var is_player_win = current_turn % 2 != 0
+	await _finish_game(is_player_win)
 
 
 func _reset_game() -> void:
@@ -145,9 +143,7 @@ func _finish_turn(piece: Piece) -> void:
 		if _is_checkmate(target_is_enemy):
 			var chose_to_resign = await request_checkmate_decision(target_is_enemy)
 			if chose_to_resign:
-				check_label.cancel_animation()
-				await show_game_result(current_turn, target_is_enemy)
-				is_game_active = false
+				await _finish_game(target_is_enemy)
 				return
 			else:
 				_undo_last_move()
@@ -156,6 +152,12 @@ func _finish_turn(piece: Piece) -> void:
 	
 	current_turn += 1
 	_update_turn_display()
+
+
+func _finish_game(is_player_win: bool) -> void:
+	check_label.cancel_animation()
+	await show_game_result(current_turn, is_player_win)
+	is_game_active = false
 
 
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord) -> void:
@@ -397,7 +399,7 @@ func request_promotion_decision() -> bool:
 	return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 
 
-func show_game_result(move_count: int, is_enemy_mated: bool) -> void:
-	var side_text = "先手" if is_enemy_mated else "後手"
+func show_game_result(move_count: int, is_player_win: bool) -> void:
+	var side_text = "先手" if is_player_win else "後手"
 	var message = "まで、%d手で%sの勝ち。" % [move_count, side_text]
 	await common_dialog.ask_user(message, "OK", "")
