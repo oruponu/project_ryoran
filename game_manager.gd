@@ -9,7 +9,6 @@ var player_piece_stand: PieceStand = null
 var enemy_piece_stand: PieceStand = null
 var turn_label: Label = null
 var check_label: Label = null
-var check_tween: Tween = null
 var promotion_dialog: Node = null
 
 
@@ -98,38 +97,10 @@ func _finish_turn(piece: Piece) -> void:
 	
 	var is_enemy_turn = current_turn % 2 != 0
 	if _is_king_in_check(is_enemy_turn):
-		_play_check_animation()
-
-
-func _play_check_animation() -> void:
-	if check_label == null:
-		return
-		
-	if check_tween != null and check_tween.is_valid():
-		check_tween.kill()
+		if check_label == null:
+			return
 	
-	check_label.visible = true
-	check_label.modulate.a = 1.0
-	
-	var viewport_rect = get_viewport().get_visible_rect()
-	var screen_width = viewport_rect.size.x
-	var label_width = check_label.size.x
-	
-	var start_pos_x = screen_width + label_width
-	var center_pos_x = screen_width / 2.0 - label_width / 2.0
-	var end_pos_x = -label_width * 1.5
-	
-	var current_y = check_label.position.y
-	
-	check_label.position = Vector2(start_pos_x, current_y)
-	
-	check_tween = create_tween()
-	check_tween.tween_property(check_label, "position:x", center_pos_x, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	check_tween.tween_interval(1)
-	check_tween.tween_property(check_label, "position:x", end_pos_x, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	check_tween.parallel().tween_property(check_label, "modulate:a", 0.0, 0.5)
-	
-	check_tween.tween_callback(func(): check_label.visible = false)
+		check_label.play_animation()
 
 
 func _try_move(piece: Piece, col: int, row: int) -> bool:
