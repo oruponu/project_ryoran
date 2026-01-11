@@ -6,6 +6,7 @@ extends Node2D
 @onready var enemy_piece_stand = $EnemyPieceStand
 @onready var new_game_button = $HBoxContainer/NewGameButton
 @onready var undo_button = $HBoxContainer/UndoButton
+@onready var resign_button = $HBoxContainer/ResignButton
 @onready var turn_label = $CanvasLayer/TurnLabel
 @onready var check_label = $CanvasLayer/CheckLabel
 @onready var common_dialog = $CommonDialog
@@ -23,6 +24,7 @@ var is_game_active: bool = false
 func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)
+	resign_button.pressed.connect(_on_resign_button_pressed)
 	
 	_reset_game()
 
@@ -37,6 +39,12 @@ func _on_new_game_button_pressed() -> void:
 
 func _on_undo_button_pressed() -> void:
 	_undo_last_move()
+
+
+func _on_resign_button_pressed() -> void:
+	var is_enemy_turn = current_turn % 2 != 0
+	await show_game_result(current_turn, is_enemy_turn)
+	is_game_active = false
 
 
 func _reset_game() -> void:
