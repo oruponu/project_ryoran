@@ -124,19 +124,20 @@ func _finish_turn(piece: Piece) -> void:
 	
 	holding_piece = null
 	
-	current_turn += 1
-	_update_turn_display()
-	
-	var is_enemy_turn = current_turn % 2 != 0
+	var is_enemy_turn = current_turn % 2 == 0
 	if _is_king_in_check(is_enemy_turn):
 		if _is_checkmate(is_enemy_turn):
 			var chose_to_resign = await request_checkmate_decision(is_enemy_turn)
 			if chose_to_resign:
 				await show_game_result(current_turn, is_enemy_turn)
+				return
 			else:
 				_undo_last_move()
 		else:
 			check_label.play_animation()
+	
+	current_turn += 1
+	_update_turn_display()
 
 
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord) -> void:
