@@ -21,6 +21,11 @@ func ask_user(message: String, yes_text: String = "はい", no_text: String = "�
 	yes_button.text = yes_text
 	no_button.text = no_text
 	
+	if no_text == "":
+		no_button.hide()
+	else:
+		no_button.show()
+	
 	show()
 	var result = await decision_mode
 	return result
