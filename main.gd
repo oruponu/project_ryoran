@@ -189,9 +189,16 @@ func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode
 
 
 func _drop_piece(piece: Piece, col: int, row: int) -> void:
+	var source_stand = piece.get_parent()
+	
 	piece.reparent(board)
+	piece.visible = true
+	
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
+	
+	if source_stand is PieceStand:
+		source_stand.update_layout()
 
 
 func _cancel_move(piece: Piece) -> void:
