@@ -58,6 +58,24 @@ func _on_resign_button_pressed() -> void:
 	await _finish_game(is_player_win)
 
 
+func _update_button_states() -> void:
+	if not is_game_active:
+		new_game_button.disabled = false
+		undo_button.disabled = false
+		resign_button.disabled = true
+		return
+	
+	if is_ai_thinking:
+		new_game_button.disabled = true
+		undo_button.disabled = true
+		resign_button.disabled = true
+		return
+	
+	new_game_button.disabled = false
+	undo_button.disabled = move_history.is_empty()
+	resign_button.disabled = move_history.is_empty()
+
+
 func _reset_game() -> void:
 	board_grid.clear()
 	current_turn = 0
@@ -77,6 +95,7 @@ func _reset_game() -> void:
 			column.append(null)
 		board_grid.append(column)
 	
+	_update_button_states()
 	_update_turn_display()
 	board.setup_starting_board(self)
 	move_history_panel.clear()
@@ -154,6 +173,7 @@ func _finish_turn(piece: Piece) -> void:
 	holding_piece = null
 	
 	current_turn += 1
+	_update_button_states()
 	_update_turn_display()
 	
 	var record = move_history.back()
@@ -184,6 +204,7 @@ func _finish_turn(piece: Piece) -> void:
 
 func _play_ai_turn() -> void:
 	is_ai_thinking = true
+	_update_button_states()
 	
 	await get_tree().create_timer(1.0).timeout
 	
@@ -208,8 +229,8 @@ func _play_ai_turn() -> void:
 	
 	move_history.append(move_record)
 	
-	_finish_turn(piece)
 	is_ai_thinking = false
+	_finish_turn(piece)
 
 
 func _finish_game(is_player_win: bool) -> void:
@@ -219,6 +240,8 @@ func _finish_game(is_player_win: bool) -> void:
 	check_label.cancel_animation()
 	await show_game_result(current_turn - 1, is_player_win)
 	is_game_active = false
+	
+	_update_button_states()
 
 
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
@@ -356,6 +379,7 @@ func _undo_last_move() -> void:
 	current_turn -= 1
 	is_game_active = true
 	_update_turn_display()
+	_update_button_states()
 	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
 
