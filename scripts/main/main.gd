@@ -245,6 +245,8 @@ func _finish_game(is_player_win: bool) -> void:
 
 
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
+	var prev_row = piece.current_row
+	
 	var target_piece = get_piece(col, row)
 	if target_piece != null:
 		move_record.captured_promoted = target_piece.is_promoted
@@ -256,7 +258,6 @@ func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode
 	
 	audio_stream_player.play_place()
 	
-	var prev_row = piece.current_row
 	await _handle_promotion(piece, prev_row, row, move_record, mode)
 
 
