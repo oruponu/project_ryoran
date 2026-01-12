@@ -368,6 +368,8 @@ func _undo_last_move() -> void:
 	if last_move.captured_piece != null:
 		var captured = last_move.captured_piece
 		
+		var source_stand = captured.get_parent()
+		
 		captured.reparent(board)
 		captured.visible = true
 		captured.is_enemy = !captured.is_enemy
@@ -381,6 +383,9 @@ func _undo_last_move() -> void:
 		board_grid[captured.current_col][captured.current_row] = captured
 		
 		_update_piece_position(captured, captured.current_col, captured.current_row)
+		
+		if source_stand is PieceStand:
+			source_stand.update_layout()
 	
 	current_turn -= 1
 	is_game_active = true
