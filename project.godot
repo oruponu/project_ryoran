@@ -17,7 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-GameConfig="*res://game_config.gd"
+GameConfig="*res://scripts/autoload/game_config.gd"
 
 [display]
 

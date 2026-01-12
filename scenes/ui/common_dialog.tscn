@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://bggfmoyu0ml3d"]
 
-[ext_resource type="Script" uid="uid://nobcwf5mupsa" path="res://common_dialog.gd" id="1_oskcv"]
+[ext_resource type="Script" uid="uid://nobcwf5mupsa" path="res://scripts/ui/common_dialog.gd" id="1_2cqjm"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4e2jo"]
 content_margin_left = 64.0
@@ -18,7 +18,7 @@ line_spacing = 16.0
 font_size = 28
 
 [node name="CommonDialog" type="CanvasLayer"]
-script = ExtResource("1_oskcv")
+script = ExtResource("1_2cqjm")
 
 [node name="Overlay" type="ColorRect" parent="."]
 anchors_preset = 15

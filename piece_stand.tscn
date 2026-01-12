@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://05d8ivxdfet5"]
-
-[ext_resource type="Script" uid="uid://dhskw1lmonty1" path="res://piece_stand.gd" id="1_u4p2i"]
-
-[node name="Hand" type="Node2D"]
-script = ExtResource("1_u4p2i")

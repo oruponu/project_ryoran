@@ -1,13 +1,13 @@
 [gd_scene load_steps=2 format=3 uid="uid://v4mqg4kxgku2"]
 
-[ext_resource type="Script" uid="uid://x4jgxa4o75gm" path="res://move_history_panel.gd" id="1_3amfv"]
+[ext_resource type="Script" uid="uid://x4jgxa4o75gm" path="res://scripts/ui/move_history_panel.gd" id="1_548ex"]
 
 [node name="MoveHistoryPanel" type="Panel"]
 custom_minimum_size = Vector2(225, 675)
 offset_left = 1.0
 offset_right = 41.0
 offset_bottom = 40.0
-script = ExtResource("1_3amfv")
+script = ExtResource("1_548ex")
 
 [node name="HistoryScroll" type="ScrollContainer" parent="."]
 layout_mode = 1

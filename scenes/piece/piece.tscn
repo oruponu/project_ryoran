@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://cn67r6mghyu06"]
 
-[ext_resource type="Script" uid="uid://c2b77n144swq5" path="res://piece.gd" id="1_hisf2"]
-[ext_resource type="Texture2D" uid="uid://d3oo548rk8kw8" path="res://piece.png" id="2_hisf2"]
+[ext_resource type="Script" uid="uid://c2b77n144swq5" path="res://scripts/piece/piece.gd" id="1_huli3"]
+[ext_resource type="Texture2D" uid="uid://d3oo548rk8kw8" path="res://assets/images/piece.png" id="2_i7cdl"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hisf2"]
 
@@ -10,11 +10,11 @@ font_size = 64
 
 [node name="Piece" type="Area2D"]
 scale = Vector2(0.5, 0.5)
-script = ExtResource("1_hisf2")
+script = ExtResource("1_huli3")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(0.5, 0.5)
-texture = ExtResource("2_hisf2")
+texture = ExtResource("2_i7cdl")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 scale = Vector2(6, 6)
