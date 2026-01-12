@@ -11,6 +11,7 @@ extends Node2D
 @onready var turn_label = $CanvasLayer/TurnLabel
 @onready var check_label = $CanvasLayer/CheckLabel
 @onready var common_dialog = $CommonDialog
+@onready var audio_stream_player = $AudioStreamPlayer
 
 
 var board_grid = []
@@ -173,6 +174,7 @@ func _finish_turn(piece: Piece) -> void:
 				_undo_last_move()
 		else:
 			check_label.play_animation()
+			audio_stream_player.play_check()
 	
 	var next_is_enemy = current_turn % 2 != 0
 	if is_game_active and next_is_enemy == ai_player.is_enemy_side:
@@ -228,6 +230,8 @@ func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
 	
+	audio_stream_player.play_place()
+	
 	var prev_row = piece.current_row
 	await _handle_promotion(piece, prev_row, row, move_record, mode)
 
@@ -240,6 +244,8 @@ func _drop_piece(piece: Piece, col: int, row: int) -> void:
 	
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
+	
+	audio_stream_player.play_place()
 	
 	if source_stand is PieceStand:
 		source_stand.update_layout()
