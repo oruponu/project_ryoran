@@ -369,6 +369,7 @@ func _undo_last_move() -> void:
 		var captured = last_move.captured_piece
 		
 		captured.reparent(board)
+		captured.visible = true
 		captured.is_enemy = !captured.is_enemy
 		captured.rotation_degrees = 180 if captured.is_enemy else 0
 		
