@@ -354,8 +354,8 @@ func _undo_last_move() -> void:
 
 
 func _update_turn_display() -> void:
-	var current_side = "後手" if current_turn % 2 != 0 else "先手"
-	turn_label.text = "%d 手目（%s）" % [current_turn, current_side]
+	var current_side = "後手番" if current_turn % 2 != 0 else "先手番"
+	turn_label.text = current_side
 
 
 func _is_checkmate(target_is_enemy: bool) -> bool:
