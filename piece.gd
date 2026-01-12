@@ -49,14 +49,6 @@ const PIECE_DATA = {
 	}
 }
 
-const MOVES = {
-	Type.KING: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1), Vector2(-1, 1), Vector2(-1, 0), Vector2(-1, -1)],
-	Type.GOLD: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0), Vector2(-1, -1)],
-	Type.SILVER: [Vector2(0, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1)],
-	Type.KNIGHT: [Vector2(-1, -2), Vector2(1, -2)],
-	Type.PAWN: [Vector2(0, -1)]
-}
-
 
 @onready var label = $Label
 
@@ -84,161 +76,23 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 
 
 func is_legal_move(target_col: int, target_row: int) -> bool:
-	# 盤面の範囲外には移動不可
-	if not _is_inside_board(target_col, target_row):
-		return false
-	
-	# 現在地と同じ場所には移動不可
-	if target_col == current_col and target_row == current_row:
-		return false
-	
-	# ルールで認められていない場所には移動不可
-	if not can_move_geometry(target_col, target_row):
-		return false
-	
-	# 味方の駒がある場所には移動不可
-	var target_piece = main.get_piece(target_col, target_row)
-	if target_piece != null:
-		if target_piece.is_enemy == is_enemy:
-			return false
-	
-	return true
+	return PieceMovement.is_legal_move(main, self, current_col, current_row, target_col, target_row)
 
 
 func is_legal_drop(target_col: int, target_row: int) -> bool:
-	# 盤面の範囲外には配置不可
-	if not _is_inside_board(target_col, target_row):
-		return false
-	
-	# すでに駒がある場所には配置不可
-	if main.get_piece(target_col, target_row):
-		return false
-	
-	# 行き所のない場所には配置不可
-	if _is_dead_end(target_row):
-		return false
-	
-	# 二歩になる場所には配置不可
-	if _is_nifu(target_col):
-		return false
-	
-	return true
+	return PieceMovement.is_legal_drop(main, self, target_col, target_row)
 
 
 func get_legal_moves() -> Array[Vector2i]:
-	var legal_moves: Array[Vector2i] = []
-	
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			if is_legal_move(col, row):
-				legal_moves.append(Vector2i(col, row))
-	
-	return legal_moves
+	return PieceMovement.get_legal_moves(main, self)
 
 
 func get_legal_drops() -> Array[Vector2i]:
-	var legal_drops: Array[Vector2i] = []
-	
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			if is_legal_drop(col, row):
-				legal_drops.append(Vector2i(col, row))
-	
-	# TODO: 打ち歩詰めを禁止
-	return legal_drops
+	return PieceMovement.get_legal_drops(main, self)
 
 
 func can_move_geometry(target_col: int, target_row: int) -> bool:
-	var dx = target_col - current_col
-	var dy = target_row - current_row
-	
-	if is_enemy:
-		dx = -dx
-		dy = -dy
-	
-	var relative_pos = Vector2(dx, dy)
-	var effective_type = piece_type
-	
-	if is_promoted:
-		match piece_type:
-			Type.SILVER, Type.KNIGHT, Type.LANCE, Type.PAWN:
-				effective_type = Type.GOLD
-	
-	match effective_type:
-		Type.ROOK:
-			if dx == 0 or dy == 0:
-				if _is_path_blocked(target_col, target_row):
-					return false
-				return true
-			if is_promoted and abs(dx) <= 1 and abs(dy) <= 1:
-				return true
-			return false
-		Type.BISHOP:
-			if abs(dx) == abs(dy):
-				if _is_path_blocked(target_col, target_row):
-					return false
-				return true
-			if is_promoted and (abs(dx) + abs(dy) <= 1):
-				return true
-			return false
-		Type.LANCE:
-			if dx == 0 and dy < 0:
-				if _is_path_blocked(target_col, target_row):
-					return false
-				return true
-			return false
-		Type.KNIGHT:
-			return relative_pos in MOVES[Type.KNIGHT]
-		_:
-			if MOVES.has(effective_type):
-				return relative_pos in MOVES[effective_type]
-	return false
-
-
-func _is_inside_board(col: int, row: int) -> bool:
-	return col >= 0 and col < GameConfig.BOARD_COLS and row >= 0 and row < GameConfig.BOARD_ROWS
-
-
-func _is_path_blocked(target_col: int, target_row: int) -> bool:
-	var dx = target_col - current_col
-	var dy = target_row - current_row
-	var steps = max(abs(dx), abs(dy))
-	
-	var step_x = sign(dx)
-	var step_y = sign(dy)
-	
-	# 現在地と目的地の間にあるマスを確認
-	for i in range(1, steps):
-		var check_col = current_col + (step_x * i)
-		var check_row = current_row + (step_y * i)
-		
-		if main.get_piece(check_col, check_row) != null:
-			return true
-	return false
-
-
-func _is_dead_end(target_row: int) -> bool:
-	var relative_row = target_row if not is_enemy else GameConfig.BOARD_ROWS - 1 - target_row
-	match piece_type:
-		Type.PAWN, Type.LANCE:
-			return relative_row == 0
-		Type.KNIGHT:
-			return relative_row <= 1
-	
-	return false
-
-
-func _is_nifu(target_col: int) -> bool:
-	if piece_type != Type.PAWN:
-		return false
-	
-	for row in range(GameConfig.BOARD_ROWS):
-		var target = main.get_piece(target_col, row)
-		if target != null:
-			if target.is_enemy == self.is_enemy and target.piece_type == Type.PAWN and not target.is_promoted:
-				return true
-	
-	return false
+	return PieceMovement.can_move_geometry(main, piece_type, is_enemy, is_promoted, current_col, current_row, target_col, target_row)
 
 
 func set_promoted(_is_promoted: bool) -> void:
