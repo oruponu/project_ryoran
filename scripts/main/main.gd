@@ -46,6 +46,7 @@ func _on_new_game_button_pressed() -> void:
 
 func _on_undo_button_pressed() -> void:
 	_undo_last_move()
+	_undo_last_move()
 
 
 func _on_resign_button_pressed() -> void:
