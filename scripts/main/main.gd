@@ -335,6 +335,10 @@ func _undo_last_move() -> void:
 	if move_history.is_empty():
 		return
 	
+	if not is_game_active:
+		current_turn -= 1
+		move_history_panel.remove_last_move()
+	
 	var last_move = move_history.pop_back()
 	var piece = last_move.piece
 	
