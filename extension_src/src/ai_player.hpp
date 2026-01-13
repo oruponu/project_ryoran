@@ -1,21 +1,42 @@
 #ifndef AI_PLAYER_HPP
 #define AI_PLAYER_HPP
 
+#include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <vector>
 
 using namespace godot;
+
+struct MoveData {
+    Object *piece;
+    int from_col;
+    int from_row;
+    int to_col;
+    int to_row;
+    bool is_promotion;
+    bool is_drop;
+    int piece_type;
+};
 
 class AIPlayer : public RefCounted {
     GDCLASS(AIPlayer, RefCounted);
 
+  private:
+    bool is_enemy_side = true;
+
   protected:
     static void _bind_methods();
+
+    std::vector<MoveData> _get_legal_moves(Node2D *main_node);
 
   public:
     AIPlayer();
     ~AIPlayer();
 
-    int test_calculation(int a, int b);
+    Dictionary get_next_move(Node2D *main_node);
+
+    void set_is_enemy_side(bool is_enemy);
+    bool get_is_enemy_side() const;
 };
 
 #endif
