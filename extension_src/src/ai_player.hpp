@@ -15,7 +15,7 @@ public:
     AIPlayer();
     ~AIPlayer();
 
-    int text_calculation(int a, int b);
+    int test_calculation(int a, int b);
 };
 
 #endif
