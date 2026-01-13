@@ -4,7 +4,6 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-
 using namespace godot;
 
 void initialize_shogi_ai_module(ModuleInitializationLevel p_level) {
@@ -22,7 +21,9 @@ void uninitialize_shogi_ai_module(ModuleInitializationLevel p_level) {
 }
 
 extern "C" {
-GDExtensionBool GDE_EXPORT shogi_ai_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address, GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
+GDExtensionBool GDE_EXPORT shogi_ai_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address,
+                                                 GDExtensionClassLibraryPtr p_library,
+                                                 GDExtensionInitialization *r_initialization) {
     godot::GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 
     init_obj.register_initializer(initialize_shogi_ai_module);

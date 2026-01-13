@@ -8,10 +8,10 @@ using namespace godot;
 class AIPlayer : public RefCounted {
     GDCLASS(AIPlayer, RefCounted);
 
-protected:
+  protected:
     static void _bind_methods();
 
-public:
+  public:
     AIPlayer();
     ~AIPlayer();
 
