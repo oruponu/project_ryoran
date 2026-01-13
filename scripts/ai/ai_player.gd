@@ -1,4 +1,4 @@
-class_name AIPlayer
+class_name AIPlayerGD
 
 extends RefCounted
 

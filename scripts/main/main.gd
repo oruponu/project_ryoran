@@ -20,7 +20,7 @@ var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
 var is_game_active: bool = false
-var ai_player: AIPlayer = null
+var ai_player: AIPlayerGD = null
 var is_ai_thinking: bool = false
 
 
@@ -30,7 +30,7 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
 	
-	ai_player = AIPlayer.new()
+	ai_player = AIPlayerGD.new()
 	ai_player.is_enemy_side = true
 	
 	_reset_game()
