@@ -4,6 +4,34 @@
 
 using namespace godot;
 
+namespace {
+
+struct Direction {
+    int dx;
+    int dy;
+};
+
+const Direction DIR_UP = {0, -1};
+const Direction DIR_UP_RIGHT = {1, -1};
+const Direction DIR_RIGHT = {1, 0};
+const Direction DIR_DOWN_RIGHT = {1, 1};
+const Direction DIR_DOWN = {0, 1};
+const Direction DIR_DOWN_LEFT = {-1, 1};
+const Direction DIR_LEFT = {-1, 0};
+const Direction DIR_UP_LEFT = {-1, -1};
+const Direction DIR_KNIGHT_LEFT = {-1, -2};
+const Direction DIR_KNIGHT_RIGHT = {1, -2};
+
+const std::vector<Direction> MOVES_PAWN = {DIR_UP};
+const std::vector<Direction> MOVES_KNIGHT = {DIR_KNIGHT_LEFT, DIR_KNIGHT_RIGHT};
+const std::vector<Direction> MOVES_SILVER = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_DOWN_LEFT, DIR_DOWN_RIGHT};
+const std::vector<Direction> MOVES_GOLD = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_LEFT, DIR_RIGHT, DIR_DOWN};
+const std::vector<Direction> MOVES_KING = {DIR_UP_LEFT, DIR_UP,        DIR_UP_RIGHT, DIR_LEFT,
+                                           DIR_RIGHT,   DIR_DOWN_LEFT, DIR_DOWN,     DIR_DOWN_RIGHT};
+const std::vector<Direction> &MOVES_PROMOTED = MOVES_GOLD;
+
+} // namespace
+
 BoardState::BoardState() {
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
