@@ -9,7 +9,7 @@
 using namespace godot;
 
 struct Cell {
-    int8_t type;
+    int type;
     int8_t side;
     bool is_promoted;
 
