@@ -206,8 +206,6 @@ func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
 	
-	await get_tree().create_timer(1.0).timeout
-	
 	var move = ai_player.get_next_move(self)
 	
 	# 投了かどうか
