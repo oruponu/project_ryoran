@@ -27,8 +27,6 @@ class ShogiEngine : public RefCounted {
   protected:
     static void _bind_methods();
 
-    std::vector<MoveData> _get_legal_moves(Node2D *main_node);
-
   public:
     ShogiEngine();
     ~ShogiEngine();
