@@ -211,7 +211,7 @@ func _play_ai_turn() -> void:
 	var move = ai_player.get_next_move(self)
 	
 	# 投了かどうか
-	if move == null:
+	if move.is_empty():
 		await _finish_game(!ai_player.is_enemy_side)
 		is_ai_thinking = false
 		return
