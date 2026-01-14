@@ -28,10 +28,19 @@ class BoardState {
     BoardState();
 
     void init_from_main(Node *main_node);
+    std::vector<Shogi::Move> get_legal_moves(int side) const;
 
     // 盤面情報の取得
     const Cell &get_cell(int col, int row) const;
     int get_hand_count(int side, int piece_type) const;
+
+    // 座標が盤面内か
+    static bool is_valid_coord(int col, int row) {
+        return col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS;
+    }
+
+    // 指定した列に歩が存在するか
+    bool has_pawn_on_column(int side, int col) const;
 
     // 盤面を出力（デバッグ用）
     void print_board() const;
