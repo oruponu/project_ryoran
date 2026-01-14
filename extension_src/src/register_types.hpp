@@ -5,7 +5,7 @@
 
 using namespace godot;
 
-void initialize_shogi_ai_module(ModuleInitializationLevel p_level);
-void uninitialize_shogi_ai_module(ModuleInitializationLevel p_level);
+void initialize_shogi_engine_module(ModuleInitializationLevel p_level);
+void uninitialize_shogi_engine_module(ModuleInitializationLevel p_level);
 
 #endif
