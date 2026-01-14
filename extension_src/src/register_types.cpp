@@ -1,5 +1,5 @@
 #include "register_types.hpp"
-#include "ai_player.hpp"
+#include "shogi_engine.hpp"
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -11,7 +11,7 @@ void initialize_shogi_engine_module(ModuleInitializationLevel p_level) {
         return;
     }
 
-    GDREGISTER_CLASS(AIPlayer);
+    GDREGISTER_CLASS(ShogiEngine);
 }
 
 void uninitialize_shogi_engine_module(ModuleInitializationLevel p_level) {

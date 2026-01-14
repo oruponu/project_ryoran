@@ -1,5 +1,5 @@
-#ifndef AI_PLAYER_HPP
-#define AI_PLAYER_HPP
+#ifndef SHOGI_ENGINE_HPP
+#define SHOGI_ENGINE_HPP
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
@@ -18,8 +18,8 @@ struct MoveData {
     int piece_type;
 };
 
-class AIPlayer : public RefCounted {
-    GDCLASS(AIPlayer, RefCounted);
+class ShogiEngine : public RefCounted {
+    GDCLASS(ShogiEngine, RefCounted);
 
   private:
     bool is_enemy_side = true;
@@ -30,8 +30,8 @@ class AIPlayer : public RefCounted {
     std::vector<MoveData> _get_legal_moves(Node2D *main_node);
 
   public:
-    AIPlayer();
-    ~AIPlayer();
+    ShogiEngine();
+    ~ShogiEngine();
 
     Dictionary get_next_move(Node2D *main_node);
 

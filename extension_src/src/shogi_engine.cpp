@@ -1,4 +1,4 @@
-#include "ai_player.hpp"
+#include "shogi_engine.hpp"
 #include "board_state.hpp"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -7,22 +7,22 @@
 
 using namespace godot;
 
-AIPlayer::AIPlayer() {}
-AIPlayer::~AIPlayer() {}
+ShogiEngine::ShogiEngine() {}
+ShogiEngine::~ShogiEngine() {}
 
-void AIPlayer::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("get_next_move", "main_node"), &AIPlayer::get_next_move);
+void ShogiEngine::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("get_next_move", "main_node"), &ShogiEngine::get_next_move);
 
-    ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy"), &AIPlayer::set_is_enemy_side);
-    ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &AIPlayer::get_is_enemy_side);
+    ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy"), &ShogiEngine::set_is_enemy_side);
+    ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
     ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_enemy_side"), "set_is_enemy_side", "get_is_enemy_side");
 }
 
-void AIPlayer::set_is_enemy_side(bool is_enemy) { is_enemy_side = is_enemy; }
+void ShogiEngine::set_is_enemy_side(bool is_enemy) { is_enemy_side = is_enemy; }
 
-bool AIPlayer::get_is_enemy_side() const { return is_enemy_side; }
+bool ShogiEngine::get_is_enemy_side() const { return is_enemy_side; }
 
-Dictionary AIPlayer::get_next_move(Node2D *main_node) {
+Dictionary ShogiEngine::get_next_move(Node2D *main_node) {
     BoardState current_board;
     current_board.init_from_main(main_node);
 

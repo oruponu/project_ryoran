@@ -20,8 +20,8 @@ var holding_piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
 var is_game_active: bool = false
-var ai_player: AIPlayer = null
 var is_ai_thinking: bool = false
+var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
 # Called when the node enters the scene tree for the first time.
@@ -30,8 +30,7 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
 	
-	ai_player = AIPlayer.new()
-	ai_player.is_enemy_side = true
+	_shogi_engine.is_enemy_side = true
 	
 	_reset_game()
 
@@ -183,7 +182,7 @@ func _finish_turn(piece: Piece) -> void:
 	var target_is_enemy = current_turn % 2 != 0
 	if _is_king_in_check(target_is_enemy):
 		if _is_checkmate(target_is_enemy):
-			if ai_player != null and target_is_enemy == ai_player.is_enemy_side:
+			if _shogi_engine != null and target_is_enemy == _shogi_engine.is_enemy_side:
 				await _finish_game(target_is_enemy)
 				return
 			
@@ -198,7 +197,7 @@ func _finish_turn(piece: Piece) -> void:
 			audio_stream_player.play_check()
 	
 	var next_is_enemy = current_turn % 2 != 0
-	if is_game_active and next_is_enemy == ai_player.is_enemy_side:
+	if is_game_active and next_is_enemy == _shogi_engine.is_enemy_side:
 		_play_ai_turn()
 
 
@@ -206,11 +205,11 @@ func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
 	
-	var move = ai_player.get_next_move(self)
+	var move = _shogi_engine.get_next_move(self)
 	
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(!ai_player.is_enemy_side)
+		await _finish_game(!_shogi_engine.is_enemy_side)
 		is_ai_thinking = false
 		return
 	
