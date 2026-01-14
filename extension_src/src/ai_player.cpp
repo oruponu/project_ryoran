@@ -48,7 +48,8 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
 
         for (int i = 0; i < children.size(); ++i) {
             Object *piece = children[i];
-            if ((int)piece->get("piece_type") == selected.piece_type) {
+            Variant v_type = piece->get("piece_type");
+            if (v_type.get_type() == Variant::INT && (int)v_type == selected.piece_type) {
                 result["piece"] = piece;
                 break;
             }

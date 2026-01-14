@@ -100,9 +100,12 @@ void BoardState::init_from_main(Node *main_node) {
         for (int i = 0; i < children.size(); ++i) {
             Object *piece = Object::cast_to<Object>(children[i]);
             if (piece != nullptr) {
-                int piece_type = piece->get("piece_type");
-                if (piece_type >= 0 && piece_type < Shogi::PIECE_TYPE_COUNT) {
-                    hand[side][piece_type]++;
+                Variant v_type = piece->get("piece_type");
+                if (v_type.get_type() == Variant::INT) {
+                    int piece_type = v_type;
+                    if (piece_type >= 0 && piece_type < Shogi::PIECE_TYPE_COUNT) {
+                        hand[side][piece_type]++;
+                    }
                 }
             }
         }
