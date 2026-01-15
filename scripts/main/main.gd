@@ -186,6 +186,7 @@ func _finish_turn(piece: Piece) -> void:
 				return
 			else:
 				_undo_last_move()
+				_undo_last_move()
 		else:
 			check_label.play_animation()
 			audio_stream_player.play_check()
