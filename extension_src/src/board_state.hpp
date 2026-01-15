@@ -29,6 +29,8 @@ class BoardState {
         return col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS;
     }
 
+    bool is_valid_move(int from_col, int from_row, int to_col, int to_row) const;
+    bool is_valid_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
     bool is_path_blocked(int from_col, int from_row, int to_col, int to_row) const;
     bool is_nifu(int piece_type, int side, int col) const;
     std::pair<int, int> find_king_position(int side) const;

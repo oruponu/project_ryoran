@@ -109,7 +109,7 @@ void BoardState::init_from_main(Node *main_node) {
     }
 }
 
-bool BoardState::is_legal_move(int from_col, int from_row, int to_col, int to_row) const {
+bool BoardState::is_valid_move(int from_col, int from_row, int to_col, int to_row) const {
     // 盤面の範囲外には移動不可
     if (!is_valid_coord(to_col, to_row)) {
         return false;
@@ -143,7 +143,7 @@ bool BoardState::is_legal_move(int from_col, int from_row, int to_col, int to_ro
     return true;
 }
 
-bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const {
+bool BoardState::is_valid_drop(int piece_type, bool is_enemy, int to_col, int to_row) const {
     // 盤面の範囲外には配置不可
     if (!is_valid_coord(to_col, to_row)) {
         return false;
@@ -166,6 +166,42 @@ bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to
 
     // 二歩になる場所には配置不可
     if (is_nifu(piece_type, side, to_col)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool BoardState::is_legal_move(int from_col, int from_row, int to_col, int to_row) const {
+    if (!is_valid_move(from_col, from_row, to_col, to_row)) {
+        return false;
+    }
+
+    BoardState next_state = *this;
+    Cell piece = next_state.get_cell(from_col, from_row);
+    next_state.set_cell(to_col, to_row, piece.type, piece.side, piece.is_promoted);
+    next_state.clear_cell(from_col, from_row);
+
+    // 王手放置になる手を除外
+    if (next_state.is_king_in_check(piece.side)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const {
+    if (!is_valid_drop(piece_type, is_enemy, to_col, to_row)) {
+        return false;
+    }
+
+    BoardState next_state = *this;
+    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    next_state.set_cell(to_col, to_row, piece_type, side, false);
+    next_state.hand[side][piece_type]--;
+
+    // 王手放置になる手を除外
+    if (next_state.is_king_in_check(side)) {
         return false;
     }
 
@@ -323,7 +359,7 @@ bool BoardState::is_king_in_check(int side) const {
                 continue;
             }
 
-            if (is_legal_move(col, row, king_col, king_row)) {
+            if (is_valid_move(col, row, king_col, king_row)) {
                 return true;
             }
         }

@@ -121,20 +121,13 @@ func _pick_up(piece: Piece) -> void:
 	piece.is_held = true
 	piece.z_index = 10
 	
-	var legal_coords: Array[Vector2i] = []
+	current_legal_coords = []
 	if piece.current_col == -1 and piece.current_row == -1:
 		if piece.get_parent() is PieceStand:
 			piece.get_parent().update_layout()
-		legal_coords = piece.get_legal_drops()
+		current_legal_coords = piece.get_legal_drops()
 	else:
-		legal_coords = piece.get_legal_moves()
-	
-	current_legal_coords = []
-	
-	# 王手放置になる手を除外
-	for coord in legal_coords:
-		if _shogi_engine.is_king_safe_after_move(self, piece, coord.x, coord.y):
-			current_legal_coords.append(coord)
+		current_legal_coords = piece.get_legal_moves()
 	
 	board.show_guides(current_legal_coords)
 
