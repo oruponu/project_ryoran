@@ -14,6 +14,7 @@ const MARGIN = 22.5
 
 var active_guides: Array[ColorRect] = []
 var last_move_rect: ColorRect = null
+var last_move_tween: Tween = null
 
 
 # Called when the node enters the scene tree for the first time.
@@ -132,9 +133,23 @@ func update_last_move_highlight(col: int, row: int) -> void:
 		add_child(last_move_rect)
 	
 	last_move_rect.position = Vector2(col * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
+	
+	if last_move_tween:
+		last_move_tween.kill()
+	
+	last_move_rect.modulate.a = 1.0
+	
+	last_move_tween = create_tween()
+	last_move_tween.set_loops()
+	last_move_tween.tween_property(last_move_rect, "modulate:a", 0.2, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	last_move_tween.tween_property(last_move_rect, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func clear_last_move_highlight() -> void:
+	if last_move_tween != null:
+		last_move_tween.kill()
+		last_move_tween = null
+	
 	if last_move_rect != null:
 		last_move_rect.queue_free()
 		last_move_rect = null
