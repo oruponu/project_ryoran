@@ -21,6 +21,11 @@ void ShogiEngine::_bind_methods() {
                                 &ShogiEngine::get_legal_moves);
     ClassDB::bind_static_method("ShogiEngine", D_METHOD("get_legal_drops", "main_node", "piece_obj"),
                                 &ShogiEngine::get_legal_drops);
+    ClassDB::bind_static_method(
+        "ShogiEngine", D_METHOD("is_king_safe_after_move", "main_node", "piece_obj", "target_col", "target_row"),
+        &ShogiEngine::is_king_safe_after_move);
+    ClassDB::bind_static_method("ShogiEngine", D_METHOD("is_king_in_check", "main_node", "is_enemy"),
+                                &ShogiEngine::is_king_in_check);
 
     ClassDB::bind_method(D_METHOD("get_next_move", "main_node"), &ShogiEngine::get_next_move);
 
@@ -105,6 +110,40 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
     }
 
     return result;
+}
+
+bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row) {
+    if (!piece_obj) {
+        return false;
+    }
+
+    BoardState board;
+    board.init_from_main(main_node);
+
+    int piece_type = piece_obj->get("piece_type");
+    int current_col = piece_obj->get("current_col");
+    int current_row = piece_obj->get("current_row");
+    bool is_enemy = piece_obj->get("is_enemy");
+    bool is_promoted = piece_obj->get("is_promoted");
+
+    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+
+    if (current_col != -1 && current_row != -1) {
+        board.clear_cell(current_col, current_row);
+    }
+
+    board.set_cell(target_col, target_row, piece_type, side, is_promoted);
+
+    return !board.is_king_in_check(side);
+}
+
+bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
+    BoardState board;
+    board.init_from_main(main_node);
+
+    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+
+    return board.is_king_in_check(side);
 }
 
 Dictionary ShogiEngine::get_next_move(Node2D *main_node) {

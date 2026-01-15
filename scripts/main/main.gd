@@ -133,7 +133,7 @@ func _pick_up(piece: Piece) -> void:
 	
 	# 王手放置になる手を除外
 	for coord in legal_coords:
-		if is_king_safe_after_move(piece, coord.x, coord.y):
+		if _shogi_engine.is_king_safe_after_move(self, piece, coord.x, coord.y):
 			current_legal_coords.append(coord)
 	
 	board.show_guides(current_legal_coords)
@@ -180,7 +180,7 @@ func _finish_turn(piece: Piece) -> void:
 	move_history_panel.add_move(current_turn, record, prev_record)
 	
 	var target_is_enemy = current_turn % 2 != 0
-	if _is_king_in_check(target_is_enemy):
+	if _shogi_engine.is_king_in_check(self, target_is_enemy):
 		if _is_checkmate(target_is_enemy):
 			if _shogi_engine != null and target_is_enemy == _shogi_engine.is_enemy_side:
 				await _finish_game(target_is_enemy)
@@ -405,7 +405,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 			if piece != null and piece.is_enemy == target_is_enemy:
 				var moves = piece.get_legal_moves()
 				for move in moves:
-					if is_king_safe_after_move(piece, move.x, move.y):
+					if _shogi_engine.is_king_safe_after_move(self, piece, move.x, move.y):
 						return false
 	
 	var target_stand = enemy_piece_stand if target_is_enemy else player_piece_stand
@@ -413,65 +413,10 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 		if piece is Piece:
 			var drops = piece.get_legal_drops()
 			for drop in drops:
-				if is_king_safe_after_move(piece, drop.x, drop.y):
+				if _shogi_engine.is_king_safe_after_move(self, piece, drop.x, drop.y):
 					return false
 	
 	return true
-
-
-func is_king_safe_after_move(piece: Piece, target_col: int, target_row: int) -> bool:
-	var original_col = piece.current_col
-	var original_row = piece.current_row
-	var captured_piece = board_grid[target_col][target_row]
-	
-	if original_col != -1 and original_row != -1:
-		board_grid[original_col][original_row] = null
-	
-	board_grid[target_col][target_row] = piece
-	piece.current_col = target_col
-	piece.current_row = target_row
-	
-	var is_safe = not _is_king_in_check(piece.is_enemy)
-	
-	piece.current_col = original_col
-	piece.current_row = original_row
-	if original_col != -1 and original_row != -1:
-		board_grid[original_col][original_row] = piece
-	
-	board_grid[target_col][target_row] = captured_piece
-	
-	return is_safe
-
-
-func _is_king_in_check(target_is_enemy: bool) -> bool:
-	var king_pos = _find_king_grid_position(target_is_enemy)
-	if king_pos == Vector2i(-1, -1):
-		return false
-	
-	var king_col = king_pos.x
-	var king_row = king_pos.y
-	
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			var attacker = get_piece(col, row)
-			if attacker == null or attacker.is_enemy == target_is_enemy:
-				continue
-			
-			if attacker.is_legal_move(king_col, king_row):
-				return true
-	
-	return false
-
-
-func _find_king_grid_position(is_enemy_king: bool) -> Vector2i:
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			var piece = get_piece(col, row)
-			if piece != null:
-				if piece.piece_type == Piece.Type.KING and piece.is_enemy == is_enemy_king:
-					return Vector2i(col, row)
-	
-	return Vector2i(-1, -1)
 
 
 func get_piece(col: int, row: int):

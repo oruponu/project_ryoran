@@ -31,6 +31,7 @@ class BoardState {
 
     bool is_path_blocked(int from_col, int from_row, int to_col, int to_row) const;
     bool is_nifu(int piece_type, int side, int col) const;
+    std::pair<int, int> find_king_position(int side) const;
 
   public:
     BoardState();
@@ -41,9 +42,12 @@ class BoardState {
     bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, int from_col, int from_row, int to_col,
                            int to_row) const;
     bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
+    bool is_king_in_check(int side) const;
 
     // 盤面情報の取得
     const Cell &get_cell(int col, int row) const;
+    void set_cell(int col, int row, int type, int side, bool is_promoted);
+    void clear_cell(int col, int row);
     int get_hand_count(int side, int piece_type) const;
 
     // 盤面を出力（デバッグ用）

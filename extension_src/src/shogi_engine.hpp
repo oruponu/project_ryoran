@@ -35,6 +35,8 @@ class ShogiEngine : public RefCounted {
     static bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     static TypedArray<Vector2i> get_legal_moves(Node2D *main_node, Object *piece_obj);
     static TypedArray<Vector2i> get_legal_drops(Node2D *main_node, Object *piece_obj);
+    static bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    static bool is_king_in_check(Node2D *main_node, bool is_enemy);
 
     Dictionary get_next_move(Node2D *main_node);
 

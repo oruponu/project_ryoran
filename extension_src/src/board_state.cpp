@@ -305,6 +305,46 @@ bool BoardState::is_nifu(int piece_type, int side, int col) const {
     return false;
 }
 
+bool BoardState::is_king_in_check(int side) const {
+    std::pair<int, int> king_pos = find_king_position(side);
+    int king_col = king_pos.first;
+    int king_row = king_pos.second;
+
+    if (king_col == -1 || king_row == -1) {
+        return false;
+    }
+
+    int enemy_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = get_cell(col, row);
+            if (cell.is_empty() || cell.side != enemy_side) {
+                continue;
+            }
+
+            if (is_legal_move(col, row, king_col, king_row)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+std::pair<int, int> BoardState::find_king_position(int side) const {
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = get_cell(col, row);
+            if (cell.side == side && cell.type == Shogi::KING) {
+                return {col, row};
+            }
+        }
+    }
+
+    return {-1, -1};
+}
+
 const Cell &BoardState::get_cell(int col, int row) const {
     if (col < 0 || col >= Shogi::BOARD_COLS || row < 0 || row >= Shogi::BOARD_ROWS) {
         // 範囲外のアクセスなら空のセルを返す
@@ -313,6 +353,20 @@ const Cell &BoardState::get_cell(int col, int row) const {
     }
 
     return board[col * Shogi::BOARD_ROWS + row];
+}
+
+void BoardState::set_cell(int col, int row, int type, int side, bool is_promoted) {
+    if (is_valid_coord(col, row)) {
+        int index = col * Shogi::BOARD_ROWS + row;
+        board[index] = Cell(type, side, is_promoted);
+    }
+}
+
+void BoardState::clear_cell(int col, int row) {
+    if (is_valid_coord(col, row)) {
+        int index = col * Shogi::BOARD_ROWS + row;
+        board[index] = Cell();
+    }
 }
 
 int BoardState::get_hand_count(int side, int piece_type) const {
