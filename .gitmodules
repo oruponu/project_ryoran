@@ -1,0 +1,3 @@
+[submodule "extension_src/godot-cpp"]
+	path = extension_src/godot-cpp
+	url = https://github.com/godotengine/godot-cpp
