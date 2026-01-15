@@ -5,6 +5,7 @@
 .sconsign.dblite
 
 *.obj
+*.o
 
 bin/*
 !bin/*.gdextension
