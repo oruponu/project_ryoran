@@ -44,13 +44,13 @@ class BoardState {
     bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
     bool is_king_in_check(int side) const;
 
-    // 盤面情報の取得
+    // 盤面の操作
     const Cell &get_cell(int col, int row) const;
     void set_cell(int col, int row, int type, int side, bool is_promoted);
     void clear_cell(int col, int row);
     int get_hand_count(int side, int piece_type) const;
 
-    // 盤面を出力（デバッグ用）
+    // 盤面の出力（デバッグ用）
     void print_board() const;
 };
 
