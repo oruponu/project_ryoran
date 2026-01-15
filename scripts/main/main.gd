@@ -166,6 +166,7 @@ func _finish_turn(piece: Piece) -> void:
 	
 	current_turn += 1
 	_update_button_states()
+	_update_last_move_highlight()
 	_update_turn_display()
 	
 	var record = move_history.back()
@@ -379,10 +380,19 @@ func _undo_last_move() -> void:
 	
 	current_turn -= 1
 	is_game_active = true
+	_update_last_move_highlight()
 	_update_turn_display()
 	_update_button_states()
 	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
+
+
+func _update_last_move_highlight() -> void:
+	if move_history.is_empty():
+		board.clear_last_move_highlight()
+	else:
+		var last_record = move_history.back()
+		board.update_last_move_highlight(last_record.to_col, last_record.to_row)
 
 
 func _update_turn_display() -> void:

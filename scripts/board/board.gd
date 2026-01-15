@@ -8,10 +8,12 @@ const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const TEXT_COLOR = Color(0.0, 0.0, 0.0)
 const GUIDE_COLOR = Color(0.0, 0.7, 1.0, 0.4)
+const LAST_MOVE_COLOR = Color(1.0, 0.4, 0.0, 0.2)
 const MARGIN = 22.5
 
 
 var active_guides: Array[ColorRect] = []
+var last_move_rect: ColorRect = null
 
 
 # Called when the node enters the scene tree for the first time.
@@ -95,6 +97,7 @@ func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool, main: Node) -
 
 func clear_pieces() -> void:
 	clear_guides()
+	clear_last_move_highlight()
 	
 	for child in get_children():
 		if child is Piece:
@@ -118,3 +121,20 @@ func clear_guides() -> void:
 	for rect in active_guides:
 		rect.queue_free()
 	active_guides.clear()
+
+
+func update_last_move_highlight(col: int, row: int) -> void:
+	if last_move_rect == null:
+		last_move_rect = ColorRect.new()
+		last_move_rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
+		last_move_rect.color = LAST_MOVE_COLOR
+		last_move_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(last_move_rect)
+	
+	last_move_rect.position = Vector2(col * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
+
+
+func clear_last_move_highlight() -> void:
+	if last_move_rect != null:
+		last_move_rect.queue_free()
+		last_move_rect = null
