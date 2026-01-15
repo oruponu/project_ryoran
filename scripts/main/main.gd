@@ -174,7 +174,7 @@ func _finish_turn(piece: Piece) -> void:
 	move_history_panel.add_move(current_turn, record, prev_record)
 	
 	var target_is_enemy = current_turn % 2 != 0
-	if _shogi_engine.is_king_in_check(self, target_is_enemy):
+	if ShogiEngine.is_king_in_check(self, target_is_enemy):
 		if _is_checkmate(target_is_enemy):
 			if _shogi_engine != null and target_is_enemy == _shogi_engine.is_enemy_side:
 				await _finish_game(target_is_enemy)
@@ -408,7 +408,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 			if piece != null and piece.is_enemy == target_is_enemy:
 				var moves = piece.get_legal_moves()
 				for move in moves:
-					if _shogi_engine.is_king_safe_after_move(self, piece, move.x, move.y):
+					if ShogiEngine.is_king_safe_after_move(self, piece, move.x, move.y):
 						return false
 	
 	var target_stand = enemy_piece_stand if target_is_enemy else player_piece_stand
@@ -416,7 +416,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 		if piece is Piece:
 			var drops = piece.get_legal_drops()
 			for drop in drops:
-				if _shogi_engine.is_king_safe_after_move(self, piece, drop.x, drop.y):
+				if ShogiEngine.is_king_safe_after_move(self, piece, drop.x, drop.y):
 					return false
 	
 	return true
