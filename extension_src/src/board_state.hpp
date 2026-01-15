@@ -51,6 +51,7 @@ class BoardState {
     void set_cell(int col, int row, int type, int side, bool is_promoted);
     void clear_cell(int col, int row);
     int get_hand_count(int side, int piece_type) const;
+    void apply_move(const Shogi::Move &move, int side);
 
     // 盤面の出力（デバッグ用）
     void print_board() const;

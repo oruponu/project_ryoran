@@ -412,6 +412,28 @@ int BoardState::get_hand_count(int side, int piece_type) const {
     return hand[side][piece_type];
 }
 
+void BoardState::apply_move(const Shogi::Move &move, int side) {
+    if (move.is_drop) {
+        if (hand[side][move.piece_type] > 0) {
+            hand[side][move.piece_type]--;
+        }
+
+        set_cell(move.to_col, move.to_row, move.piece_type, side, false);
+    } else {
+        Cell source = get_cell(move.from_col, move.from_row);
+        Cell target = get_cell(move.to_col, move.to_row);
+        if (!target.is_empty()) {
+            int captured_type = target.type;
+            hand[side][captured_type]++;
+        }
+
+        bool is_promoted = move.is_promotion || source.is_promoted;
+        set_cell(move.to_col, move.to_row, source.type, side, is_promoted);
+
+        clear_cell(move.from_col, move.from_row);
+    }
+}
+
 void BoardState::print_board() const {
     UtilityFunctions::print("--- Board State ---");
     for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
