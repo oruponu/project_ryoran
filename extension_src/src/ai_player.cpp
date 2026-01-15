@@ -1,19 +1,14 @@
 #include "ai_player.hpp"
+#include <algorithm>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <vector>
 
 using namespace godot;
 
-Dictionary AIPlayer::get_next_move(Node2D *main_node) {
-    BoardState board;
-    board.init_from_main(main_node);
-
-    board.print_board();
-
-    int side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-
+std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int side) {
     std::vector<Shogi::Move> moves;
+    bool is_enemy_turn = (side == Shogi::ENEMY);
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
@@ -71,17 +66,167 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
         }
     }
 
+    return moves;
+}
+
+int AIPlayer::evaluate(const BoardState &board) {
+    int score = 0;
+    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
+
+    // 盤上の駒
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = board.get_cell(col, row);
+            if (cell.is_empty()) {
+                continue;
+            }
+
+            int piece_value = 0;
+            switch (cell.type) {
+            case Shogi::PAWN:
+                piece_value = cell.is_promoted ? VAL_PRO_PAWN : VAL_PAWN;
+                break;
+            case Shogi::LANCE:
+                piece_value = cell.is_promoted ? VAL_PRO_LANCE : VAL_LANCE;
+                break;
+            case Shogi::KNIGHT:
+                piece_value = cell.is_promoted ? VAL_PRO_KNIGHT : VAL_KNIGHT;
+                break;
+            case Shogi::SILVER:
+                piece_value = cell.is_promoted ? VAL_PRO_SILVER : VAL_SILVER;
+                break;
+            case Shogi::GOLD:
+                piece_value = VAL_GOLD;
+                break;
+            case Shogi::BISHOP:
+                piece_value = cell.is_promoted ? VAL_PRO_BISHOP : VAL_BISHOP;
+                break;
+            case Shogi::ROOK:
+                piece_value = cell.is_promoted ? VAL_PRO_ROOK : VAL_ROOK;
+                break;
+            case Shogi::KING:
+                piece_value = VAL_KING;
+                break;
+            default:
+                break;
+            }
+
+            if (cell.side == my_side) {
+                score += piece_value;
+            } else {
+                score -= piece_value;
+            }
+        }
+    }
+
+    // 持ち駒
+    for (int side = 0; side < 2; ++side) {
+        int sign = (side == my_side) ? 1 : -1;
+        score += board.get_hand_count(side, Shogi::PAWN) * VAL_PAWN * sign;
+        score += board.get_hand_count(side, Shogi::LANCE) * VAL_LANCE * sign;
+        score += board.get_hand_count(side, Shogi::KNIGHT) * VAL_KNIGHT * sign;
+        score += board.get_hand_count(side, Shogi::SILVER) * VAL_SILVER * sign;
+        score += board.get_hand_count(side, Shogi::GOLD) * VAL_GOLD * sign;
+        score += board.get_hand_count(side, Shogi::BISHOP) * VAL_BISHOP * sign;
+        score += board.get_hand_count(side, Shogi::ROOK) * VAL_ROOK * sign;
+    }
+
+    return score;
+}
+
+int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side) {
+    if (depth == 0) {
+        return evaluate(board);
+    }
+
+    std::vector<Shogi::Move> moves = get_legal_moves(board, side);
+    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
+
+    if (moves.empty()) {
+        // 投了
+        return (side == my_side) ? -999999 : 999999;
+    }
+
+    // 取る手を優先
+    std::sort(moves.begin(), moves.end(),
+              [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+
+    int next_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+
+    if (side == my_side) {
+        int max_eval = -99999999;
+        for (const Shogi::Move &move : moves) {
+            BoardState next_board = board;
+            next_board.apply_move(move, side);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side);
+            max_eval = std::max(max_eval, eval);
+            alpha = std::max(alpha, eval);
+            if (beta <= alpha) {
+                break; // βカット
+            }
+        }
+
+        return max_eval;
+    } else {
+        int min_eval = 99999999;
+        for (const Shogi::Move &move : moves) {
+            BoardState next_board = board;
+            next_board.apply_move(move, side);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side);
+            min_eval = std::min(min_eval, eval);
+            beta = std::min(beta, eval);
+            if (beta <= alpha) {
+                break; // αカット
+            }
+        }
+
+        return min_eval;
+    }
+}
+
+Dictionary AIPlayer::get_next_move(Node2D *main_node) {
+    BoardState board;
+    board.init_from_main(main_node);
+
+    board.print_board();
+
+    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
+    int depth = 3;
+
+    std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
+
     if (moves.empty()) {
         // 投了
         return Dictionary();
     }
 
-    int index = (int)(Time::get_singleton()->get_ticks_usec() % moves.size());
-    const Shogi::Move &selected = moves[index];
+    // 取る手を優先
+    std::sort(moves.begin(), moves.end(),
+              [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+
+    Shogi::Move best_move = moves[0];
+    int best_score = -99999999;
+    int alpha = -99999999;
+    int beta = 99999999;
+
+    int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+
+    for (const auto &move : moves) {
+        BoardState next_board = board;
+        next_board.apply_move(move, my_side);
+        int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side);
+        if (score > best_score) {
+            best_score = score;
+            best_move = move;
+        }
+
+        alpha = std::max(alpha, score);
+    }
+
+    UtilityFunctions::print("AI Search Depth: ", depth, " BestScore: ", best_score);
 
     Dictionary result;
-
-    if (selected.is_drop) {
+    if (best_move.is_drop) {
         String stand_name = is_enemy_side ? "enemy_piece_stand" : "player_piece_stand";
         Node *stand = Object::cast_to<Node>(main_node->get(stand_name));
         Array children = stand->get_children();
@@ -89,19 +234,19 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
         for (int i = 0; i < children.size(); ++i) {
             Object *piece = children[i];
             Variant v_type = piece->get("piece_type");
-            if (v_type.get_type() == Variant::INT && (int)v_type == selected.piece_type) {
+            if (v_type.get_type() == Variant::INT && (int)v_type == best_move.piece_type) {
                 result["piece"] = piece;
                 break;
             }
         }
     } else {
-        result["piece"] = main_node->call("get_piece", selected.from_col, selected.from_row);
+        result["piece"] = main_node->call("get_piece", best_move.from_col, best_move.from_row);
     }
 
-    result["to_col"] = selected.to_col;
-    result["to_row"] = selected.to_row;
-    result["is_promotion"] = selected.is_promotion;
-    result["is_drop"] = selected.is_drop;
+    result["to_col"] = best_move.to_col;
+    result["to_row"] = best_move.to_row;
+    result["is_promotion"] = best_move.is_promotion;
+    result["is_drop"] = best_move.is_drop;
 
     return result;
 }
