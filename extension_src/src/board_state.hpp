@@ -24,23 +24,27 @@ class BoardState {
     Cell board[Shogi::BOARD_SIZE];
     int hand[2][Shogi::PIECE_TYPE_COUNT];
 
-  public:
-    BoardState();
-
-    void init_from_main(Node *main_node);
-    std::vector<Shogi::Move> get_legal_moves(int side) const;
-
-    // 盤面情報の取得
-    const Cell &get_cell(int col, int row) const;
-    int get_hand_count(int side, int piece_type) const;
-
     // 座標が盤面内か
     static bool is_valid_coord(int col, int row) {
         return col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS;
     }
 
-    // 指定した列に歩が存在するか
-    bool has_pawn_on_column(int side, int col) const;
+    bool is_path_blocked(int from_col, int from_row, int to_col, int to_row) const;
+    bool is_nifu(int piece_type, int side, int col) const;
+
+  public:
+    BoardState();
+
+    void init_from_main(Node *main_node);
+    bool is_legal_move(int from_col, int from_row, int to_col, int to_row) const;
+    bool is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
+    bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, int from_col, int from_row, int to_col,
+                           int to_row) const;
+    bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
+
+    // 盤面情報の取得
+    const Cell &get_cell(int col, int row) const;
+    int get_hand_count(int side, int piece_type) const;
 
     // 盤面を出力（デバッグ用）
     void print_board() const;

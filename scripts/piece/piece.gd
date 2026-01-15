@@ -60,6 +60,7 @@ var is_held = false
 var current_col = -1
 var current_row = -1
 var main: Node
+var _shogi_engine = ShogiEngine.new()
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -76,23 +77,19 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 
 
 func is_legal_move(target_col: int, target_row: int) -> bool:
-	return PieceMovement.is_legal_move(main, self, current_col, current_row, target_col, target_row)
+	return _shogi_engine.is_legal_move(main, self, target_col, target_row)
 
 
 func is_legal_drop(target_col: int, target_row: int) -> bool:
-	return PieceMovement.is_legal_drop(main, self, target_col, target_row)
+	return _shogi_engine.is_legal_drop(main, self, target_col, target_row)
 
 
 func get_legal_moves() -> Array[Vector2i]:
-	return PieceMovement.get_legal_moves(main, self)
+	return _shogi_engine.get_legal_moves(main, self)
 
 
 func get_legal_drops() -> Array[Vector2i]:
-	return PieceMovement.get_legal_drops(main, self)
-
-
-func can_move_geometry(target_col: int, target_row: int) -> bool:
-	return PieceMovement.can_move_geometry(main, piece_type, is_enemy, is_promoted, current_col, current_row, target_col, target_row)
+	return _shogi_engine.get_legal_drops(main, self)
 
 
 func set_promoted(_is_promoted: bool) -> void:

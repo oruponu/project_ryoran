@@ -457,7 +457,7 @@ func _is_king_in_check(target_is_enemy: bool) -> bool:
 			if attacker == null or attacker.is_enemy == target_is_enemy:
 				continue
 			
-			if attacker.can_move_geometry(king_col, king_row):
+			if attacker.is_legal_move(king_col, king_row):
 				return true
 	
 	return false
