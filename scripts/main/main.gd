@@ -293,7 +293,6 @@ func _apply_next_move(move: Dictionary) -> void:
 		await _move_piece(piece, col, row, move_record, mode)
 	
 	move_history.append(move_record)
-	win_rate_bar.update_bar(1 - move.win_rate)
 	
 	is_ai_thinking = false
 	_finish_turn(piece)
