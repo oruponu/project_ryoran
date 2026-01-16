@@ -242,8 +242,7 @@ func _start_background_analysis() -> void:
 
 
 func _run_background_analysis() -> void:
-	var is_enemy_side = current_turn % 2 != 0
-	_eval_engine.is_enemy_side = is_enemy_side
+	_eval_engine.is_enemy_side = false
 	var move = _eval_engine.search_best_move()
 	call_deferred("_on_background_analysis_completed", move)
 
