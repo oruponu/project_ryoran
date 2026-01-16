@@ -8,8 +8,6 @@
 
 namespace godot {
 
-struct SearchTimeoutException {};
-
 class AIPlayer {
 
   private:
@@ -34,7 +32,7 @@ class AIPlayer {
 
     std::vector<Shogi::Move> get_legal_moves(const BoardState &board, int side);
     int evaluate(const BoardState &board);
-    int alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time);
+    int alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time, bool &timeout);
     double calculate_win_probability(int score);
 
   public:

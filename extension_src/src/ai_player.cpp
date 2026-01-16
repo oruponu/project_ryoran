@@ -134,9 +134,10 @@ int AIPlayer::evaluate(const BoardState &board) {
     return score;
 }
 
-int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time) {
+int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time, bool &timeout) {
     if (Time::get_singleton()->get_ticks_usec() > end_time) {
-        throw SearchTimeoutException();
+        timeout = true;
+        return 0;
     }
 
     if (depth == 0) {
@@ -162,7 +163,11 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move, side);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
+            if (timeout) {
+                return 0;
+            }
+
             max_eval = std::max(max_eval, eval);
             alpha = std::max(alpha, eval);
             if (beta <= alpha) {
@@ -176,7 +181,11 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move, side);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
+            if (timeout) {
+                return 0;
+            }
+
             min_eval = std::min(min_eval, eval);
             beta = std::min(beta, eval);
             if (beta <= alpha) {
@@ -216,6 +225,12 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     bool has_prev_best = false;
 
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
+        bool timeout = false;
+        if (Time::get_singleton()->get_ticks_usec() > end_time) {
+            UtilityFunctions::print("Time limit reached before depth ", depth);
+            break;
+        }
+
         if (has_prev_best) {
             auto it = std::find_if(moves.begin(), moves.end(), [&](const Shogi::Move &m) {
                 return m.from_col == best_move_prev_iter.from_col && m.from_row == best_move_prev_iter.from_row &&
@@ -231,48 +246,52 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
                       [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
         }
 
-        try {
-            int alpha = -99999999;
-            int beta = 99999999;
-            Shogi::Move current_depth_best_move = moves[0];
-            int current_depth_best_score = -99999999;
-            int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+        int alpha = -99999999;
+        int beta = 99999999;
+        Shogi::Move current_depth_best_move = moves[0];
+        int current_depth_best_score = -99999999;
+        int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
-            for (const auto &move : moves) {
-                if (Time::get_singleton()->get_ticks_usec() > end_time) {
-                    throw SearchTimeoutException();
-                }
-
-                BoardState next_board = board;
-                next_board.apply_move(move, my_side);
-
-                int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time);
-
-                if (score > current_depth_best_score) {
-                    current_depth_best_score = score;
-                    current_depth_best_move = move;
-                }
-
-                alpha = std::max(alpha, score);
-            }
-
-            global_best_move = current_depth_best_move;
-            global_best_score = current_depth_best_score;
-
-            best_move_prev_iter = global_best_move;
-            has_prev_best = true;
-
-            double win_prob = calculate_win_probability(global_best_score);
-            UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score,
-                                    ", WinRate: ", String::num(win_prob * 100.0, 1), "%");
-
-            // 詰み筋を見つけたら打ち切り
-            if (global_best_score >= 999999 || global_best_score <= -999999) {
-                UtilityFunctions::print("Checkmate found at depth ", depth);
+        for (const auto &move : moves) {
+            if (Time::get_singleton()->get_ticks_usec() > end_time) {
+                timeout = true;
                 break;
             }
-        } catch (SearchTimeoutException) {
-            UtilityFunctions::print("Time limit reached at depth ", depth);
+
+            BoardState next_board = board;
+            next_board.apply_move(move, my_side);
+
+            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time, timeout);
+            if (timeout) {
+                break;
+            }
+
+            if (score > current_depth_best_score) {
+                current_depth_best_score = score;
+                current_depth_best_move = move;
+            }
+
+            alpha = std::max(alpha, score);
+        }
+
+        if (timeout) {
+            UtilityFunctions::print("Time limit reached before depth ", depth);
+            break;
+        }
+
+        global_best_move = current_depth_best_move;
+        global_best_score = current_depth_best_score;
+
+        best_move_prev_iter = global_best_move;
+        has_prev_best = true;
+
+        double win_prob = calculate_win_probability(global_best_score);
+        UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score,
+                                ", WinRate: ", String::num(win_prob * 100.0, 1), "%");
+
+        // 詰み筋を見つけたら打ち切り
+        if (global_best_score >= 999999 || global_best_score <= -999999) {
+            UtilityFunctions::print("Checkmate found at depth ", depth);
             break;
         }
     }
