@@ -191,7 +191,7 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
     board.print_board();
 
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-    int depth = 3;
+    int depth = 6;
 
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
 
