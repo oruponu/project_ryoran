@@ -188,8 +188,6 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
     BoardState board;
     board.init_from_main(main_node);
 
-    board.print_board();
-
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
     int depth = 6;
 
