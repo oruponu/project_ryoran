@@ -188,6 +188,11 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
     }
 }
 
+double AIPlayer::calculate_win_probability(int score) {
+    const double SCALING_FACTOR = 3333.0;
+    return 1.0 / (1.0 + std::pow(10.0, -static_cast<double>(score) / SCALING_FACTOR));
+}
+
 Dictionary AIPlayer::search_best_move(BoardState board) {
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
@@ -255,7 +260,9 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             best_move_prev_iter = global_best_move;
             has_prev_best = true;
 
-            UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score);
+            double win_prob = calculate_win_probability(global_best_score);
+            UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score,
+                                    ", WinRate: ", String::num(win_prob * 100.0, 1), "%");
 
             // 詰み筋を見つけたら打ち切り
             if (global_best_score >= 999999 || global_best_score <= -999999) {
