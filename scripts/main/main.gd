@@ -22,6 +22,7 @@ var move_history: Array[MoveRecord] = []
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
+var _ai_thread: Thread
 
 
 # Called when the node enters the scene tree for the first time.
@@ -199,8 +200,19 @@ func _finish_turn(piece: Piece) -> void:
 func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
-	
-	var move = _shogi_engine.get_next_move(self)
+
+	_ai_thread = Thread.new()
+	_ai_thread.start(_calculate_next_move.bind(self))
+
+
+func _calculate_next_move(main_node: Node2D) -> void:
+	var move = _shogi_engine.get_next_move(main_node)
+	call_deferred("_apply_next_move", move)
+
+
+func _apply_next_move(move: Dictionary) -> void:
+	_ai_thread.wait_to_finish()
+	_ai_thread = null
 	
 	# 投了かどうか
 	if move.is_empty():
