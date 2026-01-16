@@ -25,7 +25,7 @@ void ShogiEngine::_bind_methods() {
     ClassDB::bind_static_method("ShogiEngine", D_METHOD("is_king_in_check", "main_node", "is_enemy"),
                                 &ShogiEngine::is_king_in_check);
 
-    ClassDB::bind_method(D_METHOD("get_next_move", "main_node"), &ShogiEngine::get_next_move);
+    ClassDB::bind_method(D_METHOD("search_best_move", "main_node"), &ShogiEngine::search_best_move);
 
     ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy"), &ShogiEngine::set_is_enemy_side);
     ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
@@ -144,7 +144,7 @@ bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
     return board.is_king_in_check(side);
 }
 
-Dictionary ShogiEngine::get_next_move(Node2D *main_node) {
+Dictionary ShogiEngine::search_best_move(Node2D *main_node) {
     AIPlayer ai_player(is_enemy_side);
-    return ai_player.get_next_move(main_node);
+    return ai_player.search_best_move(main_node);
 }

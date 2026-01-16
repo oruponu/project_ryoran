@@ -38,7 +38,7 @@ class ShogiEngine : public RefCounted {
     static bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     static bool is_king_in_check(Node2D *main_node, bool is_enemy);
 
-    Dictionary get_next_move(Node2D *main_node);
+    Dictionary search_best_move(Node2D *main_node);
 
     void set_is_enemy_side(bool is_enemy);
     bool get_is_enemy_side() const;

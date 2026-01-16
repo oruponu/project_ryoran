@@ -188,7 +188,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
     }
 }
 
-Dictionary AIPlayer::get_next_move(Node2D *main_node) {
+Dictionary AIPlayer::search_best_move(Node2D *main_node) {
     BoardState board;
     board.init_from_main(main_node);
 
