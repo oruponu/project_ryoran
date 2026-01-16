@@ -124,7 +124,7 @@ func _reset_game() -> void:
 	
 	_update_button_states()
 	_update_turn_display()
-	win_rate_bar.reset_bar()
+	win_rate_bar.reset_bar(true)
 	board.setup_starting_board(self)
 	move_history_panel.clear()
 	move_history_panel.add_game_start(current_turn)

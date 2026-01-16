@@ -11,11 +11,11 @@ var _tween: Tween
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	reset_bar()
+	reset_bar(true)
 
 
-func reset_bar():
-	update_bar(0.5, true)
+func reset_bar(intent: bool):
+	update_bar(0.5, intent)
 
 
 func update_bar(sente_win_rate: float, instant: bool = false):
