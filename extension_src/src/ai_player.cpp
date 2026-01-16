@@ -134,7 +134,11 @@ int AIPlayer::evaluate(const BoardState &board) {
     return score;
 }
 
-int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side) {
+int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time) {
+    if (Time::get_singleton()->get_ticks_usec() > end_time) {
+        throw SearchTimeoutException();
+    }
+
     if (depth == 0) {
         return evaluate(board);
     }
@@ -158,7 +162,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move, side);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time);
             max_eval = std::max(max_eval, eval);
             alpha = std::max(alpha, eval);
             if (beta <= alpha) {
@@ -172,7 +176,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move, side);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time);
             min_eval = std::min(min_eval, eval);
             beta = std::min(beta, eval);
             if (beta <= alpha) {
@@ -189,8 +193,6 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
     board.init_from_main(main_node);
 
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-    int depth = 6;
-
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
 
     if (moves.empty()) {
@@ -198,30 +200,78 @@ Dictionary AIPlayer::get_next_move(Node2D *main_node) {
         return Dictionary();
     }
 
-    // 取る手を優先
-    std::sort(moves.begin(), moves.end(),
-              [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+    uint64_t start_time = Time::get_singleton()->get_ticks_usec();
+    uint64_t end_time = start_time + TIME_LIMIT_USEC;
 
-    Shogi::Move best_move = moves[0];
-    int best_score = -99999999;
-    int alpha = -99999999;
-    int beta = 99999999;
+    int max_depth_limit = 10;
 
-    int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Move global_best_move = moves[0];
+    int global_best_score = -99999999;
 
-    for (const auto &move : moves) {
-        BoardState next_board = board;
-        next_board.apply_move(move, my_side);
-        int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side);
-        if (score > best_score) {
-            best_score = score;
-            best_move = move;
+    Shogi::Move best_move_prev_iter = moves[0];
+    bool has_prev_best = false;
+
+    for (int depth = 1; depth <= max_depth_limit; ++depth) {
+        if (has_prev_best) {
+            auto it = std::find_if(moves.begin(), moves.end(), [&](const Shogi::Move &m) {
+                return m.from_col == best_move_prev_iter.from_col && m.from_row == best_move_prev_iter.from_row &&
+                       m.to_col == best_move_prev_iter.to_col && m.to_row == best_move_prev_iter.to_row &&
+                       m.piece_type == best_move_prev_iter.piece_type &&
+                       m.is_promotion == best_move_prev_iter.is_promotion && m.is_drop == best_move_prev_iter.is_drop;
+            });
+            if (it != moves.end()) {
+                std::rotate(moves.begin(), it, it + 1);
+            }
+        } else {
+            std::sort(moves.begin(), moves.end(),
+                      [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
         }
 
-        alpha = std::max(alpha, score);
+        try {
+            int alpha = -99999999;
+            int beta = 99999999;
+            Shogi::Move current_depth_best_move = moves[0];
+            int current_depth_best_score = -99999999;
+            int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+
+            for (const auto &move : moves) {
+                if (Time::get_singleton()->get_ticks_usec() > end_time) {
+                    throw SearchTimeoutException();
+                }
+
+                BoardState next_board = board;
+                next_board.apply_move(move, my_side);
+
+                int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time);
+
+                if (score > current_depth_best_score) {
+                    current_depth_best_score = score;
+                    current_depth_best_move = move;
+                }
+
+                alpha = std::max(alpha, score);
+            }
+
+            global_best_move = current_depth_best_move;
+            global_best_score = current_depth_best_score;
+
+            best_move_prev_iter = global_best_move;
+            has_prev_best = true;
+
+            UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score);
+
+            // 詰み筋を見つけたら打ち切り
+            if (global_best_score > 999000) {
+                UtilityFunctions::print("Checkmate found at depth ", depth);
+                break;
+            }
+        } catch (SearchTimeoutException) {
+            UtilityFunctions::print("Time limit reached at depth ", depth);
+            break;
+        }
     }
 
-    UtilityFunctions::print("AI Search Depth: ", depth, " BestScore: ", best_score);
+    const auto &best_move = global_best_move;
 
     Dictionary result;
     if (best_move.is_drop) {
