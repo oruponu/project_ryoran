@@ -28,8 +28,8 @@ class ShogiEngine : public RefCounted {
     static void _bind_methods();
 
   public:
-    ShogiEngine();
-    ~ShogiEngine();
+    ShogiEngine() {}
+    ~ShogiEngine() {}
 
     static bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     static bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);

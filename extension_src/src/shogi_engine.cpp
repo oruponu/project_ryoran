@@ -8,9 +8,6 @@
 
 using namespace godot;
 
-ShogiEngine::ShogiEngine() {}
-ShogiEngine::~ShogiEngine() {}
-
 void ShogiEngine::_bind_methods() {
     ClassDB::bind_static_method("ShogiEngine",
                                 D_METHOD("is_legal_move", "main_node", "piece_obj", "target_col", "target_row"),
