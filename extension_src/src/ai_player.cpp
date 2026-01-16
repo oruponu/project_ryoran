@@ -188,10 +188,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
     }
 }
 
-Dictionary AIPlayer::search_best_move(Node2D *main_node) {
-    BoardState board;
-    board.init_from_main(main_node);
-
+Dictionary AIPlayer::search_best_move(BoardState board) {
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
 
@@ -274,25 +271,11 @@ Dictionary AIPlayer::search_best_move(Node2D *main_node) {
     const auto &best_move = global_best_move;
 
     Dictionary result;
-    if (best_move.is_drop) {
-        String stand_name = is_enemy_side ? "enemy_piece_stand" : "player_piece_stand";
-        Node *stand = Object::cast_to<Node>(main_node->get(stand_name));
-        Array children = stand->get_children();
-
-        for (int i = 0; i < children.size(); ++i) {
-            Object *piece = children[i];
-            Variant v_type = piece->get("piece_type");
-            if (v_type.get_type() == Variant::INT && (int)v_type == best_move.piece_type) {
-                result["piece"] = piece;
-                break;
-            }
-        }
-    } else {
-        result["piece"] = main_node->call("get_piece", best_move.from_col, best_move.from_row);
-    }
-
+    result["from_col"] = best_move.from_col;
+    result["from_row"] = best_move.from_row;
     result["to_col"] = best_move.to_col;
     result["to_row"] = best_move.to_row;
+    result["piece_type"] = best_move.piece_type;
     result["is_promotion"] = best_move.is_promotion;
     result["is_drop"] = best_move.is_drop;
 

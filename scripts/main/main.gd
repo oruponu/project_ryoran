@@ -201,12 +201,14 @@ func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
 
+	_shogi_engine.update_state(self)
+	
 	_ai_thread = Thread.new()
-	_ai_thread.start(_calculate_next_move.bind(self))
+	_ai_thread.start(_calculate_next_move)
 
 
-func _calculate_next_move(main_node: Node2D) -> void:
-	var move = _shogi_engine.get_next_move(main_node)
+func _calculate_next_move() -> void:
+	var move = _shogi_engine.search_best_move()
 	call_deferred("_apply_next_move", move)
 
 
@@ -220,7 +222,17 @@ func _apply_next_move(move: Dictionary) -> void:
 		is_ai_thinking = false
 		return
 	
-	var piece = move.piece
+	var piece: Piece = null
+	if move.is_drop:
+		var is_enemy = _shogi_engine.is_enemy_side
+		var stand = enemy_piece_stand if is_enemy else player_piece_stand
+		for child in stand.get_children():
+			if child.piece_type == move.piece_type:
+				piece = child
+				break
+	else:
+		piece = get_piece(move.from_col, move.from_row)
+	
 	var col = move.to_col
 	var row = move.to_row
 	var move_record = MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)

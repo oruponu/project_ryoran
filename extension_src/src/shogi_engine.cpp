@@ -1,6 +1,5 @@
 #include "shogi_engine.hpp"
 #include "ai_player.hpp"
-#include "board_state.hpp"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -25,7 +24,8 @@ void ShogiEngine::_bind_methods() {
     ClassDB::bind_static_method("ShogiEngine", D_METHOD("is_king_in_check", "main_node", "is_enemy"),
                                 &ShogiEngine::is_king_in_check);
 
-    ClassDB::bind_method(D_METHOD("search_best_move", "main_node"), &ShogiEngine::search_best_move);
+    ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
+    ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 
     ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy"), &ShogiEngine::set_is_enemy_side);
     ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
@@ -144,7 +144,12 @@ bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
     return board.is_king_in_check(side);
 }
 
-Dictionary ShogiEngine::search_best_move(Node2D *main_node) {
+void ShogiEngine::update_state(Node2D *main_node) {
+    current_state = BoardState();
+    current_state.init_from_main(main_node);
+}
+
+Dictionary ShogiEngine::search_best_move() {
     AIPlayer ai_player(is_enemy_side);
-    return ai_player.search_best_move(main_node);
+    return ai_player.search_best_move(current_state);
 }

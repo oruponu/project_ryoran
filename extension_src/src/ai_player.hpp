@@ -40,7 +40,7 @@ class AIPlayer {
     explicit AIPlayer(bool p_is_enemy_side) : is_enemy_side(p_is_enemy_side) {}
     ~AIPlayer() {}
 
-    Dictionary search_best_move(Node2D *main_node);
+    Dictionary search_best_move(BoardState board);
 };
 
 } // namespace godot

@@ -1,6 +1,7 @@
 #ifndef SHOGI_ENGINE_HPP
 #define SHOGI_ENGINE_HPP
 
+#include "board_state.hpp"
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <vector>
@@ -22,6 +23,7 @@ class ShogiEngine : public RefCounted {
     GDCLASS(ShogiEngine, RefCounted);
 
   private:
+    BoardState current_state;
     bool is_enemy_side = true;
 
   protected:
@@ -38,7 +40,8 @@ class ShogiEngine : public RefCounted {
     static bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     static bool is_king_in_check(Node2D *main_node, bool is_enemy);
 
-    Dictionary search_best_move(Node2D *main_node);
+    void update_state(Node2D *main_node);
+    Dictionary search_best_move();
 
     void set_is_enemy_side(bool is_enemy);
     bool get_is_enemy_side() const;
