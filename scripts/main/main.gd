@@ -60,7 +60,11 @@ func _process(_delta: float) -> void:
 		return
 	
 	last_analyzed_turn = current_turn
-	_start_background_analysis()
+	
+	if current_turn <= 0:
+		win_rate_bar.reset_bar(false)
+	else:
+		_start_background_analysis()
 
 
 func _on_new_game_button_pressed() -> void:
