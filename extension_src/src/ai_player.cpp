@@ -258,7 +258,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score);
 
             // 詰み筋を見つけたら打ち切り
-            if (global_best_score > 999000) {
+            if (global_best_score >= 999999 || global_best_score <= -999999) {
                 UtilityFunctions::print("Checkmate found at depth ", depth);
                 break;
             }
