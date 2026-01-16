@@ -199,7 +199,9 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     if (moves.empty()) {
         // 投了
-        return Dictionary();
+        Dictionary result;
+        result["win_rate"] = 0.0;
+        return result;
     }
 
     uint64_t start_time = Time::get_singleton()->get_ticks_usec();
