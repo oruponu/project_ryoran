@@ -10,6 +10,7 @@ extends Node2D
 @onready var resign_button = $HBoxContainer/ResignButton
 @onready var turn_label = $CanvasLayer/TurnLabel
 @onready var check_label = $CanvasLayer/CheckLabel
+@onready var win_rate_bar = $WinRateBar
 @onready var common_dialog = $CommonDialog
 @onready var audio_stream_player = $AudioStreamPlayer
 
@@ -97,6 +98,7 @@ func _reset_game() -> void:
 	
 	_update_button_states()
 	_update_turn_display()
+	win_rate_bar.reset_bar()
 	board.setup_starting_board(self)
 	move_history_panel.clear()
 	move_history_panel.add_game_start(current_turn)

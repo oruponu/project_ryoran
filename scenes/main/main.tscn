@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene load_steps=12 format=3 uid="uid://btmhrda1vfqfd"]
 
 [ext_resource type="Script" uid="uid://d17qum8nm311a" path="res://scripts/main/main.gd" id="1_7mycd"]
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://scenes/board/board.tscn" id="1_ig7tw"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://05d8ivxdfet5" path="res://scenes/piece_stand/piece_stand.tscn" id="4_1bvp3"]
 [ext_resource type="Script" uid="uid://dynaos3fx5qx7" path="res://scripts/ui/check_label.gd" id="4_lquwl"]
 [ext_resource type="PackedScene" uid="uid://v4mqg4kxgku2" path="res://scenes/ui/move_history_panel.tscn" id="5_272bh"]
+[ext_resource type="PackedScene" uid="uid://be222qmjtk0ub" path="res://scenes/ui/win_rate_bar.tscn" id="7_b1x3f"]
 [ext_resource type="Script" uid="uid://ds7fxclfo6jh0" path="res://scripts/audio/audio_stream_player.gd" id="8_yyfjg"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_1bvp3"]
@@ -93,6 +94,12 @@ label_settings = SubResource("LabelSettings_lquwl")
 horizontal_alignment = 1
 vertical_alignment = 1
 script = ExtResource("4_lquwl")
+
+[node name="WinRateBar" parent="." instance=ExtResource("7_b1x3f")]
+offset_left = 462.5
+offset_top = 810.0
+offset_right = 1137.5
+offset_bottom = 845.0
 
 [node name="CommonDialog" parent="." instance=ExtResource("3_h2yge")]
 visible = false
