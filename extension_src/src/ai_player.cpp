@@ -276,6 +276,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     }
 
     const auto &best_move = global_best_move;
+    float win_rate = calculate_win_probability(global_best_score);
 
     Dictionary result;
     result["from_col"] = best_move.from_col;
@@ -285,6 +286,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     result["piece_type"] = best_move.piece_type;
     result["is_promotion"] = best_move.is_promotion;
     result["is_drop"] = best_move.is_drop;
+    result["win_rate"] = win_rate;
 
     return result;
 }
