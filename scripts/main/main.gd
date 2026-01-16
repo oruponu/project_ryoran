@@ -24,6 +24,9 @@ var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
 var _ai_thread: Thread
+var _eval_engine: ShogiEngine = ShogiEngine.new()
+var _eval_thread: Thread
+var last_analyzed_turn: int = 0
 
 
 # Called when the node enters the scene tree for the first time.
@@ -35,6 +38,29 @@ func _ready() -> void:
 	_shogi_engine.is_enemy_side = true
 	
 	_reset_game()
+
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(_delta: float) -> void:
+	if not is_game_active:
+		return
+	
+	if is_ai_thinking:
+		return
+	
+	if _eval_thread != null:
+		if _eval_thread.is_alive():
+			return
+		else:
+			if _eval_thread.is_started():
+				_eval_thread.wait_to_finish()
+			_eval_thread = null
+	
+	if current_turn == last_analyzed_turn:
+		return
+	
+	last_analyzed_turn = current_turn
+	_start_background_analysis()
 
 
 func _on_new_game_button_pressed() -> void:
@@ -207,6 +233,27 @@ func _play_ai_turn() -> void:
 	
 	_ai_thread = Thread.new()
 	_ai_thread.start(_calculate_next_move)
+
+
+func _start_background_analysis() -> void:
+	_eval_engine.update_state(self)
+	_eval_thread = Thread.new()
+	_eval_thread.start(_run_background_analysis)
+
+
+func _run_background_analysis() -> void:
+	var is_enemy_side = current_turn % 2 != 0
+	_eval_engine.is_enemy_side = is_enemy_side
+	var move = _eval_engine.search_best_move()
+	call_deferred("_on_background_analysis_completed", move)
+
+
+func _on_background_analysis_completed(move: Dictionary) -> void:
+	if _eval_thread != null:
+		if _eval_thread.is_alive():
+			_eval_thread.wait_to_finish()
+		_eval_thread = null
+	win_rate_bar.update_bar(move.win_rate)
 
 
 func _calculate_next_move() -> void:
