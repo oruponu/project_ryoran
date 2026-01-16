@@ -1,0 +1,100 @@
+[gd_scene load_steps=6 format=3 uid="uid://be222qmjtk0ub"]
+
+[ext_resource type="Script" uid="uid://br8wha3uvfah4" path="res://scripts/ui/win_rate_bar.gd" id="1_8ytuo"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ymq8i"]
+content_margin_bottom = 5.0
+
+[sub_resource type="LabelSettings" id="LabelSettings_ymq8i"]
+font_size = 24
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_8ytuo"]
+content_margin_bottom = 5.0
+
+[sub_resource type="LabelSettings" id="LabelSettings_8ytuo"]
+font_size = 24
+
+[node name="WinRateBar" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 630.0
+offset_bottom = 35.0
+script = ExtResource("1_8ytuo")
+
+[node name="LayoutContainer" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SenteNameLabel" type="Label" parent="LayoutContainer"]
+layout_mode = 2
+text = "先手"
+
+[node name="SenteValueLabel" type="Label" parent="LayoutContainer"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_ymq8i")
+text = "100"
+label_settings = SubResource("LabelSettings_ymq8i")
+horizontal_alignment = 2
+
+[node name="SenteUnitLabel" type="Label" parent="LayoutContainer"]
+layout_mode = 2
+text = "%"
+
+[node name="SenteUnitLabelSpacer" type="Control" parent="LayoutContainer"]
+custom_minimum_size = Vector2(16, 0)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="LayoutContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 15
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 15
+
+[node name="BarArea" type="Control" parent="LayoutContainer/MarginContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GoteBackground" type="ColorRect" parent="LayoutContainer/MarginContainer/BarArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.11764706, 0.22745098, 0.5411765, 1)
+
+[node name="SenteBar" type="ColorRect" parent="LayoutContainer/MarginContainer/BarArea"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.62352943, 0.07058824, 0.22352941, 1)
+
+[node name="MarginContainerSpacer" type="Control" parent="LayoutContainer"]
+custom_minimum_size = Vector2(16, 0)
+layout_mode = 2
+
+[node name="GoteValueLabel" type="Label" parent="LayoutContainer"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_8ytuo")
+text = "100"
+label_settings = SubResource("LabelSettings_8ytuo")
+horizontal_alignment = 2
+
+[node name="GoteUnitLabel" type="Label" parent="LayoutContainer"]
+layout_mode = 2
+text = "%"
+
+[node name="GoteNameLabel" type="Label" parent="LayoutContainer"]
+layout_mode = 2
+text = "後手"
