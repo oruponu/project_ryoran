@@ -27,8 +27,8 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int 
                         bool must_promote = false;
 
                         if (!cell.is_promoted && cell.type != Shogi::KING && cell.type != Shogi::GOLD) {
-                            int zone_min = is_enemy_side ? 6 : 0;
-                            int zone_max = is_enemy_side ? 8 : 2;
+                            int zone_min = is_enemy_turn ? 6 : 0;
+                            int zone_max = is_enemy_turn ? 8 : 2;
                             bool from_in_zone = (row >= zone_min && row <= zone_max);
                             bool to_in_zone = (t_row >= zone_min && t_row <= zone_max);
 
@@ -37,7 +37,7 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int 
                             }
                         }
 
-                        if (board.is_dead_end(cell.type, is_enemy_side, t_row)) {
+                        if (board.is_dead_end(cell.type, is_enemy_turn, t_row)) {
                             must_promote = true;
                         }
 
@@ -58,7 +58,7 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int 
         if (board.get_hand_count(side, piece_type) > 0) {
             for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
                 for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    if (board.is_legal_drop(piece_type, is_enemy_side, t_col, t_row)) {
+                    if (board.is_legal_drop(piece_type, is_enemy_turn, t_col, t_row)) {
                         moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
                     }
                 }
