@@ -66,6 +66,57 @@ void ShogiEngine::load_book() {
     book[hash_after_7g7f].push_back(move_8c8d);
 }
 
+Shogi::Move ShogiEngine::parse_usi_move(const String &usi, const BoardState &board, int side) {
+    if (usi.contains("*")) {
+        String piece_char = usi.substr(0, 1);
+        String dest_str = usi.substr(2, 2);
+
+        int piece_type = Shogi::EMPTY;
+        if (piece_char == "P") {
+            piece_type = Shogi::PAWN;
+        } else if (piece_char == "L") {
+            piece_type = Shogi::LANCE;
+        } else if (piece_char == "N") {
+            piece_type = Shogi::KNIGHT;
+        } else if (piece_char == "S") {
+            piece_type = Shogi::SILVER;
+        } else if (piece_char == "G") {
+            piece_type = Shogi::GOLD;
+        } else if (piece_char == "B") {
+            piece_type = Shogi::BISHOP;
+        } else if (piece_char == "R") {
+            piece_type = Shogi::ROOK;
+        }
+
+        int file_char = dest_str[0];
+        int rank_char = dest_str[1];
+
+        int to_col = 9 - (file_char - '0');
+        int to_row = rank_char - 'a';
+
+        return Shogi::Move(0, 0, to_col, to_row, piece_type, false, true, false);
+    }
+
+    int src_file = usi[0] - '0';
+    int src_rank = usi[1] - 'a';
+    int dest_file = usi[2] - '0';
+    int dest_rank = usi[3] - 'a';
+    bool is_promotion = (usi.length() > 4 && usi[4] == '+');
+
+    int from_col = 9 - src_file;
+    int from_row = src_rank;
+    int to_col = 9 - dest_file;
+    int to_row = dest_rank;
+
+    const Cell &src_cell = board.get_cell(from_col, from_row);
+    int piece_type = src_cell.type;
+
+    const Cell &dest_cell = board.get_cell(to_col, to_row);
+    bool is_capture = !dest_cell.is_empty();
+
+    return Shogi::Move(from_col, from_row, to_col, to_row, piece_type, is_promotion, false, is_capture);
+}
+
 void ShogiEngine::setup_standard_position(BoardState &board) {
     for (int col = 0; col < 9; ++col) {
         board.set_cell(col, 6, Shogi::PAWN, Shogi::PLAYER, false);

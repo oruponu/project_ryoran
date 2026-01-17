@@ -29,6 +29,7 @@ class ShogiEngine : public RefCounted {
     bool is_enemy_side = true;
 
     void load_book();
+    Shogi::Move parse_usi_move(const String &usi, const BoardState &board, int side);
     void setup_standard_position(BoardState &board);
 
   protected:
