@@ -17,6 +17,16 @@ struct Cell {
 
     Cell() : type(Shogi::EMPTY), side(Shogi::PLAYER), is_promoted(false) {}
     Cell(int t, int s, bool p) : type(t), side(s), is_promoted(p) {}
+
+    bool operator==(const Cell &other) const {
+        if (type == Shogi::EMPTY && other.type == Shogi::EMPTY) {
+            return true;
+        }
+
+        return type == other.type && side == other.side && is_promoted == other.is_promoted;
+    }
+
+    bool operator!=(const Cell &other) const { return !(*this == other); }
 };
 
 class BoardState {
@@ -38,6 +48,24 @@ class BoardState {
   public:
     BoardState();
 
+    bool operator==(const BoardState &other) const {
+        for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
+            if (board[i] != other.board[i]) {
+                return false;
+            }
+        }
+
+        for (int side = 0; side < 2; ++side) {
+            for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+                if (hand[side][piece_type] != other.hand[side][piece_type]) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     void init_from_main(Node *main_node);
     bool is_legal_move(int from_col, int from_row, int to_col, int to_row) const;
     bool is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
@@ -45,6 +73,8 @@ class BoardState {
                            int to_row) const;
     bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
     bool is_king_in_check(int side) const;
+
+    uint64_t get_zobrist_hash(int side) const;
 
     // 盤面の操作
     const Cell &get_cell(int col, int row) const;

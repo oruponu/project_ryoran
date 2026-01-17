@@ -1,6 +1,7 @@
 #include "board_state.hpp"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <random>
 
 using namespace godot;
 
@@ -30,9 +31,49 @@ const std::vector<Direction> MOVES_SILVER = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, 
 const std::vector<Direction> MOVES_GOLD = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_LEFT, DIR_RIGHT, DIR_DOWN};
 const std::vector<Direction> MOVES_KING = {DIR_UP_LEFT, DIR_UP,        DIR_UP_RIGHT, DIR_LEFT,
                                            DIR_RIGHT,   DIR_DOWN_LEFT, DIR_DOWN,     DIR_DOWN_RIGHT};
+
+uint64_t z_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
+uint64_t z_hand[2][Shogi::PIECE_TYPE_COUNT][20];
+uint64_t z_turn_enemy;
+bool z_initialized = false;
+
+void init_zobrist_tables() {
+    if (z_initialized) {
+        return;
+    }
+
+    // 固定シードで初期化
+    std::mt19937_64 rng(123456789ULL);
+
+    for (int side = 0; side < 2; ++side) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            // 盤上の駒
+            for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
+                for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+                    for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+                        z_board[side][piece_type][is_promoted][col][row] = rng();
+                    }
+                }
+            }
+
+            // 持ち駒
+            for (int n = 0; n < 20; ++n) {
+                z_hand[side][piece_type][n] = rng();
+            }
+        }
+    }
+
+    z_turn_enemy = rng();
+    z_initialized = true;
+}
+
 } // namespace
 
 BoardState::BoardState() {
+    if (!z_initialized) {
+        init_zobrist_tables();
+    }
+
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
         board[i] = Cell();
@@ -366,6 +407,38 @@ bool BoardState::is_king_in_check(int side) const {
     }
 
     return false;
+}
+
+uint64_t BoardState::get_zobrist_hash(int side) const {
+    uint64_t hash = 0;
+
+    // 盤上の駒
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = get_cell(col, row);
+            if (!cell.is_empty()) {
+                int is_promoted = cell.is_promoted ? 1 : 0;
+                hash ^= z_board[cell.side][cell.type][is_promoted][col][row];
+            }
+        }
+    }
+
+    // 持ち駒
+    for (int side = 0; side < 2; ++side) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            int count = hand[side][piece_type];
+            if (count > 0) {
+                int index = (count >= 20) ? 19 : count;
+                hash ^= z_hand[side][piece_type][index];
+            }
+        }
+    }
+
+    if (side == Shogi::ENEMY) {
+        hash ^= z_turn_enemy;
+    }
+
+    return hash;
 }
 
 std::pair<int, int> BoardState::find_king_position(int side) const {
