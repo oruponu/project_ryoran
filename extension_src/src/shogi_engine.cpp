@@ -198,11 +198,11 @@ Dictionary ShogiEngine::search_best_move() {
 
     // 定跡を参照
     uint64_t hash = current_state.get_zobrist_hash(side);
-    if (book.count(hash) > 0) {
-        const std::vector<Shogi::Move> &book_moves = book[hash];
+    auto it = book.find(hash);
+    if (it != book.end()) {
+        const std::vector<Shogi::Move> &book_moves = it->second;
         if (!book_moves.empty()) {
-            int idx = std::rand() % book_moves.size();
-            Shogi::Move best_move = book_moves[idx];
+            const Shogi::Move &best_move = book_moves[0];
 
             UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
 
