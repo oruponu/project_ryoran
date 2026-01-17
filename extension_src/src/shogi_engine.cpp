@@ -1,5 +1,6 @@
 #include "shogi_engine.hpp"
 #include "ai_player.hpp"
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -10,7 +11,7 @@ using namespace godot;
 ShogiEngine::ShogiEngine() {
     std::srand(Time::get_singleton()->get_ticks_usec());
 
-    load_book();
+    load_book_from_file("res://assets/data/shogi_book");
 }
 
 void ShogiEngine::_bind_methods() {
@@ -42,28 +43,51 @@ void ShogiEngine::set_is_enemy_side(bool is_enemy) { is_enemy_side = is_enemy; }
 
 bool ShogiEngine::get_is_enemy_side() const { return is_enemy_side; }
 
-void ShogiEngine::load_book() {
-    BoardState board;
-    setup_standard_position(board);
-    uint64_t start_hash = board.get_zobrist_hash(Shogi::PLAYER);
+void ShogiEngine::load_book_from_file(const String &path) {
+    if (!FileAccess::file_exists(path)) {
+        return;
+    }
 
-    // 定跡を仮実装
-    Shogi::Move move7g7f(2, 6, 2, 5, Shogi::PAWN, false, false, false);
-    Shogi::Move move2g2f(7, 6, 7, 5, Shogi::PAWN, false, false, false);
+    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+    int count = 0;
 
-    book[start_hash].push_back(move7g7f);
-    book[start_hash].push_back(move2g2f);
+    while (!file->eof_reached()) {
+        String line = file->get_line().strip_edges();
+        if (line.is_empty() || line.begins_with("#")) {
+            continue;
+        }
 
-    BoardState board_after_7g7f = board;
-    board_after_7g7f.apply_move(move7g7f, Shogi::PLAYER);
+        PackedStringArray usi_moves = line.split(" ", false);
+        BoardState board;
+        setup_standard_position(board);
+        int side = Shogi::PLAYER;
 
-    uint64_t hash_after_7g7f = board_after_7g7f.get_zobrist_hash(Shogi::ENEMY);
+        for (int i = 0; i < usi_moves.size(); ++i) {
+            String usi = usi_moves[i];
+            uint64_t hash = board.get_zobrist_hash(side);
+            Shogi::Move move = parse_usi_move(usi, board, side);
 
-    Shogi::Move move_3c3d(6, 2, 6, 3, Shogi::PAWN, false, false, false);
-    Shogi::Move move_8c8d(1, 2, 1, 3, Shogi::PAWN, false, false, false);
+            bool exists = false;
+            for (const auto &move : book[hash]) {
+                if (move.from_col == move.from_col && move.from_row == move.from_row && move.to_col == move.to_col &&
+                    move.to_row == move.to_row && move.piece_type == move.piece_type &&
+                    move.is_promotion == move.is_promotion && move.is_drop == move.is_drop) {
+                    exists = true;
+                    break;
+                }
+            }
 
-    book[hash_after_7g7f].push_back(move_3c3d);
-    book[hash_after_7g7f].push_back(move_8c8d);
+            if (!exists) {
+                book[hash].push_back(move);
+                count++;
+            }
+
+            board.apply_move(move, side);
+            side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+        }
+    }
+
+    UtilityFunctions::print("ShogiEngine: Book loaded. Moves: ", count);
 }
 
 Shogi::Move ShogiEngine::parse_usi_move(const String &usi, const BoardState &board, int side) {
