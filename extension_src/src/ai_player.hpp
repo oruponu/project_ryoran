@@ -30,17 +30,13 @@ class AIPlayer {
 
     bool is_enemy_side;
 
-    std::unordered_map<uint64_t, std::vector<Shogi::Move>> book;
-
-    void load_book();
-    void setup_standard_position(BoardState &board);
     std::vector<Shogi::Move> get_legal_moves(const BoardState &board, int side);
     int evaluate(const BoardState &board);
     int alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time, bool &timeout);
     double calculate_win_probability(int score);
 
   public:
-    explicit AIPlayer(bool p_is_enemy_side);
+    explicit AIPlayer(bool p_is_enemy_side) : is_enemy_side(p_is_enemy_side) {}
     ~AIPlayer() {}
 
     Dictionary search_best_move(BoardState board);

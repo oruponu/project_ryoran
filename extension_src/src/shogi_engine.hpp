@@ -23,14 +23,19 @@ class ShogiEngine : public RefCounted {
     GDCLASS(ShogiEngine, RefCounted);
 
   private:
+    std::unordered_map<uint64_t, std::vector<Shogi::Move>> book;
+
     BoardState current_state;
     bool is_enemy_side = true;
+
+    void load_book();
+    void setup_standard_position(BoardState &board);
 
   protected:
     static void _bind_methods();
 
   public:
-    ShogiEngine() {}
+    ShogiEngine();
     ~ShogiEngine() {}
 
     static bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);

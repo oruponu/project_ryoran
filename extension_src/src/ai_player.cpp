@@ -6,56 +6,6 @@
 
 using namespace godot;
 
-AIPlayer::AIPlayer(bool p_is_enemy_side) : is_enemy_side(p_is_enemy_side) {
-    std::srand(Time::get_singleton()->get_ticks_usec());
-
-    load_book();
-}
-
-void AIPlayer::load_book() {
-    BoardState board;
-    setup_standard_position(board);
-    uint64_t start_hash = board.get_zobrist_hash(Shogi::PLAYER);
-
-    // 定跡を仮実装
-    Shogi::Move move7g7f(2, 6, 2, 5, Shogi::PAWN, false, false, false);
-    Shogi::Move move2g2f(7, 6, 7, 5, Shogi::PAWN, false, false, false);
-
-    book[start_hash].push_back(move7g7f);
-    book[start_hash].push_back(move2g2f);
-
-    BoardState board_after_7g7f = board;
-    board_after_7g7f.apply_move(move7g7f, Shogi::PLAYER);
-
-    uint64_t hash_after_7g7f = board_after_7g7f.get_zobrist_hash(Shogi::ENEMY);
-
-    Shogi::Move move_3c3d(6, 2, 6, 3, Shogi::PAWN, false, false, false);
-    Shogi::Move move_8c8d(1, 2, 1, 3, Shogi::PAWN, false, false, false);
-
-    book[hash_after_7g7f].push_back(move_3c3d);
-    book[hash_after_7g7f].push_back(move_8c8d);
-}
-
-void AIPlayer::setup_standard_position(BoardState &board) {
-    for (int col = 0; col < 9; ++col) {
-        board.set_cell(col, 6, Shogi::PAWN, Shogi::PLAYER, false);
-        board.set_cell(col, 2, Shogi::PAWN, Shogi::ENEMY, false);
-    }
-
-    board.set_cell(1, 7, Shogi::BISHOP, Shogi::PLAYER, false);
-    board.set_cell(7, 7, Shogi::ROOK, Shogi::PLAYER, false);
-    board.set_cell(7, 1, Shogi::BISHOP, Shogi::ENEMY, false);
-    board.set_cell(1, 1, Shogi::ROOK, Shogi::ENEMY, false);
-
-    const int placement[] = {Shogi::LANCE, Shogi::KNIGHT, Shogi::SILVER, Shogi::GOLD, Shogi::KING,
-                             Shogi::GOLD,  Shogi::SILVER, Shogi::KNIGHT, Shogi::LANCE};
-
-    for (int col = 0; col < 9; ++col) {
-        board.set_cell(8 - col, 8, placement[col], Shogi::PLAYER, false);
-        board.set_cell(col, 0, placement[col], Shogi::ENEMY, false);
-    }
-}
-
 std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int side) {
     std::vector<Shogi::Move> moves;
     bool is_enemy_turn = (side == Shogi::ENEMY);
@@ -254,29 +204,6 @@ double AIPlayer::calculate_win_probability(int score) {
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
     int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-
-    // 定跡を参照
-    uint64_t hash = board.get_zobrist_hash(my_side);
-    if (book.count(hash) > 0) {
-        const std::vector<Shogi::Move> &book_moves = book[hash];
-        if (!book_moves.empty()) {
-            int idx = std::rand() % book_moves.size();
-            Shogi::Move best_move = book_moves[idx];
-
-            UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
-
-            Dictionary result;
-            result["from_col"] = best_move.from_col;
-            result["from_row"] = best_move.from_row;
-            result["to_col"] = best_move.to_col;
-            result["to_row"] = best_move.to_row;
-            result["piece_type"] = best_move.piece_type;
-            result["is_promotion"] = best_move.is_promotion;
-            result["is_drop"] = best_move.is_drop;
-            result["win_rate"] = 0.5;
-            return result;
-        }
-    }
 
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
 
