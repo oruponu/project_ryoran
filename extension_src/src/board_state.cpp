@@ -1,7 +1,7 @@
 #include "board_state.hpp"
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <random>
 
 using namespace godot;
 
@@ -37,43 +37,9 @@ uint64_t z_hand[2][Shogi::PIECE_TYPE_COUNT][20];
 uint64_t z_turn_enemy;
 bool z_initialized = false;
 
-void init_zobrist_tables() {
-    if (z_initialized) {
-        return;
-    }
-
-    // 固定シードで初期化
-    std::mt19937_64 rng(123456789ULL);
-
-    for (int side = 0; side < 2; ++side) {
-        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-            // 盤上の駒
-            for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
-                for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-                    for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-                        z_board[side][piece_type][is_promoted][col][row] = rng();
-                    }
-                }
-            }
-
-            // 持ち駒
-            for (int n = 0; n < 20; ++n) {
-                z_hand[side][piece_type][n] = rng();
-            }
-        }
-    }
-
-    z_turn_enemy = rng();
-    z_initialized = true;
-}
-
 } // namespace
 
 BoardState::BoardState() {
-    if (!z_initialized) {
-        init_zobrist_tables();
-    }
-
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
         board[i] = Cell();
@@ -85,6 +51,50 @@ BoardState::BoardState() {
             hand[side][piece_type] = 0;
         }
     }
+}
+
+void BoardState::load_zobrist_params(const String &path) {
+    if (z_initialized) {
+        return;
+    }
+
+    if (!FileAccess::file_exists(path)) {
+        UtilityFunctions::print("Zobrist params file not found: " + path);
+        return;
+    }
+
+    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+    if (file->get_32() != 0x5A4F4252) { // "ZOBR"
+        UtilityFunctions::print("Invalid Zobrist params file format.");
+        return;
+    }
+
+    // 盤上の駒
+    for (int side = 0; side < 2; ++side) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
+                for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+                    for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+                        z_board[side][piece_type][is_promoted][col][row] = file->get_64();
+                    }
+                }
+            }
+        }
+    }
+
+    // 持ち駒
+    for (int side = 0; side < 2; ++side) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            for (int n = 0; n < 20; ++n) {
+                z_hand[side][piece_type][n] = file->get_64();
+            }
+        }
+    }
+
+    z_turn_enemy = file->get_64();
+    z_initialized = true;
+
+    UtilityFunctions::print("Zobrist parameters loaded successfully.");
 }
 
 void BoardState::init_from_main(Node *main_node) {
