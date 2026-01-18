@@ -15,6 +15,19 @@ const int BOARD_SIZE = 81;
 // 駒の種類数
 const int PIECE_TYPE_COUNT = 8;
 
+struct Coord {
+    int col;
+    int row;
+
+    Coord() : col(-1), row(-1) {}
+    Coord(int c, int r) : col(c), row(r) {}
+
+    bool is_valid() const { return col >= 0 && col < BOARD_COLS && row >= 0 && row < BOARD_ROWS; }
+
+    bool operator==(const Coord &other) const { return col == other.col && row == other.row; }
+    bool operator!=(const Coord &other) const { return !(*this == other); }
+};
+
 struct Move {
     uint8_t from_col;
     uint8_t from_row;
