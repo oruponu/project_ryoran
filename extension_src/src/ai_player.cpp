@@ -31,6 +31,57 @@ const struct {
     {Shogi::GOLD, VAL_GOLD}, {Shogi::BISHOP, VAL_BISHOP}, {Shogi::ROOK, VAL_ROOK},
 };
 
+const int PST_PAWN[9][9] = {{20, 20, 20, 20, 20, 20, 20, 20, 20},
+                            {20, 20, 20, 20, 20, 20, 20, 20, 20},
+                            {15, 15, 15, 20, 25, 20, 15, 15, 15},
+                            {5, 5, 5, 10, 20, 10, 5, 5, 5},
+                            {0, 0, 0, 5, 10, 5, 0, 0, 0},
+                            {-5, -5, -5, 0, 5, 0, -5, -5, -5},
+                            {-10, -10, -10, -10, 0, -10, -10, -10, -10},
+                            {-10, -10, -10, -10, -10, -10, -10, -10, -10},
+                            {-10, -5, 0, 5, 5, 5, 0, -5, -10}};
+
+const int PST_SILVER[9][9] = {{10, 10, 10, 10, 10, 10, 10, 10, 10},         {10, 10, 10, 10, 10, 10, 10, 10, 10},
+                              {10, 15, 15, 20, 20, 20, 15, 15, 10},         {5, 10, 15, 25, 30, 25, 15, 10, 5},
+                              {0, 10, 20, 30, 40, 30, 20, 10, 0},           {-5, 5, 10, 20, 30, 20, 10, 5, -5},
+                              {-10, 0, 5, 10, 15, 10, 5, 0, -10},           {-10, -10, 0, 0, 0, 0, 0, -10, -10},
+                              {-10, -10, -10, -10, -10, -10, -10, -10, -10}};
+
+const int PST_GOLD[9][9] = {{10, 10, 10, 10, 10, 10, 10, 10, 10},
+                            {5, 5, 5, 5, 5, 5, 5, 5, 5},
+                            {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                            {-5, -5, -5, -5, -5, -5, -5, -5, -5},
+                            {-10, -10, -5, -5, -5, -5, -5, -10, -10},
+                            {-10, -5, 0, 0, 0, 0, 0, -5, -10},
+                            {-5, 0, 10, 10, 10, 10, 10, 0, -5},
+                            {-10, 0, 15, 15, 15, 15, 15, 0, -10},
+                            {-10, -10, -5, 0, 0, 0, -5, -10, -10}};
+
+const int PST_BISHOP[9][9] = {{30, 30, 30, 30, 30, 30, 30, 30, 30},
+                              {30, 30, 30, 30, 30, 30, 30, 30, 30},
+                              {20, 20, 20, 20, 20, 20, 20, 20, 20},
+                              {10, 10, 15, 15, 15, 15, 15, 10, 10},
+                              {5, 10, 15, 20, 20, 20, 15, 10, 5},
+                              {0, 5, 10, 10, 10, 10, 10, 5, 0},
+                              {-5, 0, 0, 0, 0, 0, 0, 0, -5},
+                              {-10, 5, 0, 0, 0, 0, 0, 5, -10},
+                              {-10, -10, -10, -10, -10, -10, -10, -10, -10}};
+
+const int PST_ROOK[9][9] = {
+    {40, 40, 40, 40, 40, 40, 40, 40, 40}, {40, 40, 40, 40, 40, 40, 40, 40, 40}, {20, 20, 20, 20, 20, 20, 20, 20, 20},
+    {10, 10, 10, 10, 10, 10, 10, 10, 10}, {0, 5, 5, 5, 5, 5, 5, 5, 0},          {-5, 0, 0, 0, 0, 0, 0, 0, -5},
+    {-10, 0, 0, 0, 0, 0, 0, 0, -10},      {-10, 5, 5, 10, 10, 10, 5, 5, -10},   {-10, 5, 5, 5, 0, 5, 5, 5, -10}};
+
+const int PST_KING[9][9] = {{0, 0, 0, 0, 0, 0, 0, 0, 0},
+                            {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                            {-10, -10, -10, -10, -10, -10, -10, -10, -10},
+                            {-15, -15, -15, -15, -15, -15, -15, -15, -15},
+                            {-20, -20, -20, -20, -20, -20, -20, -20, -20},
+                            {-20, -15, -15, -10, -10, -10, -15, -15, -20},
+                            {-15, -10, 0, 0, -10, 0, 0, -10, -15},
+                            {10, 25, 30, 10, -20, 10, 30, 25, 10},
+                            {30, 40, 30, 10, -50, 10, 30, 40, 30}};
+
 } // namespace
 
 std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side, bool only_captures) {
@@ -146,10 +197,25 @@ int AIPlayer::evaluate(const BoardState &board) {
                 break;
             }
 
+            int lookup_type = cell.type;
+            if (cell.is_promoted) {
+                switch (cell.type) {
+                case Shogi::PAWN:
+                case Shogi::LANCE:
+                case Shogi::KNIGHT:
+                case Shogi::SILVER:
+                    lookup_type = Shogi::GOLD;
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            int pst_bonus = get_pst_value(lookup_type, cell.side, {col, row});
             if (cell.side == Shogi::PLAYER) {
-                score += piece_value;
+                score += piece_value + pst_bonus;
             } else {
-                score -= piece_value;
+                score -= piece_value + pst_bonus;
             }
         }
     }
@@ -163,6 +229,32 @@ int AIPlayer::evaluate(const BoardState &board) {
     }
 
     return score;
+}
+
+int AIPlayer::get_pst_value(int piece_type, Shogi::Side side, Shogi::Coord coord) {
+    int row = (side == Shogi::PLAYER) ? coord.row : (Shogi::BOARD_ROWS - 1 - coord.row);
+    int col = (side == Shogi::PLAYER) ? coord.col : (Shogi::BOARD_COLS - 1 - coord.col);
+
+    if (!coord.is_valid()) {
+        return 0;
+    }
+
+    switch (piece_type) {
+    case Shogi::PAWN:
+        return PST_PAWN[row][col];
+    case Shogi::SILVER:
+        return PST_SILVER[row][col];
+    case Shogi::GOLD:
+        return PST_GOLD[row][col];
+    case Shogi::BISHOP:
+        return PST_BISHOP[row][col];
+    case Shogi::ROOK:
+        return PST_ROOK[row][col];
+    case Shogi::KING:
+        return PST_KING[row][col];
+    default:
+        return 0;
+    }
 }
 
 int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
