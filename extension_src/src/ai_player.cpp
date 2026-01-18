@@ -6,6 +6,33 @@
 
 using namespace godot;
 
+namespace {
+
+const int VAL_PAWN = 90;
+const int VAL_LANCE = 230;
+const int VAL_KNIGHT = 260;
+const int VAL_SILVER = 370;
+const int VAL_GOLD = 440;
+const int VAL_BISHOP = 570;
+const int VAL_ROOK = 640;
+const int VAL_KING = 99999;
+const int VAL_PRO_PAWN = 530;
+const int VAL_PRO_LANCE = 490;
+const int VAL_PRO_KNIGHT = 510;
+const int VAL_PRO_SILVER = 500;
+const int VAL_PRO_BISHOP = 830;
+const int VAL_PRO_ROOK = 950;
+
+const struct {
+    int type;
+    int value;
+} HAND_PIECES[] = {
+    {Shogi::PAWN, VAL_PAWN}, {Shogi::LANCE, VAL_LANCE},   {Shogi::KNIGHT, VAL_KNIGHT}, {Shogi::SILVER, VAL_SILVER},
+    {Shogi::GOLD, VAL_GOLD}, {Shogi::BISHOP, VAL_BISHOP}, {Shogi::ROOK, VAL_ROOK},
+};
+
+} // namespace
+
 std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side) {
     std::vector<Shogi::Move> moves;
     bool is_enemy_turn = (side == Shogi::ENEMY);
@@ -122,13 +149,9 @@ int AIPlayer::evaluate(const BoardState &board) {
     // 持ち駒
     for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         int sign = (side == my_side) ? 1 : -1;
-        score += board.get_hand_count(side, Shogi::PAWN) * VAL_PAWN * sign;
-        score += board.get_hand_count(side, Shogi::LANCE) * VAL_LANCE * sign;
-        score += board.get_hand_count(side, Shogi::KNIGHT) * VAL_KNIGHT * sign;
-        score += board.get_hand_count(side, Shogi::SILVER) * VAL_SILVER * sign;
-        score += board.get_hand_count(side, Shogi::GOLD) * VAL_GOLD * sign;
-        score += board.get_hand_count(side, Shogi::BISHOP) * VAL_BISHOP * sign;
-        score += board.get_hand_count(side, Shogi::ROOK) * VAL_ROOK * sign;
+        for (const auto &piece : HAND_PIECES) {
+            score += board.get_hand_count(side, piece.type) * piece.value * sign;
+        }
     }
 
     return score;
