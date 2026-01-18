@@ -20,6 +20,10 @@ ShogiEngine::ShogiEngine() {
 }
 
 void ShogiEngine::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy_side"), &ShogiEngine::set_is_enemy_side);
+    ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
+    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_enemy_side"), "set_is_enemy_side", "get_is_enemy_side");
+
     ClassDB::bind_method(D_METHOD("is_legal_move", "main_node", "piece_obj", "target_col", "target_row"),
                          &ShogiEngine::is_legal_move);
     ClassDB::bind_method(D_METHOD("is_legal_drop", "main_node", "piece_obj", "target_col", "target_row"),
@@ -32,15 +36,7 @@ void ShogiEngine::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
     ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
-
-    ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy"), &ShogiEngine::set_is_enemy_side);
-    ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
-    ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_enemy_side"), "set_is_enemy_side", "get_is_enemy_side");
 }
-
-void ShogiEngine::set_is_enemy_side(bool is_enemy) { is_enemy_side = is_enemy; }
-
-bool ShogiEngine::get_is_enemy_side() const { return is_enemy_side; }
 
 void ShogiEngine::load_book_from_file(const String &path) {
     if (!FileAccess::file_exists(path)) {
@@ -183,10 +179,8 @@ bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
 void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node); }
 
 Dictionary ShogiEngine::search_best_move() {
-    Shogi::Side side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-
     // 定跡を参照
-    uint64_t hash = current_state.get_zobrist_hash(side);
+    uint64_t hash = current_state.get_zobrist_hash(side_to_move);
     auto it = book.find(hash);
     if (it != book.end()) {
         const std::vector<Shogi::Move> &book_moves = it->second;
@@ -208,6 +202,6 @@ Dictionary ShogiEngine::search_best_move() {
         }
     }
 
-    AIPlayer ai_player(is_enemy_side);
+    AIPlayer ai_player(side_to_move);
     return ai_player.search_best_move(current_state);
 }

@@ -101,7 +101,6 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
 
 int AIPlayer::evaluate(const BoardState &board) {
     int score = 0;
-    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
 
     // 盤上の駒
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
@@ -141,7 +140,7 @@ int AIPlayer::evaluate(const BoardState &board) {
                 break;
             }
 
-            if (cell.side == my_side) {
+            if (cell.side == side_to_move) {
                 score += piece_value;
             } else {
                 score -= piece_value;
@@ -151,7 +150,7 @@ int AIPlayer::evaluate(const BoardState &board) {
 
     // 持ち駒
     for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
-        int sign = (side == my_side) ? 1 : -1;
+        int sign = (side == side_to_move) ? 1 : -1;
         for (const auto &piece : HAND_PIECES) {
             score += board.get_hand_count(side, piece.type) * piece.value * sign;
         }
@@ -172,11 +171,9 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
     }
 
     std::vector<Shogi::Move> moves = get_legal_moves(board, side);
-    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-
     if (moves.empty()) {
         // 投了
-        return (side == my_side) ? -999999 : 999999;
+        return (side == side_to_move) ? -999999 : 999999;
     }
 
     // 取る手を優先
@@ -185,7 +182,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
 
     Shogi::Side next_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
-    if (side == my_side) {
+    if (side == side_to_move) {
         int max_eval = -99999999;
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
@@ -230,9 +227,7 @@ double AIPlayer::calculate_win_probability(int score) {
 }
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
-    Shogi::Side my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
-
-    std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
+    std::vector<Shogi::Move> moves = get_legal_moves(board, side_to_move);
 
     if (moves.empty()) {
         // 投了
@@ -278,7 +273,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         int beta = 99999999;
         Shogi::Move current_depth_best_move = moves[0];
         int current_depth_best_score = -99999999;
-        Shogi::Side next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+        Shogi::Side next_turn_side = (side_to_move == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
         for (const auto &move : moves) {
             if (Time::get_singleton()->get_ticks_usec() > end_time) {
@@ -287,7 +282,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             }
 
             BoardState next_board = board;
-            next_board.apply_move(move, my_side);
+            next_board.apply_move(move, side_to_move);
 
             int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time, timeout);
             if (timeout) {
