@@ -425,9 +425,9 @@ func _undo_last_move() -> void:
 		piece.current_row = -1
 		
 		if piece.is_enemy:
-			enemy_piece_stand.add_piece(piece)
+			enemy_piece_stand.add_piece(piece, true)
 		else:
-			player_piece_stand.add_piece(piece)
+			player_piece_stand.add_piece(piece, true)
 	else:
 		# 盤上の移動
 		update_board_state(piece.current_col, piece.current_row, last_move.from_col, last_move.from_row, piece)
@@ -459,7 +459,7 @@ func _undo_last_move() -> void:
 		_update_piece_position(captured, captured.current_col, captured.current_row)
 		
 		if source_stand is PieceStand:
-			source_stand.update_layout()
+			source_stand.update_layout(true)
 	
 	current_turn -= 1
 	is_game_active = true
