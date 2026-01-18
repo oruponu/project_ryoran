@@ -32,6 +32,7 @@ void ShogiEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_legal_drops", "main_node", "piece_obj"), &ShogiEngine::get_legal_drops);
     ClassDB::bind_method(D_METHOD("is_king_safe_after_move", "main_node", "piece_obj", "target_col", "target_row"),
                          &ShogiEngine::is_king_safe_after_move);
+    ClassDB::bind_method(D_METHOD("is_dead_end", "main_node", "piece_obj", "to_row"), &ShogiEngine::is_dead_end);
     ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
 
     ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
@@ -166,6 +167,19 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
     board.set_cell(to, piece_type, side, is_promoted);
 
     return !board.is_king_in_check(side);
+}
+
+bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) {
+    BoardState board(main_node, side_to_move);
+
+    if (!piece_obj) {
+        return false;
+    }
+
+    int piece_type = piece_obj->get("piece_type");
+    bool is_enemy = piece_obj->get("is_enemy");
+
+    return board.is_dead_end(piece_type, is_enemy, to_row);
 }
 
 bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
