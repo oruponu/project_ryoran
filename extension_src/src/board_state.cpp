@@ -46,7 +46,7 @@ BoardState::BoardState() {
     }
 
     // 持ち駒を初期化
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             hand[side][piece_type] = 0;
         }
@@ -95,7 +95,7 @@ BoardState::BoardState(Node *main_node) : BoardState() {
     stands[Shogi::PLAYER] = Object::cast_to<Node>(main_node->get("player_piece_stand"));
     stands[Shogi::ENEMY] = Object::cast_to<Node>(main_node->get("enemy_piece_stand"));
 
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         if (stands[side] == nullptr) {
             continue;
         }
@@ -133,7 +133,7 @@ void BoardState::load_zobrist_params(const String &path) {
     }
 
     // 盤上の駒
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
                 for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
@@ -146,7 +146,7 @@ void BoardState::load_zobrist_params(const String &path) {
     }
 
     // 持ち駒
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             for (int n = 0; n < 20; ++n) {
                 z_hand[side][piece_type][n] = file->get_64();
@@ -205,7 +205,7 @@ bool BoardState::is_valid_drop(int piece_type, bool is_enemy, int to_col, int to
         return false;
     }
 
-    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
     if (get_hand_count(side, piece_type) <= 0) {
         return false;
     }
@@ -247,7 +247,7 @@ bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to
     }
 
     BoardState next_state = *this;
-    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
     next_state.set_cell(to_col, to_row, piece_type, side, false);
     next_state.hand[side][piece_type]--;
 
@@ -377,7 +377,7 @@ bool BoardState::is_dead_end(int piece_type, bool is_enemy, int to_row) const {
     }
 }
 
-bool BoardState::is_nifu(int piece_type, int side, int col) const {
+bool BoardState::is_nifu(int piece_type, Shogi::Side side, int col) const {
     if (piece_type != Shogi::PAWN) {
         return false;
     }
@@ -392,7 +392,7 @@ bool BoardState::is_nifu(int piece_type, int side, int col) const {
     return false;
 }
 
-bool BoardState::is_king_in_check(int side) const {
+bool BoardState::is_king_in_check(Shogi::Side side) const {
     std::pair<int, int> king_pos = find_king_position(side);
     int king_col = king_pos.first;
     int king_row = king_pos.second;
@@ -419,7 +419,7 @@ bool BoardState::is_king_in_check(int side) const {
     return false;
 }
 
-uint64_t BoardState::get_zobrist_hash(int side) const {
+uint64_t BoardState::get_zobrist_hash(Shogi::Side side) const {
     uint64_t hash = 0;
 
     // 盤上の駒
@@ -434,7 +434,7 @@ uint64_t BoardState::get_zobrist_hash(int side) const {
     }
 
     // 持ち駒
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             int count = hand[side][piece_type];
             if (count > 0) {
@@ -451,7 +451,7 @@ uint64_t BoardState::get_zobrist_hash(int side) const {
     return hash;
 }
 
-std::pair<int, int> BoardState::find_king_position(int side) const {
+std::pair<int, int> BoardState::find_king_position(Shogi::Side side) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
             const Cell &cell = get_cell(col, row);
@@ -474,7 +474,7 @@ const Cell &BoardState::get_cell(int col, int row) const {
     return board[col * Shogi::BOARD_ROWS + row];
 }
 
-void BoardState::set_cell(int col, int row, int type, int side, bool is_promoted) {
+void BoardState::set_cell(int col, int row, int type, Shogi::Side side, bool is_promoted) {
     if (is_valid_coord(col, row)) {
         int index = col * Shogi::BOARD_ROWS + row;
         board[index] = Cell(type, side, is_promoted);
@@ -488,14 +488,14 @@ void BoardState::clear_cell(int col, int row) {
     }
 }
 
-int BoardState::get_hand_count(int side, int piece_type) const {
+int BoardState::get_hand_count(Shogi::Side side, int piece_type) const {
     if (side < 0 || side >= 2 || piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
         return 0;
     }
     return hand[side][piece_type];
 }
 
-void BoardState::apply_move(const Shogi::Move &move, int side) {
+void BoardState::apply_move(const Shogi::Move &move, Shogi::Side side) {
     if (move.is_drop) {
         if (hand[side][move.piece_type] > 0) {
             hand[side][move.piece_type]--;

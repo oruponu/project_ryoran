@@ -158,7 +158,7 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
     bool is_enemy = piece_obj->get("is_enemy");
     bool is_promoted = piece_obj->get("is_promoted");
 
-    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
 
     if (current_col != -1 && current_row != -1) {
         board.clear_cell(current_col, current_row);
@@ -172,7 +172,7 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
 bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
     BoardState board(main_node);
 
-    int side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
 
     return board.is_king_in_check(side);
 }
@@ -180,7 +180,7 @@ bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
 void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node); }
 
 Dictionary ShogiEngine::search_best_move() {
-    int side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
 
     // 定跡を参照
     uint64_t hash = current_state.get_zobrist_hash(side);

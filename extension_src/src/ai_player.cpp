@@ -6,7 +6,7 @@
 
 using namespace godot;
 
-std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, int side) {
+std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side) {
     std::vector<Shogi::Move> moves;
     bool is_enemy_turn = (side == Shogi::ENEMY);
 
@@ -120,7 +120,7 @@ int AIPlayer::evaluate(const BoardState &board) {
     }
 
     // 持ち駒
-    for (int side = 0; side < 2; ++side) {
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         int sign = (side == my_side) ? 1 : -1;
         score += board.get_hand_count(side, Shogi::PAWN) * VAL_PAWN * sign;
         score += board.get_hand_count(side, Shogi::LANCE) * VAL_LANCE * sign;
@@ -134,7 +134,8 @@ int AIPlayer::evaluate(const BoardState &board) {
     return score;
 }
 
-int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int side, uint64_t end_time, bool &timeout) {
+int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
+                         bool &timeout) {
     if (Time::get_singleton()->get_ticks_usec() > end_time) {
         timeout = true;
         return 0;
@@ -156,7 +157,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, int s
     std::sort(moves.begin(), moves.end(),
               [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
 
-    int next_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side next_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
     if (side == my_side) {
         int max_eval = -99999999;
@@ -203,7 +204,7 @@ double AIPlayer::calculate_win_probability(int score) {
 }
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
-    int my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
+    Shogi::Side my_side = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER;
 
     std::vector<Shogi::Move> moves = get_legal_moves(board, my_side);
 
@@ -251,7 +252,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         int beta = 99999999;
         Shogi::Move current_depth_best_move = moves[0];
         int current_depth_best_score = -99999999;
-        int next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+        Shogi::Side next_turn_side = (my_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
         for (const auto &move : moves) {
             if (Time::get_singleton()->get_ticks_usec() > end_time) {
