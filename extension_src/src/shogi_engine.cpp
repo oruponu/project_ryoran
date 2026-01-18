@@ -9,10 +9,14 @@
 using namespace godot;
 
 ShogiEngine::ShogiEngine() {
-    std::srand(Time::get_singleton()->get_ticks_usec());
+    if (!is_initialized) {
+        std::srand(Time::get_singleton()->get_ticks_usec());
 
-    BoardState::load_zobrist_params("res://assets/data/zobrist_params.bin");
-    load_book_from_file("res://assets/data/book.bin");
+        BoardState::load_zobrist_params("res://assets/data/zobrist_params.bin");
+        load_book_from_file("res://assets/data/book.bin");
+
+        is_initialized = true;
+    }
 }
 
 void ShogiEngine::_bind_methods() {

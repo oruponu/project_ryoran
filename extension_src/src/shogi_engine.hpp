@@ -23,12 +23,13 @@ class ShogiEngine : public RefCounted {
     GDCLASS(ShogiEngine, RefCounted);
 
   private:
-    std::unordered_map<uint64_t, std::vector<Shogi::Move>> book;
+    inline static std::unordered_map<uint64_t, std::vector<Shogi::Move>> book;
+    inline static bool is_initialized;
 
     BoardState current_state;
     bool is_enemy_side = true;
 
-    void load_book_from_file(const String &path);
+    static void load_book_from_file(const String &path);
 
   protected:
     static void _bind_methods();
