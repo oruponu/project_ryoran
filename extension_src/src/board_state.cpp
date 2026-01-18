@@ -160,33 +160,33 @@ void BoardState::load_zobrist_params(const String &path) {
     UtilityFunctions::print("Zobrist parameters loaded successfully.");
 }
 
-bool BoardState::is_valid_move(int from_col, int from_row, int to_col, int to_row) const {
+bool BoardState::is_valid_move(Shogi::Coord from, Shogi::Coord to) const {
     // 盤面の範囲外には移動不可
-    if (!is_valid_coord(to_col, to_row)) {
+    if (!to.is_valid()) {
         return false;
     }
 
     // 現在地と同じ場所には移動不可
-    if (from_col == to_col && from_row == to_row) {
+    if (from == to) {
         return false;
     }
 
-    const Cell &piece = get_cell(from_col, from_row);
+    const Cell &piece = get_cell(from);
     bool is_enemy = (piece.side == Shogi::ENEMY);
 
     // ルールで認められていない場所には移動不可
-    if (!can_move_geometry(piece.type, is_enemy, piece.is_promoted, from_col, from_row, to_col, to_row)) {
+    if (!can_move_geometry(piece.type, is_enemy, piece.is_promoted, from, to)) {
         return false;
     }
 
     if (piece.type != Shogi::KNIGHT) {
-        if (is_path_blocked(from_col, from_row, to_col, to_row)) {
+        if (is_path_blocked(from, to)) {
             return false;
         }
     }
 
     // 味方の駒がある場所には移動不可
-    const Cell &target = get_cell(to_col, to_row);
+    const Cell &target = get_cell(to);
     if (!target.is_empty() && target.side == piece.side) {
         return false;
     }
@@ -194,14 +194,14 @@ bool BoardState::is_valid_move(int from_col, int from_row, int to_col, int to_ro
     return true;
 }
 
-bool BoardState::is_valid_drop(int piece_type, bool is_enemy, int to_col, int to_row) const {
+bool BoardState::is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const {
     // 盤面の範囲外には配置不可
-    if (!is_valid_coord(to_col, to_row)) {
+    if (!to.is_valid()) {
         return false;
     }
 
     // すでに駒がある場所には配置不可
-    if (!get_cell(to_col, to_row).is_empty()) {
+    if (!get_cell(to).is_empty()) {
         return false;
     }
 
@@ -211,27 +211,27 @@ bool BoardState::is_valid_drop(int piece_type, bool is_enemy, int to_col, int to
     }
 
     // 行き所のない場所には配置不可
-    if (is_dead_end(piece_type, is_enemy, to_row)) {
+    if (is_dead_end(piece_type, is_enemy, to.row)) {
         return false;
     }
 
     // 二歩になる場所には配置不可
-    if (is_nifu(piece_type, side, to_col)) {
+    if (is_nifu(piece_type, side, to.col)) {
         return false;
     }
 
     return true;
 }
 
-bool BoardState::is_legal_move(int from_col, int from_row, int to_col, int to_row) const {
-    if (!is_valid_move(from_col, from_row, to_col, to_row)) {
+bool BoardState::is_legal_move(Shogi::Coord from, Shogi::Coord to) const {
+    if (!is_valid_move(from, to)) {
         return false;
     }
 
     BoardState next_state = *this;
-    Cell piece = next_state.get_cell(from_col, from_row);
-    next_state.set_cell(to_col, to_row, piece.type, piece.side, piece.is_promoted);
-    next_state.clear_cell(from_col, from_row);
+    Cell piece = next_state.get_cell(from);
+    next_state.set_cell(to, piece.type, piece.side, piece.is_promoted);
+    next_state.clear_cell(from);
 
     // 王手放置になる手を除外
     if (next_state.is_king_in_check(piece.side)) {
@@ -241,14 +241,14 @@ bool BoardState::is_legal_move(int from_col, int from_row, int to_col, int to_ro
     return true;
 }
 
-bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const {
-    if (!is_valid_drop(piece_type, is_enemy, to_col, to_row)) {
+bool BoardState::is_legal_drop(int piece_type, bool is_enemy, Shogi::Coord to) const {
+    if (!is_valid_drop(piece_type, is_enemy, to)) {
         return false;
     }
 
     BoardState next_state = *this;
     Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
-    next_state.set_cell(to_col, to_row, piece_type, side, false);
+    next_state.set_cell(to, piece_type, side, false);
     next_state.hand[side][piece_type]--;
 
     // 王手放置になる手を除外
@@ -259,10 +259,10 @@ bool BoardState::is_legal_drop(int piece_type, bool is_enemy, int to_col, int to
     return true;
 }
 
-bool BoardState::can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, int from_col, int from_row,
-                                   int to_col, int to_row) const {
-    int dx = to_col - from_col;
-    int dy = to_row - from_row;
+bool BoardState::can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, Shogi::Coord from,
+                                   Shogi::Coord to) const {
+    int dx = to.col - from.col;
+    int dy = to.row - from.row;
 
     if (is_enemy) {
         dx = -dx;
@@ -341,9 +341,9 @@ bool BoardState::can_move_geometry(int piece_type, bool is_enemy, bool is_promot
     }
 }
 
-bool BoardState::is_path_blocked(int from_col, int from_row, int to_col, int to_row) const {
-    int dx = to_col - from_col;
-    int dy = to_row - from_row;
+bool BoardState::is_path_blocked(Shogi::Coord from, Shogi::Coord to) const {
+    int dx = to.col - from.col;
+    int dy = to.row - from.row;
     int steps = std::max(std::abs(dx), std::abs(dy));
 
     if (steps <= 1) {
@@ -354,9 +354,8 @@ bool BoardState::is_path_blocked(int from_col, int from_row, int to_col, int to_
     int step_y = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
 
     for (int i = 1; i < steps; ++i) {
-        int check_col = from_col + step_x * i;
-        int check_row = from_row + step_y * i;
-        if (!get_cell(check_col, check_row).is_empty()) {
+        Shogi::Coord check{from.col + step_x * i, from.row + step_y * i};
+        if (!get_cell(check).is_empty()) {
             return true;
         }
     }
@@ -383,7 +382,7 @@ bool BoardState::is_nifu(int piece_type, Shogi::Side side, int col) const {
     }
 
     for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-        const Cell &cell = get_cell(col, row);
+        const Cell &cell = get_cell({col, row});
         if (!cell.is_empty() && cell.side == side && cell.type == Shogi::PAWN && !cell.is_promoted) {
             return true;
         }
@@ -393,11 +392,9 @@ bool BoardState::is_nifu(int piece_type, Shogi::Side side, int col) const {
 }
 
 bool BoardState::is_king_in_check(Shogi::Side side) const {
-    std::pair<int, int> king_pos = find_king_position(side);
-    int king_col = king_pos.first;
-    int king_row = king_pos.second;
+    Shogi::Coord king_pos = find_king_position(side);
 
-    if (king_col == -1 || king_row == -1) {
+    if (!king_pos.is_valid()) {
         return false;
     }
 
@@ -405,12 +402,13 @@ bool BoardState::is_king_in_check(Shogi::Side side) const {
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = get_cell(col, row);
+            Shogi::Coord coord{col, row};
+            const Cell &cell = get_cell(coord);
             if (cell.is_empty() || cell.side != enemy_side) {
                 continue;
             }
 
-            if (is_valid_move(col, row, king_col, king_row)) {
+            if (is_valid_move(coord, king_pos)) {
                 return true;
             }
         }
@@ -425,7 +423,7 @@ uint64_t BoardState::get_zobrist_hash(Shogi::Side side) const {
     // 盤上の駒
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = get_cell(col, row);
+            const Cell &cell = get_cell({col, row});
             if (!cell.is_empty()) {
                 int is_promoted = cell.is_promoted ? 1 : 0;
                 hash ^= z_board[cell.side][cell.type][is_promoted][col][row];
@@ -451,39 +449,40 @@ uint64_t BoardState::get_zobrist_hash(Shogi::Side side) const {
     return hash;
 }
 
-std::pair<int, int> BoardState::find_king_position(Shogi::Side side) const {
+Shogi::Coord BoardState::find_king_position(Shogi::Side side) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = get_cell(col, row);
+            Shogi::Coord coord{col, row};
+            const Cell &cell = get_cell(coord);
             if (cell.side == side && cell.type == Shogi::KING) {
-                return {col, row};
+                return coord;
             }
         }
     }
 
-    return {-1, -1};
+    return {};
 }
 
-const Cell &BoardState::get_cell(int col, int row) const {
-    if (col < 0 || col >= Shogi::BOARD_COLS || row < 0 || row >= Shogi::BOARD_ROWS) {
+const Cell &BoardState::get_cell(Shogi::Coord coord) const {
+    if (!coord.is_valid()) {
         // 範囲外のアクセスなら空のセルを返す
         static Cell empty_cell;
         return empty_cell;
     }
 
-    return board[col * Shogi::BOARD_ROWS + row];
+    return board[coord.col * Shogi::BOARD_ROWS + coord.row];
 }
 
-void BoardState::set_cell(int col, int row, int type, Shogi::Side side, bool is_promoted) {
-    if (is_valid_coord(col, row)) {
-        int index = col * Shogi::BOARD_ROWS + row;
+void BoardState::set_cell(Shogi::Coord coord, int type, Shogi::Side side, bool is_promoted) {
+    if (coord.is_valid()) {
+        int index = coord.col * Shogi::BOARD_ROWS + coord.row;
         board[index] = Cell(type, side, is_promoted);
     }
 }
 
-void BoardState::clear_cell(int col, int row) {
-    if (is_valid_coord(col, row)) {
-        int index = col * Shogi::BOARD_ROWS + row;
+void BoardState::clear_cell(Shogi::Coord coord) {
+    if (coord.is_valid()) {
+        int index = coord.col * Shogi::BOARD_ROWS + coord.row;
         board[index] = Cell();
     }
 }
@@ -501,19 +500,19 @@ void BoardState::apply_move(const Shogi::Move &move, Shogi::Side side) {
             hand[side][move.piece_type]--;
         }
 
-        set_cell(move.to_col, move.to_row, move.piece_type, side, false);
+        set_cell({move.to_col, move.to_row}, move.piece_type, side, false);
     } else {
-        Cell source = get_cell(move.from_col, move.from_row);
-        Cell target = get_cell(move.to_col, move.to_row);
+        Cell source = get_cell({move.from_col, move.from_row});
+        Cell target = get_cell({move.to_col, move.to_row});
         if (!target.is_empty()) {
             int captured_type = target.type;
             hand[side][captured_type]++;
         }
 
         bool is_promoted = move.is_promotion || source.is_promoted;
-        set_cell(move.to_col, move.to_row, source.type, side, is_promoted);
+        set_cell({move.to_col, move.to_row}, source.type, side, is_promoted);
 
-        clear_cell(move.from_col, move.from_row);
+        clear_cell({move.from_col, move.from_row});
     }
 }
 
@@ -522,7 +521,7 @@ void BoardState::print_board() const {
     for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
         String line = "";
         for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-            const Cell &cell = get_cell(col, row);
+            const Cell &cell = get_cell({col, row});
             if (cell.is_empty()) {
                 line += ". ";
             } else {

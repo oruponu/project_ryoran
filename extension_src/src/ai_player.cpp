@@ -39,7 +39,8 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = board.get_cell(col, row);
+            Shogi::Coord from{col, row};
+            const Cell &cell = board.get_cell(from);
 
             // 自駒でないならスキップ
             if (cell.is_empty() || cell.side != side) {
@@ -48,8 +49,9 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
 
             for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
                 for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    if (board.is_legal_move(col, row, t_col, t_row)) {
-                        bool is_capture = !board.get_cell(t_col, t_row).is_empty();
+                    Shogi::Coord to{t_col, t_row};
+                    if (board.is_legal_move(from, to)) {
+                        bool is_capture = !board.get_cell(to).is_empty();
                         bool can_promote = false;
                         bool must_promote = false;
 
@@ -85,7 +87,8 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
         if (board.get_hand_count(side, piece_type) > 0) {
             for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
                 for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    if (board.is_legal_drop(piece_type, is_enemy_turn, t_col, t_row)) {
+                    Shogi::Coord to{t_col, t_row};
+                    if (board.is_legal_drop(piece_type, is_enemy_turn, to)) {
                         moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
                     }
                 }
@@ -103,7 +106,7 @@ int AIPlayer::evaluate(const BoardState &board) {
     // 盤上の駒
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = board.get_cell(col, row);
+            const Cell &cell = board.get_cell({col, row});
             if (cell.is_empty()) {
                 continue;
             }

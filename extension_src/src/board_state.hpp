@@ -34,16 +34,11 @@ class BoardState {
     Cell board[Shogi::BOARD_SIZE];
     int hand[2][Shogi::PIECE_TYPE_COUNT];
 
-    // 座標が盤面内か
-    static bool is_valid_coord(int col, int row) {
-        return col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS;
-    }
-
-    bool is_valid_move(int from_col, int from_row, int to_col, int to_row) const;
-    bool is_valid_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
-    bool is_path_blocked(int from_col, int from_row, int to_col, int to_row) const;
+    bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
+    bool is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
+    bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
     bool is_nifu(int piece_type, Shogi::Side side, int col) const;
-    std::pair<int, int> find_king_position(Shogi::Side side) const;
+    Shogi::Coord find_king_position(Shogi::Side side) const;
 
   public:
     BoardState();
@@ -69,19 +64,18 @@ class BoardState {
 
     static void load_zobrist_params(const String &path);
 
-    bool is_legal_move(int from_col, int from_row, int to_col, int to_row) const;
-    bool is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
-    bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, int from_col, int from_row, int to_col,
-                           int to_row) const;
+    bool is_legal_move(Shogi::Coord from, Shogi::Coord to) const;
+    bool is_legal_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
+    bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, Shogi::Coord from, Shogi::Coord to) const;
     bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
     bool is_king_in_check(Shogi::Side side) const;
 
     uint64_t get_zobrist_hash(Shogi::Side side) const;
 
     // 盤面の操作
-    const Cell &get_cell(int col, int row) const;
-    void set_cell(int col, int row, int type, Shogi::Side side, bool is_promoted);
-    void clear_cell(int col, int row);
+    const Cell &get_cell(Shogi::Coord coord) const;
+    void set_cell(Shogi::Coord coord, int type, Shogi::Side side, bool is_promoted);
+    void clear_cell(Shogi::Coord coord);
     int get_hand_count(Shogi::Side side, int piece_type) const;
     void apply_move(const Shogi::Move &move, Shogi::Side side);
 
