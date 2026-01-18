@@ -76,8 +76,12 @@ func _on_new_game_button_pressed() -> void:
 
 
 func _on_undo_button_pressed() -> void:
-	_undo_last_move()
-	_undo_last_move()
+	# 後手が投了しているときのみ一手前に戻す
+	if not is_game_active and current_turn % 2 == 0:
+		_undo_last_move()
+	else:
+		_undo_last_move()
+		_undo_last_move()
 
 
 func _on_resign_button_pressed() -> void:
