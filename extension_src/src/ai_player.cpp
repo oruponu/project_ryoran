@@ -186,7 +186,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         int max_eval = -99999999;
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
-            next_board.apply_move(move, side);
+            next_board.apply_move(move);
             int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
             if (timeout) {
                 return 0;
@@ -204,7 +204,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         int min_eval = 99999999;
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
-            next_board.apply_move(move, side);
+            next_board.apply_move(move);
             int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
             if (timeout) {
                 return 0;
@@ -282,7 +282,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             }
 
             BoardState next_board = board;
-            next_board.apply_move(move, side_to_move);
+            next_board.apply_move(move);
 
             int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time, timeout);
             if (timeout) {

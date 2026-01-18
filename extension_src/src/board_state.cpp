@@ -51,6 +51,8 @@ BoardState::BoardState(Shogi::Side side_to_move) : side_to_move(side_to_move) {
             hand[side][piece_type] = 0;
         }
     }
+
+    zobrist_hash = calculate_zobrist_hash();
 }
 
 BoardState::BoardState(Node *main_node, Shogi::Side side_to_move) : BoardState(side_to_move) {
@@ -114,6 +116,8 @@ BoardState::BoardState(Node *main_node, Shogi::Side side_to_move) : BoardState(s
             }
         }
     }
+
+    zobrist_hash = calculate_zobrist_hash();
 }
 
 void BoardState::load_zobrist_params(const String &path) {
@@ -158,6 +162,38 @@ void BoardState::load_zobrist_params(const String &path) {
     z_initialized = true;
 
     UtilityFunctions::print("Zobrist parameters loaded successfully.");
+}
+
+uint64_t BoardState::calculate_zobrist_hash() const {
+    uint64_t hash = 0;
+
+    // 盤上の駒
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = get_cell({col, row});
+            if (!cell.is_empty()) {
+                int is_promoted = cell.is_promoted ? 1 : 0;
+                hash ^= z_board[cell.side][cell.type][is_promoted][col][row];
+            }
+        }
+    }
+
+    // 持ち駒
+    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            int count = hand[side][piece_type];
+            if (count > 0) {
+                int index = (count >= 20) ? 19 : count;
+                hash ^= z_hand[side][piece_type][index];
+            }
+        }
+    }
+
+    if (side_to_move == Shogi::ENEMY) {
+        hash ^= z_turn_enemy;
+    }
+
+    return hash;
 }
 
 bool BoardState::is_valid_move(Shogi::Coord from, Shogi::Coord to) const {
@@ -417,37 +453,7 @@ bool BoardState::is_king_in_check(Shogi::Side side) const {
     return false;
 }
 
-uint64_t BoardState::get_zobrist_hash(Shogi::Side side) const {
-    uint64_t hash = 0;
-
-    // 盤上の駒
-    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = get_cell({col, row});
-            if (!cell.is_empty()) {
-                int is_promoted = cell.is_promoted ? 1 : 0;
-                hash ^= z_board[cell.side][cell.type][is_promoted][col][row];
-            }
-        }
-    }
-
-    // 持ち駒
-    for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
-        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-            int count = hand[side][piece_type];
-            if (count > 0) {
-                int index = (count >= 20) ? 19 : count;
-                hash ^= z_hand[side][piece_type][index];
-            }
-        }
-    }
-
-    if (side == Shogi::ENEMY) {
-        hash ^= z_turn_enemy;
-    }
-
-    return hash;
-}
+uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash; }
 
 Shogi::Coord BoardState::find_king_position(Shogi::Side side) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
@@ -474,17 +480,36 @@ const Cell &BoardState::get_cell(Shogi::Coord coord) const {
 }
 
 void BoardState::set_cell(Shogi::Coord coord, int type, Shogi::Side side, bool is_promoted) {
-    if (coord.is_valid()) {
-        int index = coord.col * Shogi::BOARD_ROWS + coord.row;
-        board[index] = Cell(type, side, is_promoted);
+    if (!coord.is_valid()) {
+        return;
     }
+
+    Cell old_cell = get_cell(coord);
+    if (!old_cell.is_empty()) {
+        int old_is_promoted = old_cell.is_promoted ? 1 : 0;
+        zobrist_hash ^= z_board[old_cell.side][old_cell.type][old_is_promoted][coord.col][coord.row];
+    }
+
+    int new_is_promoted = is_promoted ? 1 : 0;
+    zobrist_hash ^= z_board[side][type][new_is_promoted][coord.col][coord.row];
+
+    int index = coord.col * Shogi::BOARD_ROWS + coord.row;
+    board[index] = Cell(type, side, is_promoted);
 }
 
 void BoardState::clear_cell(Shogi::Coord coord) {
-    if (coord.is_valid()) {
-        int index = coord.col * Shogi::BOARD_ROWS + coord.row;
-        board[index] = Cell();
+    if (!coord.is_valid()) {
+        return;
     }
+
+    Cell old_cell = get_cell(coord);
+    if (!old_cell.is_empty()) {
+        int old_is_promoted = old_cell.is_promoted ? 1 : 0;
+        zobrist_hash ^= z_board[old_cell.side][old_cell.type][old_is_promoted][coord.col][coord.row];
+    }
+
+    int index = coord.col * Shogi::BOARD_ROWS + coord.row;
+    board[index] = Cell();
 }
 
 int BoardState::get_hand_count(Shogi::Side side, int piece_type) const {
@@ -494,26 +519,57 @@ int BoardState::get_hand_count(Shogi::Side side, int piece_type) const {
     return hand[side][piece_type];
 }
 
-void BoardState::apply_move(const Shogi::Move &move, Shogi::Side side) {
+void BoardState::apply_move(const Shogi::Move &move) {
+    Shogi::Side current_side = side_to_move;
+    Shogi::Side opponent_side = (side_to_move == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+
+    int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
+    int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+
     if (move.is_drop) {
-        if (hand[side][move.piece_type] > 0) {
-            hand[side][move.piece_type]--;
+        int piece_type = move.piece_type;
+        int count = hand[current_side][piece_type];
+
+        int idx_old = (count >= 20) ? 19 : count;
+        int idx_new = ((count - 1) >= 20) ? 19 : (count - 1);
+        zobrist_hash ^= z_hand[current_side][piece_type][idx_old];
+        zobrist_hash ^= z_hand[current_side][piece_type][idx_new];
+        if (hand[current_side][move.piece_type] > 0) {
+            hand[current_side][move.piece_type]--;
         }
 
-        set_cell({move.to_col, move.to_row}, move.piece_type, side, false);
+        zobrist_hash ^= z_board[current_side][piece_type][0][move.to_col][move.to_row];
+        board[to_idx] = Cell(piece_type, current_side, false);
     } else {
         Cell source = get_cell({move.from_col, move.from_row});
         Cell target = get_cell({move.to_col, move.to_row});
+
+        int src_is_promoted = source.is_promoted ? 1 : 0;
+        zobrist_hash ^= z_board[current_side][source.type][src_is_promoted][move.from_col][move.from_row];
+
         if (!target.is_empty()) {
+            int tgt_is_promoted = target.is_promoted ? 1 : 0;
+            zobrist_hash ^= z_board[opponent_side][target.type][tgt_is_promoted][move.to_col][move.to_row];
+
             int captured_type = target.type;
-            hand[side][captured_type]++;
+            int count = hand[current_side][captured_type];
+            int idx_old = (count >= 20) ? 19 : count;
+            int idx_new = ((count + 1) >= 20) ? 19 : (count + 1);
+            zobrist_hash ^= z_hand[current_side][captured_type][idx_old];
+            zobrist_hash ^= z_hand[current_side][captured_type][idx_new];
+            hand[current_side][captured_type]++;
         }
 
         bool is_promoted = move.is_promotion || source.is_promoted;
-        set_cell({move.to_col, move.to_row}, source.type, side, is_promoted);
+        int new_is_promoted = is_promoted ? 1 : 0;
+        zobrist_hash ^= z_board[current_side][source.type][new_is_promoted][move.to_col][move.to_row];
 
-        clear_cell({move.from_col, move.from_row});
+        board[to_idx] = Cell(source.type, current_side, is_promoted);
+        board[from_idx] = Cell();
     }
+
+    zobrist_hash ^= z_turn_enemy;
+    side_to_move = opponent_side;
 }
 
 void BoardState::print_board() const {

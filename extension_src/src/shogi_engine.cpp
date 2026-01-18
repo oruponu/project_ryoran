@@ -180,7 +180,7 @@ void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(m
 
 Dictionary ShogiEngine::search_best_move() {
     // 定跡を参照
-    uint64_t hash = current_state.get_zobrist_hash(side_to_move);
+    uint64_t hash = current_state.get_zobrist_hash();
     auto it = book.find(hash);
     if (it != book.end()) {
         const std::vector<Shogi::Move> &book_moves = it->second;

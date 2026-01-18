@@ -35,6 +35,9 @@ class BoardState {
     int hand[2][Shogi::PIECE_TYPE_COUNT];
 
     Shogi::Side side_to_move;
+    uint64_t zobrist_hash;
+
+    uint64_t calculate_zobrist_hash() const;
 
     bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
     bool is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
@@ -70,20 +73,20 @@ class BoardState {
 
     static void load_zobrist_params(const String &path);
 
+    uint64_t get_zobrist_hash() const;
+
     bool is_legal_move(Shogi::Coord from, Shogi::Coord to) const;
     bool is_legal_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
     bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, Shogi::Coord from, Shogi::Coord to) const;
     bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
     bool is_king_in_check(Shogi::Side side) const;
 
-    uint64_t get_zobrist_hash(Shogi::Side side) const;
-
     // 盤面の操作
     const Cell &get_cell(Shogi::Coord coord) const;
     void set_cell(Shogi::Coord coord, int type, Shogi::Side side, bool is_promoted);
     void clear_cell(Shogi::Coord coord);
     int get_hand_count(Shogi::Side side, int piece_type) const;
-    void apply_move(const Shogi::Move &move, Shogi::Side side);
+    void apply_move(const Shogi::Move &move);
 
     // 盤面の出力（デバッグ用）
     void print_board() const;
