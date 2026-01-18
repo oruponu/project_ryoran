@@ -33,7 +33,7 @@ func _draw() -> void:
 	draw_rect(rect, LINE_COLOR, false, 2.0)
 
 
-func add_piece(piece: Piece) -> void:
+func add_piece(piece: Piece, immediate: bool = false) -> void:
 	piece.reparent(self)
 	
 	move_child(piece, 0)
@@ -44,7 +44,7 @@ func add_piece(piece: Piece) -> void:
 	piece.is_promoted = false
 	piece._update_display()
 	
-	update_layout()
+	update_layout(immediate)
 
 
 func clear_pieces() -> void:
@@ -56,7 +56,7 @@ func clear_pieces() -> void:
 		label.visible = false
 
 
-func update_layout() -> void:
+func update_layout(immediate: bool = false) -> void:
 	var groups = {}
 	for type in DISPLAY_ORDER:
 		groups[type] = []
@@ -93,21 +93,28 @@ func update_layout() -> void:
 		var representative = pieces[0]
 		representative.visible = true
 		
-		var dist = representative.position.distance_to(target_pos)
-		var is_capturing = dist > GameConfig.GRID_SIZE
-		
-		var tween = create_tween()
-		tween.tween_property(representative, "position", target_pos, 0.2)
-		
-		if is_capturing:
-			tween.tween_callback(update_layout)
-		
-		representative.rotation_degrees = 180 if is_enemy else 0
-		
-		for i in range(1, pieces.size()):
-			if !is_capturing:
+		if immediate:
+			representative.position = target_pos
+			
+			for i in range(1, pieces.size()):
 				pieces[i].visible = false
 				pieces[i].position = target_pos
+		else:
+			var dist = representative.position.distance_to(target_pos)
+			var is_capturing = dist > GameConfig.GRID_SIZE
+				
+			var tween = create_tween()
+			tween.tween_property(representative, "position", target_pos, 0.2)
+		
+			if is_capturing:
+				tween.tween_callback(update_layout)
+			
+			for i in range(1, pieces.size()):
+				if !is_capturing:
+					pieces[i].visible = false
+					pieces[i].position = target_pos
+		
+		representative.rotation_degrees = 180 if is_enemy else 0
 		
 		if pieces.size() > 1:
 			var label = _get_label(type)
