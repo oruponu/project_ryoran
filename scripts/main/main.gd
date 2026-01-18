@@ -181,7 +181,13 @@ func _attempt_place(piece: Piece) -> void:
 	if piece.current_col == -1 and piece.current_row == -1:
 		_drop_piece(piece, col, row)
 	else:
-		await _move_piece(piece, col, row, move_record, PromotionMode.Type.ASK_USER)
+		var mode: PromotionMode.Type
+		if _shogi_engine.is_dead_end(self, piece, row):
+			mode = PromotionMode.Type.FORCE_PROMOTE
+		else:
+			mode = PromotionMode.Type.ASK_USER
+		
+		await _move_piece(piece, col, row, move_record, mode)
 	
 	move_history.append(move_record)
 	
