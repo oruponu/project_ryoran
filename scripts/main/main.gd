@@ -170,7 +170,7 @@ func _attempt_place(piece: Piece) -> void:
 	var col = floor(local_pos.x / GameConfig.GRID_SIZE)
 	var row = floor(local_pos.y / GameConfig.GRID_SIZE)
 	
-	# 合法手でないならャンセル
+	# 合法手でないならキャンセル
 	var target_pos = Vector2i(col, row)
 	if not target_pos in current_legal_coords:
 		_cancel_move(piece)
