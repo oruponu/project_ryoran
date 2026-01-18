@@ -47,6 +47,7 @@ class BoardState {
 
   public:
     BoardState();
+    explicit BoardState(Node *main_node);
 
     bool operator==(const BoardState &other) const {
         for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
@@ -68,7 +69,6 @@ class BoardState {
 
     static void load_zobrist_params(const String &path);
 
-    void init_from_main(Node *main_node);
     bool is_legal_move(int from_col, int from_row, int to_col, int to_row) const;
     bool is_legal_drop(int piece_type, bool is_enemy, int to_col, int to_row) const;
     bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, int from_col, int from_row, int to_col,
