@@ -17,6 +17,7 @@ class AIPlayer {
     int evaluate(const BoardState &board);
     int alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
                    bool &timeout);
+    int quiescence_search(BoardState board, int alpha, int beta, Shogi::Side side);
     double calculate_win_probability(int score);
 
   public:

@@ -172,8 +172,9 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         return 0;
     }
 
-    if (depth == 0) {
-        return evaluate(board);
+    if (depth <= 0) {
+        // 静止探索を実行
+        return quiescence_search(board, alpha, beta, side);
     }
 
     Shogi::Side side_to_move = board.get_side_to_move();
@@ -228,6 +229,72 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
     }
 }
 
+int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Shogi::Side side) {
+    int stand_pat = evaluate(board);
+
+    if (side == Shogi::PLAYER) {
+        if (stand_pat >= beta) {
+            return beta;
+        }
+
+        if (stand_pat > alpha) {
+            alpha = stand_pat;
+        }
+
+        std::vector<Shogi::Move> moves = get_legal_moves(board, side, true);
+
+        std::sort(moves.begin(), moves.end(),
+                  [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+
+        int max_eval = stand_pat;
+
+        for (const auto &move : moves) {
+            BoardState next_board = board;
+            next_board.apply_move(move);
+
+            int eval = quiescence_search(next_board, alpha, beta, Shogi::ENEMY);
+
+            max_eval = std::max(max_eval, eval);
+            alpha = std::max(alpha, eval);
+
+            if (alpha >= beta) {
+                return beta; // βカット
+            }
+        }
+
+        return max_eval;
+    } else {
+        if (stand_pat <= alpha) {
+            return alpha;
+        }
+
+        if (stand_pat < beta) {
+            beta = stand_pat;
+        }
+
+        std::vector<Shogi::Move> moves = get_legal_moves(board, side, true);
+        std::sort(moves.begin(), moves.end(),
+                  [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+        int min_eval = stand_pat;
+
+        for (const auto &move : moves) {
+            BoardState next_board = board;
+            next_board.apply_move(move);
+
+            int eval = quiescence_search(next_board, alpha, beta, Shogi::PLAYER);
+
+            min_eval = std::min(min_eval, eval);
+            beta = std::min(beta, eval);
+
+            if (beta <= alpha) {
+                return alpha; // αカット
+            }
+        }
+
+        return min_eval;
+    }
+}
+
 double AIPlayer::calculate_win_probability(int score) {
     const double SCALING_FACTOR = 3333.0;
     return 1.0 / (1.0 + std::pow(10.0, -static_cast<double>(score) / SCALING_FACTOR));
@@ -245,7 +312,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     }
 
     uint64_t start_time = Time::get_singleton()->get_ticks_usec();
-    uint64_t end_time = start_time + TIME_LIMIT_USEC;
+    uint64_t strict_limit_time = start_time + TIME_LIMIT_USEC;
 
     int max_depth_limit = 10;
 
@@ -256,8 +323,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     bool has_prev_best = false;
 
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
-        bool timeout = false;
-        if (Time::get_singleton()->get_ticks_usec() > end_time) {
+        if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
             UtilityFunctions::print("Time limit reached before depth ", depth);
             break;
         }
@@ -283,8 +349,11 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         int current_depth_best_score = (root_side == Shogi::PLAYER) ? -99999999 : 99999999;
         Shogi::Side next_turn_side = (root_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
+        uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
+        bool timeout = false;
+
         for (const auto &move : moves) {
-            if (Time::get_singleton()->get_ticks_usec() > end_time) {
+            if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
                 timeout = true;
                 break;
             }
@@ -292,7 +361,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             BoardState next_board = board;
             next_board.apply_move(move);
 
-            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, end_time, timeout);
+            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout);
             if (timeout) {
                 break;
             }
