@@ -49,6 +49,8 @@ class BoardState {
     BoardState(Shogi::Side side_to_move = Shogi::PLAYER);
     explicit BoardState(Node *main_node, Shogi::Side side_to_move);
 
+    Shogi::Side get_side_to_move() const { return side_to_move; }
+
     bool operator==(const BoardState &other) const {
         if (side_to_move != other.side_to_move) {
             return false;
