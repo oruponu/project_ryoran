@@ -34,6 +34,8 @@ class BoardState {
     Cell board[Shogi::BOARD_SIZE];
     int hand[2][Shogi::PIECE_TYPE_COUNT];
 
+    Shogi::Side side_to_move;
+
     bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
     bool is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
     bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
@@ -41,10 +43,14 @@ class BoardState {
     Shogi::Coord find_king_position(Shogi::Side side) const;
 
   public:
-    BoardState();
-    explicit BoardState(Node *main_node);
+    BoardState(Shogi::Side side_to_move = Shogi::PLAYER);
+    explicit BoardState(Node *main_node, Shogi::Side side_to_move);
 
     bool operator==(const BoardState &other) const {
+        if (side_to_move != other.side_to_move) {
+            return false;
+        }
+
         for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
             if (board[i] != other.board[i]) {
                 return false;

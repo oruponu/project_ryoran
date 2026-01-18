@@ -39,7 +39,7 @@ bool z_initialized = false;
 
 } // namespace
 
-BoardState::BoardState() {
+BoardState::BoardState(Shogi::Side side_to_move) : side_to_move(side_to_move) {
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
         board[i] = Cell();
@@ -53,7 +53,7 @@ BoardState::BoardState() {
     }
 }
 
-BoardState::BoardState(Node *main_node) : BoardState() {
+BoardState::BoardState(Node *main_node, Shogi::Side side_to_move) : BoardState(side_to_move) {
     if (main_node == nullptr) {
         return;
     }

@@ -79,7 +79,7 @@ bool ShogiEngine::is_legal_move(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
 
@@ -91,7 +91,7 @@ bool ShogiEngine::is_legal_drop(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
@@ -104,7 +104,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
     Shogi::Coord from{current_col, current_row};
@@ -127,7 +127,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
@@ -148,7 +148,7 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
         return false;
     }
 
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
     int piece_type = piece_obj->get("piece_type");
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
@@ -169,14 +169,14 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
 }
 
 bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
-    BoardState board(main_node);
+    BoardState board(main_node, side_to_move);
 
     Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
 
     return board.is_king_in_check(side);
 }
 
-void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node); }
+void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node, side_to_move); }
 
 Dictionary ShogiEngine::search_best_move() {
     // 定跡を参照
