@@ -14,11 +14,11 @@ func _ready() -> void:
 	reset_bar(true)
 
 
-func reset_bar(intent: bool):
-	update_bar(0.5, intent)
+func reset_bar(immediate: bool):
+	update_bar(0.5, immediate)
 
 
-func update_bar(sente_win_rate: float, instant: bool = false):
+func update_bar(sente_win_rate: float, immediate: bool = false):
 	var target_ratio = clamp(sente_win_rate, 0.0, 1.0)
 	
 	var sente_percent = int(target_ratio * 100)
@@ -32,7 +32,7 @@ func update_bar(sente_win_rate: float, instant: bool = false):
 	if _tween:
 		_tween.kill()
 	
-	if instant:
+	if immediate:
 		sente_bar.anchor_right = target_ratio
 	else:
 		_tween = create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
