@@ -33,7 +33,7 @@ const struct {
 
 } // namespace
 
-std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side) {
+std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side, bool only_captures) {
     std::vector<Shogi::Move> moves;
     bool is_enemy_turn = (side == Shogi::ENEMY);
 
@@ -52,6 +52,10 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
                     Shogi::Coord to{t_col, t_row};
                     if (board.is_legal_move(from, to)) {
                         bool is_capture = !board.get_cell(to).is_empty();
+                        if (only_captures && !is_capture) {
+                            continue;
+                        }
+
                         bool can_promote = false;
                         bool must_promote = false;
 
@@ -83,13 +87,15 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shog
         }
     }
 
-    for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-        if (board.get_hand_count(side, piece_type) > 0) {
-            for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
-                for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    Shogi::Coord to{t_col, t_row};
-                    if (board.is_legal_drop(piece_type, is_enemy_turn, to)) {
-                        moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
+    if (!only_captures) {
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            if (board.get_hand_count(side, piece_type) > 0) {
+                for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
+                    for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
+                        Shogi::Coord to{t_col, t_row};
+                        if (board.is_legal_drop(piece_type, is_enemy_turn, to)) {
+                            moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
+                        }
                     }
                 }
             }
