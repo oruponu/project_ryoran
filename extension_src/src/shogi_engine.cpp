@@ -16,21 +16,15 @@ ShogiEngine::ShogiEngine() {
 }
 
 void ShogiEngine::_bind_methods() {
-    ClassDB::bind_static_method("ShogiEngine",
-                                D_METHOD("is_legal_move", "main_node", "piece_obj", "target_col", "target_row"),
-                                &ShogiEngine::is_legal_move);
-    ClassDB::bind_static_method("ShogiEngine",
-                                D_METHOD("is_legal_drop", "main_node", "piece_obj", "target_col", "target_row"),
-                                &ShogiEngine::is_legal_drop);
-    ClassDB::bind_static_method("ShogiEngine", D_METHOD("get_legal_moves", "main_node", "piece_obj"),
-                                &ShogiEngine::get_legal_moves);
-    ClassDB::bind_static_method("ShogiEngine", D_METHOD("get_legal_drops", "main_node", "piece_obj"),
-                                &ShogiEngine::get_legal_drops);
-    ClassDB::bind_static_method(
-        "ShogiEngine", D_METHOD("is_king_safe_after_move", "main_node", "piece_obj", "target_col", "target_row"),
-        &ShogiEngine::is_king_safe_after_move);
-    ClassDB::bind_static_method("ShogiEngine", D_METHOD("is_king_in_check", "main_node", "is_enemy"),
-                                &ShogiEngine::is_king_in_check);
+    ClassDB::bind_method(D_METHOD("is_legal_move", "main_node", "piece_obj", "target_col", "target_row"),
+                         &ShogiEngine::is_legal_move);
+    ClassDB::bind_method(D_METHOD("is_legal_drop", "main_node", "piece_obj", "target_col", "target_row"),
+                         &ShogiEngine::is_legal_drop);
+    ClassDB::bind_method(D_METHOD("get_legal_moves", "main_node", "piece_obj"), &ShogiEngine::get_legal_moves);
+    ClassDB::bind_method(D_METHOD("get_legal_drops", "main_node", "piece_obj"), &ShogiEngine::get_legal_drops);
+    ClassDB::bind_method(D_METHOD("is_king_safe_after_move", "main_node", "piece_obj", "target_col", "target_row"),
+                         &ShogiEngine::is_king_safe_after_move);
+    ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
 
     ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
     ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);

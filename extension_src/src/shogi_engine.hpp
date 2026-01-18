@@ -37,12 +37,12 @@ class ShogiEngine : public RefCounted {
     ShogiEngine();
     ~ShogiEngine() {}
 
-    static bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    static bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    static TypedArray<Vector2i> get_legal_moves(Node2D *main_node, Object *piece_obj);
-    static TypedArray<Vector2i> get_legal_drops(Node2D *main_node, Object *piece_obj);
-    static bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    static bool is_king_in_check(Node2D *main_node, bool is_enemy);
+    bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    TypedArray<Vector2i> get_legal_moves(Node2D *main_node, Object *piece_obj);
+    TypedArray<Vector2i> get_legal_drops(Node2D *main_node, Object *piece_obj);
+    bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    bool is_king_in_check(Node2D *main_node, bool is_enemy);
 
     void update_state(Node2D *main_node);
     Dictionary search_best_move();
