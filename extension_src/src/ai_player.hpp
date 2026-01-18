@@ -13,8 +13,6 @@ class AIPlayer {
   private:
     const uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 
-    Shogi::Side side_to_move;
-
     std::vector<Shogi::Move> get_legal_moves(const BoardState &board, Shogi::Side side);
     int evaluate(const BoardState &board);
     int alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
@@ -22,7 +20,7 @@ class AIPlayer {
     double calculate_win_probability(int score);
 
   public:
-    explicit AIPlayer(Shogi::Side side_to_move) : side_to_move(side_to_move) {}
+    AIPlayer() {}
     ~AIPlayer() {}
 
     Dictionary search_best_move(BoardState board);

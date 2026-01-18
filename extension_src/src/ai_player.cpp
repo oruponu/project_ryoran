@@ -140,7 +140,7 @@ int AIPlayer::evaluate(const BoardState &board) {
                 break;
             }
 
-            if (cell.side == side_to_move) {
+            if (cell.side == Shogi::PLAYER) {
                 score += piece_value;
             } else {
                 score -= piece_value;
@@ -150,7 +150,7 @@ int AIPlayer::evaluate(const BoardState &board) {
 
     // 持ち駒
     for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
-        int sign = (side == side_to_move) ? 1 : -1;
+        int sign = (side == Shogi::PLAYER) ? 1 : -1;
         for (const auto &piece : HAND_PIECES) {
             score += board.get_hand_count(side, piece.type) * piece.value * sign;
         }
@@ -170,6 +170,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         return evaluate(board);
     }
 
+    Shogi::Side side_to_move = board.get_side_to_move();
     std::vector<Shogi::Move> moves = get_legal_moves(board, side);
     if (moves.empty()) {
         // 投了
@@ -182,7 +183,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
 
     Shogi::Side next_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
-    if (side == side_to_move) {
+    if (side == Shogi::PLAYER) {
         int max_eval = -99999999;
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
@@ -227,7 +228,8 @@ double AIPlayer::calculate_win_probability(int score) {
 }
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
-    std::vector<Shogi::Move> moves = get_legal_moves(board, side_to_move);
+    Shogi::Side root_side = board.get_side_to_move();
+    std::vector<Shogi::Move> moves = get_legal_moves(board, root_side);
 
     if (moves.empty()) {
         // 投了
@@ -242,7 +244,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     int max_depth_limit = 10;
 
     Shogi::Move global_best_move = moves[0];
-    int global_best_score = -99999999;
+    int global_best_score = (root_side == Shogi::PLAYER) ? -99999999 : 99999999;
 
     Shogi::Move best_move_prev_iter = moves[0];
     bool has_prev_best = false;
@@ -272,8 +274,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         int alpha = -99999999;
         int beta = 99999999;
         Shogi::Move current_depth_best_move = moves[0];
-        int current_depth_best_score = -99999999;
-        Shogi::Side next_turn_side = (side_to_move == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
+        int current_depth_best_score = (root_side == Shogi::PLAYER) ? -99999999 : 99999999;
+        Shogi::Side next_turn_side = (root_side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
         for (const auto &move : moves) {
             if (Time::get_singleton()->get_ticks_usec() > end_time) {
@@ -289,12 +291,26 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
                 break;
             }
 
-            if (score > current_depth_best_score) {
-                current_depth_best_score = score;
-                current_depth_best_move = move;
+            bool update_best = false;
+            if (root_side == Shogi::PLAYER) {
+                if (score > current_depth_best_score) {
+                    current_depth_best_score = score;
+                    update_best = true;
+                }
+
+                alpha = std::max(alpha, score);
+            } else {
+                if (score < current_depth_best_score) {
+                    current_depth_best_score = score;
+                    update_best = true;
+                }
+
+                beta = std::min(beta, score);
             }
 
-            alpha = std::max(alpha, score);
+            if (update_best) {
+                current_depth_best_move = move;
+            }
         }
 
         if (timeout) {
@@ -308,7 +324,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         best_move_prev_iter = global_best_move;
         has_prev_best = true;
 
-        double win_prob = calculate_win_probability(global_best_score);
+        int display_score = (root_side == Shogi::PLAYER) ? global_best_score : -global_best_score;
+        double win_prob = calculate_win_probability(display_score);
         UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score,
                                 ", WinRate: ", String::num(win_prob * 100.0, 1), "%");
 
@@ -320,7 +337,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     }
 
     const auto &best_move = global_best_move;
-    float win_rate = calculate_win_probability(global_best_score);
+    int final_score = (root_side == Shogi::PLAYER) ? global_best_score : -global_best_score;
+    float win_rate = calculate_win_probability(final_score);
 
     Dictionary result;
     result["from_col"] = best_move.from_col;

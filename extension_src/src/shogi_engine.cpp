@@ -202,6 +202,6 @@ Dictionary ShogiEngine::search_best_move() {
         }
     }
 
-    AIPlayer ai_player(side_to_move);
+    AIPlayer ai_player;
     return ai_player.search_best_move(current_state);
 }
