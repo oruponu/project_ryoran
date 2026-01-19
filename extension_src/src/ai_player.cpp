@@ -5,6 +5,8 @@
 #include <vector>
 
 using namespace godot;
+using Shogi::Coord;
+using Shogi::Move;
 using Shogi::PieceType;
 using Shogi::Turn;
 
@@ -90,13 +92,13 @@ constexpr const int (*PST_TABLES[Shogi::PIECE_TYPE_COUNT])[9] = {
 
 } // namespace
 
-std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Turn turn, bool only_captures) {
-    std::vector<Shogi::Move> moves;
+std::vector<Move> AIPlayer::get_legal_moves(const BoardState &board, Turn turn, bool only_captures) {
+    std::vector<Move> moves;
     bool is_enemy_turn = (turn == Turn::GOTE);
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Shogi::Coord from{col, row};
+            Coord from{col, row};
             const Cell &cell = board.get_cell(from);
 
             // 自駒でないならスキップ
@@ -106,7 +108,7 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Turn
 
             for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
                 for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    Shogi::Coord to{t_col, t_row};
+                    Coord to{t_col, t_row};
                     if (board.is_legal_move(from, to)) {
                         bool is_capture = !board.get_cell(to).is_empty();
                         if (only_captures && !is_capture) {
@@ -149,7 +151,7 @@ std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Turn
             if (board.get_hand_count(turn, piece_type) > 0) {
                 for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
                     for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                        Shogi::Coord to{t_col, t_row};
+                        Coord to{t_col, t_row};
                         if (board.is_legal_drop(piece_type, is_enemy_turn, to)) {
                             moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
                         }
@@ -208,7 +210,7 @@ int AIPlayer::evaluate(const BoardState &board) {
     return score;
 }
 
-int AIPlayer::get_pst_value(PieceType piece_type, Turn turn, Shogi::Coord coord) {
+int AIPlayer::get_pst_value(PieceType piece_type, Turn turn, Coord coord) {
     if (!coord.is_valid() || static_cast<int>(piece_type) < 0 ||
         static_cast<int>(piece_type) >= Shogi::PIECE_TYPE_COUNT) {
         return 0;
@@ -239,21 +241,20 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
     }
 
     Turn turn_to_move = board.get_turn_to_move();
-    std::vector<Shogi::Move> moves = get_legal_moves(board, turn);
+    std::vector<Move> moves = get_legal_moves(board, turn);
     if (moves.empty()) {
         // 投了
         return (turn == turn_to_move) ? -999999 : 999999;
     }
 
     // 取る手を優先
-    std::sort(moves.begin(), moves.end(),
-              [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+    std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
 
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
     if (turn == Turn::SENTE) {
         int max_eval = -99999999;
-        for (const Shogi::Move &move : moves) {
+        for (const Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move);
             int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
@@ -271,7 +272,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
         return max_eval;
     } else {
         int min_eval = 99999999;
-        for (const Shogi::Move &move : moves) {
+        for (const Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move);
             int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
@@ -304,10 +305,9 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
             alpha = stand_pat;
         }
 
-        std::vector<Shogi::Move> moves = get_legal_moves(board, turn, true);
+        std::vector<Move> moves = get_legal_moves(board, turn, true);
 
-        std::sort(moves.begin(), moves.end(),
-                  [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+        std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
 
         int max_eval = stand_pat;
 
@@ -335,9 +335,8 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
             beta = stand_pat;
         }
 
-        std::vector<Shogi::Move> moves = get_legal_moves(board, turn, true);
-        std::sort(moves.begin(), moves.end(),
-                  [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+        std::vector<Move> moves = get_legal_moves(board, turn, true);
+        std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
         int min_eval = stand_pat;
 
         for (const auto &move : moves) {
@@ -365,7 +364,7 @@ double AIPlayer::calculate_win_probability(int score) {
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
     Turn root_side = board.get_turn_to_move();
-    std::vector<Shogi::Move> moves = get_legal_moves(board, root_side);
+    std::vector<Move> moves = get_legal_moves(board, root_side);
 
     if (moves.empty()) {
         // 投了
@@ -379,10 +378,10 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     int max_depth_limit = 10;
 
-    Shogi::Move global_best_move = moves[0];
+    Move global_best_move = moves[0];
     int global_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
 
-    Shogi::Move best_move_prev_iter = moves[0];
+    Move best_move_prev_iter = moves[0];
     bool has_prev_best = false;
     uint64_t total_node_count = 0;
 
@@ -399,12 +398,12 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             }
         } else {
             std::sort(moves.begin(), moves.end(),
-                      [](const Shogi::Move &a, const Shogi::Move &b) { return a.is_capture > b.is_capture; });
+                      [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
         }
 
         int alpha = -99999999;
         int beta = 99999999;
-        Shogi::Move current_depth_best_move = moves[0];
+        Move current_depth_best_move = moves[0];
         int current_depth_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
         Turn next_turn_side = (root_side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 

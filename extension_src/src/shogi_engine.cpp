@@ -7,6 +7,8 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
+using Shogi::Coord;
+using Shogi::Move;
 using Shogi::PieceType;
 using Shogi::Turn;
 
@@ -69,8 +71,8 @@ void ShogiEngine::load_book_from_file(const String &path) {
             bool is_drop = file->get_8() != 0;
             bool is_capture = file->get_8() != 0;
 
-            Shogi::Move move(from_col, from_row, to_col, to_row, static_cast<PieceType>(piece_type), is_promotion,
-                             is_drop, is_capture);
+            Move move(from_col, from_row, to_col, to_row, static_cast<PieceType>(piece_type), is_promotion, is_drop,
+                      is_capture);
             book[hash].push_back(move);
         }
     }
@@ -111,11 +113,11 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *pie
     BoardState board(main_node, turn_to_move);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
-    Shogi::Coord from{current_col, current_row};
+    Coord from{current_col, current_row};
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Shogi::Coord to{col, row};
+            Coord to{col, row};
             if (board.is_legal_move(from, to)) {
                 result.append(Vector2i(col, row));
             }
@@ -137,7 +139,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Shogi::Coord to{col, row};
+            Coord to{col, row};
             if (board.is_legal_drop(static_cast<PieceType>(piece_type), is_enemy, to)) {
                 result.append(Vector2i(col, row));
             }
@@ -160,8 +162,8 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
     bool is_promoted = piece_obj->get("is_promoted");
 
     Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
-    Shogi::Coord from{current_col, current_row};
-    Shogi::Coord to{target_col, target_row};
+    Coord from{current_col, current_row};
+    Coord to{target_col, target_row};
 
     if (from.is_valid()) {
         board.clear_cell(from);
@@ -200,9 +202,9 @@ Dictionary ShogiEngine::search_best_move() {
     uint64_t hash = current_state.get_zobrist_hash();
     auto it = book.find(hash);
     if (it != book.end()) {
-        const std::vector<Shogi::Move> &book_moves = it->second;
+        const std::vector<Move> &book_moves = it->second;
         if (!book_moves.empty()) {
-            const Shogi::Move &best_move = book_moves[0];
+            const Move &best_move = book_moves[0];
 
             UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
 

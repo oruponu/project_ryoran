@@ -6,6 +6,8 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
+using Shogi::Coord;
+using Shogi::Move;
 using Shogi::PieceType;
 using Shogi::Turn;
 
@@ -201,7 +203,7 @@ uint64_t BoardState::calculate_zobrist_hash() const {
     return hash;
 }
 
-bool BoardState::is_valid_move(Shogi::Coord from, Shogi::Coord to) const {
+bool BoardState::is_valid_move(Coord from, Coord to) const {
     // 盤面の範囲外には移動不可
     if (!to.is_valid()) {
         return false;
@@ -235,7 +237,7 @@ bool BoardState::is_valid_move(Shogi::Coord from, Shogi::Coord to) const {
     return true;
 }
 
-bool BoardState::is_valid_drop(PieceType piece_type, bool is_enemy, Shogi::Coord to) const {
+bool BoardState::is_valid_drop(PieceType piece_type, bool is_enemy, Coord to) const {
     // 盤面の範囲外には配置不可
     if (!to.is_valid()) {
         return false;
@@ -264,7 +266,7 @@ bool BoardState::is_valid_drop(PieceType piece_type, bool is_enemy, Shogi::Coord
     return true;
 }
 
-bool BoardState::is_legal_move(Shogi::Coord from, Shogi::Coord to) const {
+bool BoardState::is_legal_move(Coord from, Coord to) const {
     if (!is_valid_move(from, to)) {
         return false;
     }
@@ -282,7 +284,7 @@ bool BoardState::is_legal_move(Shogi::Coord from, Shogi::Coord to) const {
     return true;
 }
 
-bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Shogi::Coord to) const {
+bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) const {
     if (!is_valid_drop(piece_type, is_enemy, to)) {
         return false;
     }
@@ -300,8 +302,7 @@ bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Shogi::Coord
     return true;
 }
 
-bool BoardState::can_move_geometry(PieceType piece_type, bool is_enemy, bool is_promoted, Shogi::Coord from,
-                                   Shogi::Coord to) const {
+bool BoardState::can_move_geometry(PieceType piece_type, bool is_enemy, bool is_promoted, Coord from, Coord to) const {
     int dx = to.col - from.col;
     int dy = to.row - from.row;
 
@@ -377,7 +378,7 @@ bool BoardState::can_move_geometry(PieceType piece_type, bool is_enemy, bool is_
     }
 }
 
-bool BoardState::is_path_blocked(Shogi::Coord from, Shogi::Coord to) const {
+bool BoardState::is_path_blocked(Coord from, Coord to) const {
     int dx = to.col - from.col;
     int dy = to.row - from.row;
     int steps = std::max(std::abs(dx), std::abs(dy));
@@ -390,7 +391,7 @@ bool BoardState::is_path_blocked(Shogi::Coord from, Shogi::Coord to) const {
     int step_y = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
 
     for (int i = 1; i < steps; ++i) {
-        Shogi::Coord check{from.col + step_x * i, from.row + step_y * i};
+        Coord check{from.col + step_x * i, from.row + step_y * i};
         if (!get_cell(check).is_empty()) {
             return true;
         }
@@ -435,7 +436,7 @@ bool BoardState::is_king_in_check(Turn turn) const {
 
         for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
             for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-                Shogi::Coord coord{col, row};
+                Coord coord{col, row};
                 if (const Cell &cell = get_cell(coord);
                     !cell.is_empty() && cell.turn == enemy_side && is_valid_move(coord, *king_pos)) {
                     return true;
@@ -449,10 +450,10 @@ bool BoardState::is_king_in_check(Turn turn) const {
 
 uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash; }
 
-std::optional<Shogi::Coord> BoardState::find_king_position(Turn turn) const {
+std::optional<Coord> BoardState::find_king_position(Turn turn) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Shogi::Coord coord{col, row};
+            Coord coord{col, row};
             const Cell &cell = get_cell(coord);
             if (cell.turn == turn && cell.type == PieceType::KING) {
                 return coord;
@@ -463,7 +464,7 @@ std::optional<Shogi::Coord> BoardState::find_king_position(Turn turn) const {
     return std::nullopt;
 }
 
-const Cell &BoardState::get_cell(Shogi::Coord coord) const {
+const Cell &BoardState::get_cell(Coord coord) const {
     if (!coord.is_valid()) {
         // 範囲外のアクセスなら空のセルを返す
         static Cell empty_cell;
@@ -473,7 +474,7 @@ const Cell &BoardState::get_cell(Shogi::Coord coord) const {
     return board[coord.col * Shogi::BOARD_ROWS + coord.row];
 }
 
-void BoardState::set_cell(Shogi::Coord coord, PieceType type, Turn turn, bool is_promoted) {
+void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promoted) {
     if (!coord.is_valid()) {
         return;
     }
@@ -492,7 +493,7 @@ void BoardState::set_cell(Shogi::Coord coord, PieceType type, Turn turn, bool is
     board[index] = Cell(type, turn, is_promoted);
 }
 
-void BoardState::clear_cell(Shogi::Coord coord) {
+void BoardState::clear_cell(Coord coord) {
     if (!coord.is_valid()) {
         return;
     }
@@ -517,7 +518,7 @@ int BoardState::get_hand_count(Turn turn, PieceType piece_type) const {
     return hand[side_idx][type_idx];
 }
 
-void BoardState::apply_move(const Shogi::Move &move) {
+void BoardState::apply_move(const Move &move) {
     Turn current_side = turn_to_move;
     Turn opponent_side = (turn_to_move == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
