@@ -27,7 +27,7 @@ class ShogiEngine : public RefCounted {
     inline static bool is_initialized;
 
     BoardState current_state;
-    Shogi::Side side_to_move = Shogi::PLAYER;
+    Shogi::Turn turn_to_move = Shogi::Turn::SENTE;
 
     static void load_book_from_file(const String &path);
 
@@ -38,8 +38,10 @@ class ShogiEngine : public RefCounted {
     ShogiEngine();
     ~ShogiEngine() {}
 
-    void set_is_enemy_side(bool is_enemy_side) { side_to_move = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER; }
-    [[nodiscard]] bool get_is_enemy_side() const { return side_to_move == Shogi::ENEMY; }
+    void set_is_enemy_side(bool is_enemy_side) {
+        turn_to_move = is_enemy_side ? Shogi::Turn::GOTE : Shogi::Turn::SENTE;
+    }
+    [[nodiscard]] bool get_is_enemy_side() const { return turn_to_move == Shogi::Turn::GOTE; }
 
     [[nodiscard]] bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     [[nodiscard]] bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);

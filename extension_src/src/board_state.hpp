@@ -10,21 +10,21 @@
 using namespace godot;
 
 struct Cell {
-    int type;
-    Shogi::Side side;
+    Shogi::PieceType type;
+    Shogi::Turn turn;
     bool is_promoted;
 
-    [[nodiscard]] bool is_empty() const { return type == Shogi::EMPTY; }
+    [[nodiscard]] bool is_empty() const { return type == Shogi::PieceType::EMPTY; }
 
-    Cell() : type(Shogi::EMPTY), side(Shogi::PLAYER), is_promoted(false) {}
-    Cell(int t, Shogi::Side s, bool p) : type(t), side(s), is_promoted(p) {}
+    Cell() : type(Shogi::PieceType::EMPTY), turn(Shogi::Turn::SENTE), is_promoted(false) {}
+    Cell(Shogi::PieceType t, Shogi::Turn s, bool p) : type(t), turn(s), is_promoted(p) {}
 
     [[nodiscard]] bool operator==(const Cell &other) const {
-        if (type == Shogi::EMPTY && other.type == Shogi::EMPTY) {
+        if (type == Shogi::PieceType::EMPTY && other.type == Shogi::PieceType::EMPTY) {
             return true;
         }
 
-        return type == other.type && side == other.side && is_promoted == other.is_promoted;
+        return type == other.type && turn == other.turn && is_promoted == other.is_promoted;
     }
 
     [[nodiscard]] bool operator!=(const Cell &other) const { return !(*this == other); }
@@ -35,25 +35,25 @@ class BoardState {
     Cell board[Shogi::BOARD_SIZE];
     int hand[2][Shogi::PIECE_TYPE_COUNT];
 
-    Shogi::Side side_to_move;
+    Shogi::Turn turn_to_move;
     uint64_t zobrist_hash;
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
     [[nodiscard]] bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
-    [[nodiscard]] bool is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
+    [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
     [[nodiscard]] bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
-    [[nodiscard]] bool is_nifu(int piece_type, Shogi::Side side, int col) const;
-    [[nodiscard]] std::optional<Shogi::Coord> find_king_position(Shogi::Side side) const;
+    [[nodiscard]] bool is_nifu(Shogi::PieceType piece_type, Shogi::Turn turn, int col) const;
+    [[nodiscard]] std::optional<Shogi::Coord> find_king_position(Shogi::Turn turn) const;
 
   public:
-    BoardState(Shogi::Side side_to_move = Shogi::PLAYER);
-    explicit BoardState(Node *main_node, Shogi::Side side_to_move);
+    BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
+    explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
-    [[nodiscard]] Shogi::Side get_side_to_move() const { return side_to_move; }
+    [[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move; }
 
     [[nodiscard]] bool operator==(const BoardState &other) const {
-        if (side_to_move != other.side_to_move) {
+        if (turn_to_move != other.turn_to_move) {
             return false;
         }
 
@@ -63,9 +63,9 @@ class BoardState {
             }
         }
 
-        for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
+        for (Shogi::Turn turn : {Shogi::Turn::SENTE, Shogi::Turn::GOTE}) {
             for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-                if (hand[side][piece_type] != other.hand[side][piece_type]) {
+                if (hand[static_cast<int>(turn)][piece_type] != other.hand[static_cast<int>(turn)][piece_type]) {
                     return false;
                 }
             }
@@ -79,17 +79,17 @@ class BoardState {
     [[nodiscard]] uint64_t get_zobrist_hash() const;
 
     [[nodiscard]] bool is_legal_move(Shogi::Coord from, Shogi::Coord to) const;
-    [[nodiscard]] bool is_legal_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
-    [[nodiscard]] bool can_move_geometry(int piece_type, bool is_enemy, bool is_promoted, Shogi::Coord from,
-                                         Shogi::Coord to) const;
-    [[nodiscard]] bool is_dead_end(int piece_type, bool is_enemy, int to_row) const;
-    [[nodiscard]] bool is_king_in_check(Shogi::Side side) const;
+    [[nodiscard]] bool is_legal_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
+    [[nodiscard]] bool can_move_geometry(Shogi::PieceType piece_type, bool is_enemy, bool is_promoted,
+                                         Shogi::Coord from, Shogi::Coord to) const;
+    [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
+    [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
 
     // 盤面の操作
     [[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
-    void set_cell(Shogi::Coord coord, int type, Shogi::Side side, bool is_promoted);
+    void set_cell(Shogi::Coord coord, Shogi::PieceType type, Shogi::Turn turn, bool is_promoted);
     void clear_cell(Shogi::Coord coord);
-    [[nodiscard]] int get_hand_count(Shogi::Side side, int piece_type) const;
+    [[nodiscard]] int get_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type) const;
     void apply_move(const Shogi::Move &move);
 
     // 盤面の出力（デバッグ用）

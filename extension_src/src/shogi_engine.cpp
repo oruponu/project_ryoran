@@ -7,6 +7,8 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
+using Shogi::PieceType;
+using Shogi::Turn;
 
 ShogiEngine::ShogiEngine() {
     if (!is_initialized) {
@@ -67,7 +69,8 @@ void ShogiEngine::load_book_from_file(const String &path) {
             bool is_drop = file->get_8() != 0;
             bool is_capture = file->get_8() != 0;
 
-            Shogi::Move move(from_col, from_row, to_col, to_row, piece_type, is_promotion, is_drop, is_capture);
+            Shogi::Move move(from_col, from_row, to_col, to_row, static_cast<PieceType>(piece_type), is_promotion,
+                             is_drop, is_capture);
             book[hash].push_back(move);
         }
     }
@@ -80,7 +83,7 @@ bool ShogiEngine::is_legal_move(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
 
@@ -92,11 +95,11 @@ bool ShogiEngine::is_legal_drop(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
-    return board.is_legal_drop(piece_type, is_enemy, {target_col, target_row});
+    return board.is_legal_drop(static_cast<PieceType>(piece_type), is_enemy, {target_col, target_row});
 }
 
 TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *piece_obj) {
@@ -105,7 +108,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
     Shogi::Coord from{current_col, current_row};
@@ -128,14 +131,14 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
             Shogi::Coord to{col, row};
-            if (board.is_legal_drop(piece_type, is_enemy, to)) {
+            if (board.is_legal_drop(static_cast<PieceType>(piece_type), is_enemy, to)) {
                 result.append(Vector2i(col, row));
             }
         }
@@ -149,14 +152,14 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
         return false;
     }
 
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
     int piece_type = piece_obj->get("piece_type");
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
     bool is_enemy = piece_obj->get("is_enemy");
     bool is_promoted = piece_obj->get("is_promoted");
 
-    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
     Shogi::Coord from{current_col, current_row};
     Shogi::Coord to{target_col, target_row};
 
@@ -164,13 +167,13 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
         board.clear_cell(from);
     }
 
-    board.set_cell(to, piece_type, side, is_promoted);
+    board.set_cell(to, static_cast<PieceType>(piece_type), turn, is_promoted);
 
-    return !board.is_king_in_check(side);
+    return !board.is_king_in_check(turn);
 }
 
 bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) {
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
 
     if (!piece_obj) {
         return false;
@@ -179,18 +182,18 @@ bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) 
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
-    return board.is_dead_end(piece_type, is_enemy, to_row);
+    return board.is_dead_end(static_cast<PieceType>(piece_type), is_enemy, to_row);
 }
 
 bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
-    BoardState board(main_node, side_to_move);
+    BoardState board(main_node, turn_to_move);
 
-    Shogi::Side side = is_enemy ? Shogi::ENEMY : Shogi::PLAYER;
+    Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 
-    return board.is_king_in_check(side);
+    return board.is_king_in_check(turn);
 }
 
-void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node, side_to_move); }
+void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node, turn_to_move); }
 
 Dictionary ShogiEngine::search_best_move() {
     // 定跡を参照
@@ -208,7 +211,7 @@ Dictionary ShogiEngine::search_best_move() {
             result["from_row"] = best_move.from_row;
             result["to_col"] = best_move.to_col;
             result["to_row"] = best_move.to_row;
-            result["piece_type"] = best_move.piece_type;
+            result["piece_type"] = static_cast<int>(best_move.piece_type);
             result["is_promotion"] = best_move.is_promotion;
             result["is_drop"] = best_move.is_drop;
             result["win_rate"] = 0.5;
