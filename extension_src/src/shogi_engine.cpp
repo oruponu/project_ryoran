@@ -13,13 +13,13 @@ using Shogi::PieceType;
 using Shogi::Turn;
 
 ShogiEngine::ShogiEngine() {
-    if (!is_initialized) {
+    if (!is_initialized_) {
         std::srand(Time::get_singleton()->get_ticks_usec());
 
         BoardState::load_zobrist_params("res://assets/data/zobrist_params.bin");
         load_book_from_file("res://assets/data/book.bin");
 
-        is_initialized = true;
+        is_initialized_ = true;
     }
 }
 
@@ -55,7 +55,7 @@ void ShogiEngine::load_book_from_file(const String &path) {
     }
 
     int total_hashes = file->get_32();
-    book.clear();
+    book_.clear();
 
     for (int i = 0; i < total_hashes; ++i) {
         uint64_t hash = file->get_64();
@@ -73,7 +73,7 @@ void ShogiEngine::load_book_from_file(const String &path) {
 
             Move move(from_col, from_row, to_col, to_row, static_cast<PieceType>(piece_type), is_promotion, is_drop,
                       is_capture);
-            book[hash].push_back(move);
+            book_[hash].push_back(move);
         }
     }
 
@@ -85,7 +85,7 @@ bool ShogiEngine::is_legal_move(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
 
@@ -97,7 +97,7 @@ bool ShogiEngine::is_legal_drop(Node2D *main_node, Object *piece_obj, int target
         return false;
     }
 
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
@@ -110,7 +110,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
     Coord from{current_col, current_row};
@@ -133,7 +133,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
         return result;
     }
 
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
     int piece_type = piece_obj->get("piece_type");
     bool is_enemy = piece_obj->get("is_enemy");
 
@@ -154,7 +154,7 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
         return false;
     }
 
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
     int piece_type = piece_obj->get("piece_type");
     int current_col = piece_obj->get("current_col");
     int current_row = piece_obj->get("current_row");
@@ -175,7 +175,7 @@ bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, 
 }
 
 bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) {
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
 
     if (!piece_obj) {
         return false;
@@ -188,20 +188,20 @@ bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) 
 }
 
 bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
-    BoardState board(main_node, turn_to_move);
+    BoardState board(main_node, turn_to_move_);
 
     Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 
     return board.is_king_in_check(turn);
 }
 
-void ShogiEngine::update_state(Node2D *main_node) { current_state = BoardState(main_node, turn_to_move); }
+void ShogiEngine::update_state(Node2D *main_node) { current_state_ = BoardState(main_node, turn_to_move_); }
 
 Dictionary ShogiEngine::search_best_move() {
     // 定跡を参照
-    uint64_t hash = current_state.get_zobrist_hash();
-    auto it = book.find(hash);
-    if (it != book.end()) {
+    uint64_t hash = current_state_.get_zobrist_hash();
+    auto it = book_.find(hash);
+    if (it != book_.end()) {
         const std::vector<Move> &book_moves = it->second;
         if (!book_moves.empty()) {
             const Move &best_move = book_moves[0];
@@ -222,5 +222,5 @@ Dictionary ShogiEngine::search_best_move() {
     }
 
     AIPlayer ai_player;
-    return ai_player.search_best_move(current_state);
+    return ai_player.search_best_move(current_state_);
 }

@@ -38,27 +38,27 @@ constexpr std::array MOVES_GOLD = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_LEFT, 
 constexpr std::array MOVES_KING = {DIR_UP_LEFT, DIR_UP,        DIR_UP_RIGHT, DIR_LEFT,
                                    DIR_RIGHT,   DIR_DOWN_LEFT, DIR_DOWN,     DIR_DOWN_RIGHT};
 
-uint64_t z_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
-uint64_t z_hand[2][Shogi::PIECE_TYPE_COUNT][20];
-uint64_t z_turn_enemy;
-bool z_initialized = false;
+uint64_t g_zobrist_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
+uint64_t g_zobrist_hand[2][Shogi::PIECE_TYPE_COUNT][20];
+uint64_t g_zobrist_turn_enemy;
+bool g_zobrist_initialized = false;
 
 } // namespace
 
-BoardState::BoardState(Turn turn_to_move) : turn_to_move(turn_to_move) {
+BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move) {
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
-        board[i] = Cell();
+        board_[i] = Cell();
     }
 
     // 持ち駒を初期化
     for (Turn turn : {Turn::SENTE, Turn::GOTE}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-            hand[static_cast<int>(turn)][piece_type] = 0;
+            hand_[static_cast<int>(turn)][piece_type] = 0;
         }
     }
 
-    zobrist_hash = calculate_zobrist_hash();
+    zobrist_hash_ = calculate_zobrist_hash();
 }
 
 BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_move) {
@@ -91,10 +91,10 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
                 bool is_enemy = piece->get("is_enemy");
                 bool is_promoted = piece->get("is_promoted");
 
-                board[index] =
+                board_[index] =
                     Cell(static_cast<PieceType>(piece_type), is_enemy ? Turn::GOTE : Turn::SENTE, is_promoted);
             } else {
-                board[index] = Cell();
+                board_[index] = Cell();
             }
         }
     }
@@ -117,18 +117,18 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
                 if (v_type.get_type() == Variant::INT) {
                     int piece_type = v_type;
                     if (piece_type >= 0 && piece_type < Shogi::PIECE_TYPE_COUNT) {
-                        hand[static_cast<int>(turn)][piece_type]++;
+                        hand_[static_cast<int>(turn)][piece_type]++;
                     }
                 }
             }
         }
     }
 
-    zobrist_hash = calculate_zobrist_hash();
+    zobrist_hash_ = calculate_zobrist_hash();
 }
 
 void BoardState::load_zobrist_params(const String &path) {
-    if (z_initialized) {
+    if (g_zobrist_initialized) {
         return;
     }
 
@@ -149,7 +149,7 @@ void BoardState::load_zobrist_params(const String &path) {
             for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
                 for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
                     for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-                        z_board[static_cast<int>(turn)][piece_type][is_promoted][col][row] = file->get_64();
+                        g_zobrist_board[static_cast<int>(turn)][piece_type][is_promoted][col][row] = file->get_64();
                     }
                 }
             }
@@ -160,13 +160,13 @@ void BoardState::load_zobrist_params(const String &path) {
     for (Turn turn : {Turn::SENTE, Turn::GOTE}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             for (int n = 0; n < 20; ++n) {
-                z_hand[static_cast<int>(turn)][piece_type][n] = file->get_64();
+                g_zobrist_hand[static_cast<int>(turn)][piece_type][n] = file->get_64();
             }
         }
     }
 
-    z_turn_enemy = file->get_64();
-    z_initialized = true;
+    g_zobrist_turn_enemy = file->get_64();
+    g_zobrist_initialized = true;
 
     UtilityFunctions::print("Zobrist parameters loaded successfully.");
 }
@@ -180,7 +180,8 @@ uint64_t BoardState::calculate_zobrist_hash() const {
             const Cell &cell = get_cell({col, row});
             if (!cell.is_empty()) {
                 int is_promoted = cell.is_promoted ? 1 : 0;
-                hash ^= z_board[static_cast<int>(cell.turn)][static_cast<int>(cell.type)][is_promoted][col][row];
+                hash ^=
+                    g_zobrist_board[static_cast<int>(cell.turn)][static_cast<int>(cell.type)][is_promoted][col][row];
             }
         }
     }
@@ -188,16 +189,16 @@ uint64_t BoardState::calculate_zobrist_hash() const {
     // 持ち駒
     for (Turn turn : {Turn::SENTE, Turn::GOTE}) {
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-            int count = hand[static_cast<int>(turn)][piece_type];
+            int count = hand_[static_cast<int>(turn)][piece_type];
             if (count > 0) {
                 int index = (count >= 20) ? 19 : count;
-                hash ^= z_hand[static_cast<int>(turn)][piece_type][index];
+                hash ^= g_zobrist_hand[static_cast<int>(turn)][piece_type][index];
             }
         }
     }
 
-    if (turn_to_move == Turn::GOTE) {
-        hash ^= z_turn_enemy;
+    if (turn_to_move_ == Turn::GOTE) {
+        hash ^= g_zobrist_turn_enemy;
     }
 
     return hash;
@@ -292,7 +293,7 @@ bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) co
     BoardState next_state = *this;
     Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
     next_state.set_cell(to, piece_type, turn, false);
-    next_state.hand[static_cast<int>(turn)][static_cast<int>(piece_type)]--;
+    next_state.hand_[static_cast<int>(turn)][static_cast<int>(piece_type)]--;
 
     // 王手放置になる手を除外
     if (next_state.is_king_in_check(turn)) {
@@ -448,7 +449,7 @@ bool BoardState::is_king_in_check(Turn turn) const {
     }
 }
 
-uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash; }
+uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash_; }
 
 std::optional<Coord> BoardState::find_king_position(Turn turn) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
@@ -471,7 +472,7 @@ const Cell &BoardState::get_cell(Coord coord) const {
         return empty_cell;
     }
 
-    return board[coord.col * Shogi::BOARD_ROWS + coord.row];
+    return board_[coord.col * Shogi::BOARD_ROWS + coord.row];
 }
 
 void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promoted) {
@@ -482,15 +483,16 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
     Cell old_cell = get_cell(coord);
     if (!old_cell.is_empty()) {
         int old_is_promoted = old_cell.is_promoted ? 1 : 0;
-        zobrist_hash ^= z_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)][old_is_promoted]
-                               [coord.col][coord.row];
+        zobrist_hash_ ^= g_zobrist_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)]
+                                        [old_is_promoted][coord.col][coord.row];
     }
 
     int new_is_promoted = is_promoted ? 1 : 0;
-    zobrist_hash ^= z_board[static_cast<int>(turn)][static_cast<int>(type)][new_is_promoted][coord.col][coord.row];
+    zobrist_hash_ ^=
+        g_zobrist_board[static_cast<int>(turn)][static_cast<int>(type)][new_is_promoted][coord.col][coord.row];
 
     int index = coord.col * Shogi::BOARD_ROWS + coord.row;
-    board[index] = Cell(type, turn, is_promoted);
+    board_[index] = Cell(type, turn, is_promoted);
 }
 
 void BoardState::clear_cell(Coord coord) {
@@ -501,12 +503,12 @@ void BoardState::clear_cell(Coord coord) {
     Cell old_cell = get_cell(coord);
     if (!old_cell.is_empty()) {
         int old_is_promoted = old_cell.is_promoted ? 1 : 0;
-        zobrist_hash ^= z_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)][old_is_promoted]
-                               [coord.col][coord.row];
+        zobrist_hash_ ^= g_zobrist_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)]
+                                        [old_is_promoted][coord.col][coord.row];
     }
 
     int index = coord.col * Shogi::BOARD_ROWS + coord.row;
-    board[index] = Cell();
+    board_[index] = Cell();
 }
 
 int BoardState::get_hand_count(Turn turn, PieceType piece_type) const {
@@ -515,64 +517,64 @@ int BoardState::get_hand_count(Turn turn, PieceType piece_type) const {
     if (side_idx < 0 || side_idx >= 2 || type_idx < 0 || type_idx >= Shogi::PIECE_TYPE_COUNT) {
         return 0;
     }
-    return hand[side_idx][type_idx];
+    return hand_[side_idx][type_idx];
 }
 
 void BoardState::apply_move(const Move &move) {
-    Turn current_side = turn_to_move;
-    Turn opponent_side = (turn_to_move == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    Turn current_side = turn_to_move_;
+    Turn opponent_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
     int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
     int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
 
     if (move.is_drop) {
         PieceType piece_type = move.piece_type;
-        int count = hand[static_cast<int>(current_side)][static_cast<int>(piece_type)];
+        int count = hand_[static_cast<int>(current_side)][static_cast<int>(piece_type)];
 
         int idx_old = std::clamp(count, 0, 19);
         int idx_new = std::clamp(count - 1, 0, 19);
-        zobrist_hash ^= z_hand[static_cast<int>(current_side)][static_cast<int>(piece_type)][idx_old];
-        zobrist_hash ^= z_hand[static_cast<int>(current_side)][static_cast<int>(piece_type)][idx_new];
-        if (hand[static_cast<int>(current_side)][static_cast<int>(move.piece_type)] > 0) {
-            hand[static_cast<int>(current_side)][static_cast<int>(move.piece_type)]--;
+        zobrist_hash_ ^= g_zobrist_hand[static_cast<int>(current_side)][static_cast<int>(piece_type)][idx_old];
+        zobrist_hash_ ^= g_zobrist_hand[static_cast<int>(current_side)][static_cast<int>(piece_type)][idx_new];
+        if (hand_[static_cast<int>(current_side)][static_cast<int>(move.piece_type)] > 0) {
+            hand_[static_cast<int>(current_side)][static_cast<int>(move.piece_type)]--;
         }
 
-        zobrist_hash ^=
-            z_board[static_cast<int>(current_side)][static_cast<int>(piece_type)][0][move.to_col][move.to_row];
-        board[to_idx] = Cell(piece_type, current_side, false);
+        zobrist_hash_ ^=
+            g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(piece_type)][0][move.to_col][move.to_row];
+        board_[to_idx] = Cell(piece_type, current_side, false);
     } else {
         Cell source = get_cell({move.from_col, move.from_row});
         Cell target = get_cell({move.to_col, move.to_row});
 
         int src_is_promoted = source.is_promoted ? 1 : 0;
-        zobrist_hash ^= z_board[static_cast<int>(current_side)][static_cast<int>(source.type)][src_is_promoted]
-                               [move.from_col][move.from_row];
+        zobrist_hash_ ^= g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(source.type)][src_is_promoted]
+                                        [move.from_col][move.from_row];
 
         if (!target.is_empty()) {
             int tgt_is_promoted = target.is_promoted ? 1 : 0;
-            zobrist_hash ^= z_board[static_cast<int>(opponent_side)][static_cast<int>(target.type)][tgt_is_promoted]
-                                   [move.to_col][move.to_row];
+            zobrist_hash_ ^= g_zobrist_board[static_cast<int>(opponent_side)][static_cast<int>(target.type)]
+                                            [tgt_is_promoted][move.to_col][move.to_row];
 
             PieceType captured_type = target.type;
-            int count = hand[static_cast<int>(current_side)][static_cast<int>(captured_type)];
+            int count = hand_[static_cast<int>(current_side)][static_cast<int>(captured_type)];
             int idx_old = std::clamp(count, 0, 19);
             int idx_new = std::clamp(count + 1, 0, 19);
-            zobrist_hash ^= z_hand[static_cast<int>(current_side)][static_cast<int>(captured_type)][idx_old];
-            zobrist_hash ^= z_hand[static_cast<int>(current_side)][static_cast<int>(captured_type)][idx_new];
-            hand[static_cast<int>(current_side)][static_cast<int>(captured_type)]++;
+            zobrist_hash_ ^= g_zobrist_hand[static_cast<int>(current_side)][static_cast<int>(captured_type)][idx_old];
+            zobrist_hash_ ^= g_zobrist_hand[static_cast<int>(current_side)][static_cast<int>(captured_type)][idx_new];
+            hand_[static_cast<int>(current_side)][static_cast<int>(captured_type)]++;
         }
 
         bool is_promoted = move.is_promotion || source.is_promoted;
         int new_is_promoted = is_promoted ? 1 : 0;
-        zobrist_hash ^= z_board[static_cast<int>(current_side)][static_cast<int>(source.type)][new_is_promoted]
-                               [move.to_col][move.to_row];
+        zobrist_hash_ ^= g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(source.type)][new_is_promoted]
+                                        [move.to_col][move.to_row];
 
-        board[to_idx] = Cell(source.type, current_side, is_promoted);
-        board[from_idx] = Cell();
+        board_[to_idx] = Cell(source.type, current_side, is_promoted);
+        board_[from_idx] = Cell();
     }
 
-    zobrist_hash ^= z_turn_enemy;
-    turn_to_move = opponent_side;
+    zobrist_hash_ ^= g_zobrist_turn_enemy;
+    turn_to_move_ = opponent_side;
 }
 
 void BoardState::print_board() const {
@@ -600,12 +602,12 @@ void BoardState::print_board() const {
     UtilityFunctions::print("Player Hand:");
     for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
         UtilityFunctions::print("Type " + String::num_int64(piece_type) + ": " +
-                                String::num_int64(hand[static_cast<int>(Turn::SENTE)][piece_type]));
+                                String::num_int64(hand_[static_cast<int>(Turn::SENTE)][piece_type]));
     }
 
     UtilityFunctions::print("Enemy Hand:");
     for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
         UtilityFunctions::print("Type " + String::num_int64(piece_type) + ": " +
-                                String::num_int64(hand[static_cast<int>(Turn::GOTE)][piece_type]));
+                                String::num_int64(hand_[static_cast<int>(Turn::GOTE)][piece_type]));
     }
 }

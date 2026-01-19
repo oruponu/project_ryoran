@@ -32,11 +32,11 @@ struct Cell {
 
 class BoardState {
   private:
-    Cell board[Shogi::BOARD_SIZE];
-    int hand[2][Shogi::PIECE_TYPE_COUNT];
+    Cell board_[Shogi::BOARD_SIZE];
+    int hand_[2][Shogi::PIECE_TYPE_COUNT];
 
-    Shogi::Turn turn_to_move;
-    uint64_t zobrist_hash;
+    Shogi::Turn turn_to_move_;
+    uint64_t zobrist_hash_;
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
@@ -50,22 +50,22 @@ class BoardState {
     BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
     explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
-    [[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move; }
+    [[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }
 
     [[nodiscard]] bool operator==(const BoardState &other) const {
-        if (turn_to_move != other.turn_to_move) {
+        if (turn_to_move_ != other.turn_to_move_) {
             return false;
         }
 
         for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
-            if (board[i] != other.board[i]) {
+            if (board_[i] != other.board_[i]) {
                 return false;
             }
         }
 
         for (Shogi::Turn turn : {Shogi::Turn::SENTE, Shogi::Turn::GOTE}) {
             for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-                if (hand[static_cast<int>(turn)][piece_type] != other.hand[static_cast<int>(turn)][piece_type]) {
+                if (hand_[static_cast<int>(turn)][piece_type] != other.hand_[static_cast<int>(turn)][piece_type]) {
                     return false;
                 }
             }
