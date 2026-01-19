@@ -74,6 +74,17 @@ constexpr int PST_KING[9][9] = {{0, 0, 0, 0, 0, 0, 0, 0, 0},
                                 {10, 25, 30, 10, -20, 10, 30, 25, 10},
                                 {30, 40, 30, 10, -50, 10, 30, 40, 30}};
 
+constexpr const int (*PST_TABLES[Shogi::PIECE_TYPE_COUNT])[9] = {
+    PST_KING,   // KING
+    PST_ROOK,   // ROOK
+    PST_BISHOP, // BISHOP
+    PST_GOLD,   // GOLD
+    PST_SILVER, // SILVER
+    nullptr,    // KNIGHT
+    nullptr,    // LANCE
+    PST_PAWN,   // PAWN
+};
+
 } // namespace
 
 std::vector<Shogi::Move> AIPlayer::get_legal_moves(const BoardState &board, Shogi::Side side, bool only_captures) {
@@ -195,29 +206,18 @@ int AIPlayer::evaluate(const BoardState &board) {
 }
 
 int AIPlayer::get_pst_value(int piece_type, Shogi::Side side, Shogi::Coord coord) {
+    if (!coord.is_valid() || piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
+        return 0;
+    }
+
+    const auto *pst = PST_TABLES[piece_type];
+    if (pst == nullptr) {
+        return 0;
+    }
+
     int row = (side == Shogi::PLAYER) ? coord.row : (Shogi::BOARD_ROWS - 1 - coord.row);
     int col = (side == Shogi::PLAYER) ? coord.col : (Shogi::BOARD_COLS - 1 - coord.col);
-
-    if (!coord.is_valid()) {
-        return 0;
-    }
-
-    switch (piece_type) {
-    case Shogi::PAWN:
-        return PST_PAWN[row][col];
-    case Shogi::SILVER:
-        return PST_SILVER[row][col];
-    case Shogi::GOLD:
-        return PST_GOLD[row][col];
-    case Shogi::BISHOP:
-        return PST_BISHOP[row][col];
-    case Shogi::ROOK:
-        return PST_ROOK[row][col];
-    case Shogi::KING:
-        return PST_KING[row][col];
-    default:
-        return 0;
-    }
+    return pst[row][col];
 }
 
 int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
