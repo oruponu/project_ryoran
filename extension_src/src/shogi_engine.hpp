@@ -39,18 +39,18 @@ class ShogiEngine : public RefCounted {
     ~ShogiEngine() {}
 
     void set_is_enemy_side(bool is_enemy_side) { side_to_move = is_enemy_side ? Shogi::ENEMY : Shogi::PLAYER; }
-    bool get_is_enemy_side() const { return side_to_move == Shogi::ENEMY; }
+    [[nodiscard]] bool get_is_enemy_side() const { return side_to_move == Shogi::ENEMY; }
 
-    bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    TypedArray<Vector2i> get_legal_moves(Node2D *main_node, Object *piece_obj);
-    TypedArray<Vector2i> get_legal_drops(Node2D *main_node, Object *piece_obj);
-    bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
-    bool is_dead_end(Node2D *main_node, Object *piece_obj, int to_row);
-    bool is_king_in_check(Node2D *main_node, bool is_enemy);
+    [[nodiscard]] bool is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    [[nodiscard]] bool is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    [[nodiscard]] TypedArray<Vector2i> get_legal_moves(Node2D *main_node, Object *piece_obj);
+    [[nodiscard]] TypedArray<Vector2i> get_legal_drops(Node2D *main_node, Object *piece_obj);
+    [[nodiscard]] bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
+    [[nodiscard]] bool is_dead_end(Node2D *main_node, Object *piece_obj, int to_row);
+    [[nodiscard]] bool is_king_in_check(Node2D *main_node, bool is_enemy);
 
     void update_state(Node2D *main_node);
-    Dictionary search_best_move();
+    [[nodiscard]] Dictionary search_best_move();
 };
 
 #endif

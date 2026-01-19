@@ -22,10 +22,10 @@ struct Coord {
     Coord() : col(-1), row(-1) {}
     Coord(int c, int r) : col(c), row(r) {}
 
-    bool is_valid() const { return col >= 0 && col < BOARD_COLS && row >= 0 && row < BOARD_ROWS; }
+    [[nodiscard]] bool is_valid() const { return col >= 0 && col < BOARD_COLS && row >= 0 && row < BOARD_ROWS; }
 
-    bool operator==(const Coord &other) const { return col == other.col && row == other.row; }
-    bool operator!=(const Coord &other) const { return !(*this == other); }
+    [[nodiscard]] bool operator==(const Coord &other) const { return col == other.col && row == other.row; }
+    [[nodiscard]] bool operator!=(const Coord &other) const { return !(*this == other); }
 };
 
 struct Move {
