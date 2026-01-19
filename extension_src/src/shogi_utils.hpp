@@ -43,8 +43,17 @@ struct Move {
           is_capture(false) {}
 
     Move(int fc, int fr, int tc, int tr, int pt, bool promo, bool drop, bool capture)
-        : from_col((uint8_t)fc), from_row((uint8_t)fr), to_col((uint8_t)tc), to_row((uint8_t)tr),
-          piece_type((uint8_t)pt), is_promotion(promo), is_drop(drop), is_capture(capture) {}
+        : from_col(static_cast<uint8_t>(fc)), from_row(static_cast<uint8_t>(fr)), to_col(static_cast<uint8_t>(tc)),
+          to_row(static_cast<uint8_t>(tr)), piece_type(static_cast<uint8_t>(pt)), is_promotion(promo), is_drop(drop),
+          is_capture(capture) {}
+
+    [[nodiscard]] bool operator==(const Move &other) const {
+        return from_col == other.from_col && from_row == other.from_row && to_col == other.to_col &&
+               to_row == other.to_row && piece_type == other.piece_type && is_promotion == other.is_promotion &&
+               is_drop == other.is_drop && is_capture == other.is_capture;
+    }
+
+    [[nodiscard]] bool operator!=(const Move &other) const { return !(*this == other); }
 };
 
 } // namespace Shogi

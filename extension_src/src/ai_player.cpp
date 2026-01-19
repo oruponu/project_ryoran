@@ -389,12 +389,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         }
 
         if (has_prev_best) {
-            auto it = std::find_if(moves.begin(), moves.end(), [&](const Shogi::Move &m) {
-                return m.from_col == best_move_prev_iter.from_col && m.from_row == best_move_prev_iter.from_row &&
-                       m.to_col == best_move_prev_iter.to_col && m.to_row == best_move_prev_iter.to_row &&
-                       m.piece_type == best_move_prev_iter.piece_type &&
-                       m.is_promotion == best_move_prev_iter.is_promotion && m.is_drop == best_move_prev_iter.is_drop;
-            });
+            auto it = std::find(moves.begin(), moves.end(), best_move_prev_iter);
             if (it != moves.end()) {
                 std::rotate(moves.begin(), it, it + 1);
             }
