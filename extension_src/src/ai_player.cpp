@@ -258,7 +258,9 @@ int AIPlayer::get_pst_value(int piece_type, Shogi::Side side, Shogi::Coord coord
 }
 
 int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Side side, uint64_t end_time,
-                         bool &timeout) {
+                         bool &timeout, uint64_t &node_count) {
+    ++node_count;
+
     if (Time::get_singleton()->get_ticks_usec() > end_time) {
         timeout = true;
         return 0;
@@ -266,7 +268,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
 
     if (depth <= 0) {
         // 静止探索を実行
-        return quiescence_search(board, alpha, beta, side);
+        return quiescence_search(board, alpha, beta, side, node_count);
     }
 
     Shogi::Side side_to_move = board.get_side_to_move();
@@ -287,7 +289,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
             if (timeout) {
                 return 0;
             }
@@ -305,7 +307,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
         for (const Shogi::Move &move : moves) {
             BoardState next_board = board;
             next_board.apply_move(move);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout);
+            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
             if (timeout) {
                 return 0;
             }
@@ -321,7 +323,9 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi
     }
 }
 
-int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Shogi::Side side) {
+int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Shogi::Side side, uint64_t &node_count) {
+    ++node_count;
+
     int stand_pat = evaluate(board);
 
     if (side == Shogi::PLAYER) {
@@ -344,7 +348,7 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Shogi::Si
             BoardState next_board = board;
             next_board.apply_move(move);
 
-            int eval = quiescence_search(next_board, alpha, beta, Shogi::ENEMY);
+            int eval = quiescence_search(next_board, alpha, beta, Shogi::ENEMY, node_count);
 
             max_eval = std::max(max_eval, eval);
             alpha = std::max(alpha, eval);
@@ -373,7 +377,7 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Shogi::Si
             BoardState next_board = board;
             next_board.apply_move(move);
 
-            int eval = quiescence_search(next_board, alpha, beta, Shogi::PLAYER);
+            int eval = quiescence_search(next_board, alpha, beta, Shogi::PLAYER, node_count);
 
             min_eval = std::min(min_eval, eval);
             beta = std::min(beta, eval);
@@ -413,6 +417,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     Shogi::Move best_move_prev_iter = moves[0];
     bool has_prev_best = false;
+    uint64_t total_node_count = 0;
 
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
         if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
@@ -453,7 +458,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             BoardState next_board = board;
             next_board.apply_move(move);
 
-            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout);
+            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
+                                   total_node_count);
             if (timeout) {
                 break;
             }
@@ -502,6 +508,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             break;
         }
     }
+
+    UtilityFunctions::print("Total nodes searched: ", total_node_count);
 
     const auto &best_move = global_best_move;
     int final_score = (root_side == Shogi::PLAYER) ? global_best_score : -global_best_score;
