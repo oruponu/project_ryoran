@@ -424,29 +424,23 @@ bool BoardState::is_nifu(int piece_type, Shogi::Side side, int col) const {
 }
 
 bool BoardState::is_king_in_check(Shogi::Side side) const {
-    auto king_pos = find_king_position(side);
-
-    if (!king_pos) {
+    if (auto king_pos = find_king_position(side); !king_pos) {
         return false;
-    }
+    } else {
+        Shogi::Side enemy_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
 
-    int enemy_side = (side == Shogi::PLAYER) ? Shogi::ENEMY : Shogi::PLAYER;
-
-    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Shogi::Coord coord{col, row};
-            const Cell &cell = get_cell(coord);
-            if (cell.is_empty() || cell.side != enemy_side) {
-                continue;
-            }
-
-            if (is_valid_move(coord, *king_pos)) {
-                return true;
+        for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+            for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+                Shogi::Coord coord{col, row};
+                if (const Cell &cell = get_cell(coord);
+                    !cell.is_empty() && cell.side == enemy_side && is_valid_move(coord, *king_pos)) {
+                    return true;
+                }
             }
         }
-    }
 
-    return false;
+        return false;
+    }
 }
 
 uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash; }
