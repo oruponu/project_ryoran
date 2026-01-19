@@ -8,29 +8,19 @@ using namespace godot;
 
 namespace {
 
-constexpr int VAL_PAWN = 90;
-constexpr int VAL_LANCE = 230;
-constexpr int VAL_KNIGHT = 260;
-constexpr int VAL_SILVER = 370;
-constexpr int VAL_GOLD = 440;
-constexpr int VAL_BISHOP = 570;
-constexpr int VAL_ROOK = 640;
-constexpr int VAL_KING = 99999;
-constexpr int VAL_PRO_PAWN = 530;
-constexpr int VAL_PRO_LANCE = 490;
-constexpr int VAL_PRO_KNIGHT = 510;
-constexpr int VAL_PRO_SILVER = 500;
-constexpr int VAL_PRO_BISHOP = 830;
-constexpr int VAL_PRO_ROOK = 950;
+constexpr std::array<std::array<int, 2>, Shogi::PIECE_TYPE_COUNT> PIECE_VALUES = {{
+    {99999, 99999}, // KING
+    {640, 950},     // ROOK
+    {570, 830},     // BISHOP
+    {440, 440},     // GOLD
+    {370, 500},     // SILVER
+    {260, 510},     // KNIGHT
+    {230, 490},     // LANCE
+    {90, 530},      // PAWN
+}};
 
-struct HandPiece {
-    int type;
-    int value;
-};
-
-constexpr HandPiece HAND_PIECES[] = {
-    {Shogi::PAWN, VAL_PAWN}, {Shogi::LANCE, VAL_LANCE},   {Shogi::KNIGHT, VAL_KNIGHT}, {Shogi::SILVER, VAL_SILVER},
-    {Shogi::GOLD, VAL_GOLD}, {Shogi::BISHOP, VAL_BISHOP}, {Shogi::ROOK, VAL_ROOK},
+constexpr std::array HAND_PIECE_TYPES = {
+    Shogi::PAWN, Shogi::LANCE, Shogi::KNIGHT, Shogi::SILVER, Shogi::GOLD, Shogi::BISHOP, Shogi::ROOK,
 };
 
 constexpr int PST_PAWN[9][9] = {{20, 20, 20, 20, 20, 20, 20, 20, 20},
@@ -169,36 +159,7 @@ int AIPlayer::evaluate(const BoardState &board) {
                 continue;
             }
 
-            int piece_value = 0;
-            switch (cell.type) {
-            case Shogi::PAWN:
-                piece_value = cell.is_promoted ? VAL_PRO_PAWN : VAL_PAWN;
-                break;
-            case Shogi::LANCE:
-                piece_value = cell.is_promoted ? VAL_PRO_LANCE : VAL_LANCE;
-                break;
-            case Shogi::KNIGHT:
-                piece_value = cell.is_promoted ? VAL_PRO_KNIGHT : VAL_KNIGHT;
-                break;
-            case Shogi::SILVER:
-                piece_value = cell.is_promoted ? VAL_PRO_SILVER : VAL_SILVER;
-                break;
-            case Shogi::GOLD:
-                piece_value = VAL_GOLD;
-                break;
-            case Shogi::BISHOP:
-                piece_value = cell.is_promoted ? VAL_PRO_BISHOP : VAL_BISHOP;
-                break;
-            case Shogi::ROOK:
-                piece_value = cell.is_promoted ? VAL_PRO_ROOK : VAL_ROOK;
-                break;
-            case Shogi::KING:
-                piece_value = VAL_KING;
-                break;
-            default:
-                break;
-            }
-
+            int piece_value = PIECE_VALUES[cell.type][cell.is_promoted ? 1 : 0];
             int lookup_type = cell.type;
             if (cell.is_promoted) {
                 switch (cell.type) {
@@ -225,8 +186,8 @@ int AIPlayer::evaluate(const BoardState &board) {
     // 持ち駒
     for (Shogi::Side side : {Shogi::PLAYER, Shogi::ENEMY}) {
         int sign = (side == Shogi::PLAYER) ? 1 : -1;
-        for (const auto &piece : HAND_PIECES) {
-            score += board.get_hand_count(side, piece.type) * piece.value * sign;
+        for (int piece_type : HAND_PIECE_TYPES) {
+            score += board.get_hand_count(side, piece_type) * PIECE_VALUES[piece_type][0] * sign;
         }
     }
 
