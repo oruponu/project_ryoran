@@ -1,4 +1,5 @@
 #include "board_state.hpp"
+#include <array>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -11,26 +12,26 @@ struct Direction {
     int dx;
     int dy;
 
-    bool operator==(const Direction &other) const { return dx == other.dx && dy == other.dy; }
+    constexpr bool operator==(const Direction &other) const { return dx == other.dx && dy == other.dy; }
 };
 
-const Direction DIR_UP = {0, -1};
-const Direction DIR_UP_RIGHT = {1, -1};
-const Direction DIR_RIGHT = {1, 0};
-const Direction DIR_DOWN_RIGHT = {1, 1};
-const Direction DIR_DOWN = {0, 1};
-const Direction DIR_DOWN_LEFT = {-1, 1};
-const Direction DIR_LEFT = {-1, 0};
-const Direction DIR_UP_LEFT = {-1, -1};
-const Direction DIR_KNIGHT_LEFT = {-1, -2};
-const Direction DIR_KNIGHT_RIGHT = {1, -2};
+constexpr Direction DIR_UP = {0, -1};
+constexpr Direction DIR_UP_RIGHT = {1, -1};
+constexpr Direction DIR_RIGHT = {1, 0};
+constexpr Direction DIR_DOWN_RIGHT = {1, 1};
+constexpr Direction DIR_DOWN = {0, 1};
+constexpr Direction DIR_DOWN_LEFT = {-1, 1};
+constexpr Direction DIR_LEFT = {-1, 0};
+constexpr Direction DIR_UP_LEFT = {-1, -1};
+constexpr Direction DIR_KNIGHT_LEFT = {-1, -2};
+constexpr Direction DIR_KNIGHT_RIGHT = {1, -2};
 
-const std::vector<Direction> MOVES_PAWN = {DIR_UP};
-const std::vector<Direction> MOVES_KNIGHT = {DIR_KNIGHT_LEFT, DIR_KNIGHT_RIGHT};
-const std::vector<Direction> MOVES_SILVER = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_DOWN_LEFT, DIR_DOWN_RIGHT};
-const std::vector<Direction> MOVES_GOLD = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_LEFT, DIR_RIGHT, DIR_DOWN};
-const std::vector<Direction> MOVES_KING = {DIR_UP_LEFT, DIR_UP,        DIR_UP_RIGHT, DIR_LEFT,
-                                           DIR_RIGHT,   DIR_DOWN_LEFT, DIR_DOWN,     DIR_DOWN_RIGHT};
+constexpr std::array MOVES_PAWN = {DIR_UP};
+constexpr std::array MOVES_KNIGHT = {DIR_KNIGHT_LEFT, DIR_KNIGHT_RIGHT};
+constexpr std::array MOVES_SILVER = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_DOWN_LEFT, DIR_DOWN_RIGHT};
+constexpr std::array MOVES_GOLD = {DIR_UP_LEFT, DIR_UP, DIR_UP_RIGHT, DIR_LEFT, DIR_RIGHT, DIR_DOWN};
+constexpr std::array MOVES_KING = {DIR_UP_LEFT, DIR_UP,        DIR_UP_RIGHT, DIR_LEFT,
+                                   DIR_RIGHT,   DIR_DOWN_LEFT, DIR_DOWN,     DIR_DOWN_RIGHT};
 
 uint64_t z_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
 uint64_t z_hand[2][Shogi::PIECE_TYPE_COUNT][20];
@@ -345,35 +346,30 @@ bool BoardState::can_move_geometry(int piece_type, bool is_enemy, bool is_promot
         return (dx == 0 && dy < 0);
     default:
         Direction move_dir = {dx, dy};
-        const std::vector<Direction> *moves = nullptr;
 
-        switch (effective_type) {
-        case Shogi::KING:
-            moves = &MOVES_KING;
-            break;
-        case Shogi::GOLD:
-            moves = &MOVES_GOLD;
-            break;
-        case Shogi::SILVER:
-            moves = &MOVES_SILVER;
-            break;
-        case Shogi::KNIGHT:
-            moves = &MOVES_KNIGHT;
-            break;
-        case Shogi::PAWN:
-            moves = &MOVES_PAWN;
-            break;
-        }
-
-        if (moves) {
-            for (const auto &def : *moves) {
+        auto check_moves = [&move_dir](const auto &moves) {
+            for (const auto &def : moves) {
                 if (def == move_dir) {
                     return true;
                 }
             }
-        }
+            return false;
+        };
 
-        return false;
+        switch (effective_type) {
+        case Shogi::KING:
+            return check_moves(MOVES_KING);
+        case Shogi::GOLD:
+            return check_moves(MOVES_GOLD);
+        case Shogi::SILVER:
+            return check_moves(MOVES_SILVER);
+        case Shogi::KNIGHT:
+            return check_moves(MOVES_KNIGHT);
+        case Shogi::PAWN:
+            return check_moves(MOVES_PAWN);
+        default:
+            return false;
+        }
     }
 }
 

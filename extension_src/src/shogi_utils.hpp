@@ -8,12 +8,12 @@ enum PieceType { KING = 0, ROOK = 1, BISHOP = 2, GOLD = 3, SILVER = 4, KNIGHT = 
 enum Side { PLAYER = 0, ENEMY = 1 };
 
 // 盤面のサイズ
-const int BOARD_COLS = 9;
-const int BOARD_ROWS = 9;
-const int BOARD_SIZE = 81;
+constexpr int BOARD_COLS = 9;
+constexpr int BOARD_ROWS = 9;
+constexpr int BOARD_SIZE = 81;
 
 // 駒の種類数
-const int PIECE_TYPE_COUNT = 8;
+constexpr int PIECE_TYPE_COUNT = 8;
 
 struct Coord {
     int col;

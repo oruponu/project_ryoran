@@ -11,7 +11,7 @@ namespace godot {
 class AIPlayer {
 
   private:
-    const uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
+    static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 
     std::vector<Shogi::Move> get_legal_moves(const BoardState &board, Shogi::Side side, bool only_captures = false);
     int evaluate(const BoardState &board);
