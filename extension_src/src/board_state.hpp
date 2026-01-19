@@ -2,6 +2,7 @@
 #define BOARD_STATE_HPP
 
 #include <godot_cpp/classes/node2d.hpp>
+#include <optional>
 #include <vector>
 
 #include "shogi_utils.hpp"
@@ -43,7 +44,7 @@ class BoardState {
     [[nodiscard]] bool is_valid_drop(int piece_type, bool is_enemy, Shogi::Coord to) const;
     [[nodiscard]] bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_nifu(int piece_type, Shogi::Side side, int col) const;
-    [[nodiscard]] Shogi::Coord find_king_position(Shogi::Side side) const;
+    [[nodiscard]] std::optional<Shogi::Coord> find_king_position(Shogi::Side side) const;
 
   public:
     BoardState(Shogi::Side side_to_move = Shogi::PLAYER);

@@ -424,9 +424,9 @@ bool BoardState::is_nifu(int piece_type, Shogi::Side side, int col) const {
 }
 
 bool BoardState::is_king_in_check(Shogi::Side side) const {
-    Shogi::Coord king_pos = find_king_position(side);
+    auto king_pos = find_king_position(side);
 
-    if (!king_pos.is_valid()) {
+    if (!king_pos) {
         return false;
     }
 
@@ -440,7 +440,7 @@ bool BoardState::is_king_in_check(Shogi::Side side) const {
                 continue;
             }
 
-            if (is_valid_move(coord, king_pos)) {
+            if (is_valid_move(coord, *king_pos)) {
                 return true;
             }
         }
@@ -451,7 +451,7 @@ bool BoardState::is_king_in_check(Shogi::Side side) const {
 
 uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash; }
 
-Shogi::Coord BoardState::find_king_position(Shogi::Side side) const {
+std::optional<Shogi::Coord> BoardState::find_king_position(Shogi::Side side) const {
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
             Shogi::Coord coord{col, row};
@@ -462,7 +462,7 @@ Shogi::Coord BoardState::find_king_position(Shogi::Side side) const {
         }
     }
 
-    return {};
+    return std::nullopt;
 }
 
 const Cell &BoardState::get_cell(Shogi::Coord coord) const {
