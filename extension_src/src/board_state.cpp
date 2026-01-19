@@ -1,4 +1,5 @@
 #include "board_state.hpp"
+#include <algorithm>
 #include <array>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/node.hpp>
@@ -520,8 +521,8 @@ void BoardState::apply_move(const Shogi::Move &move) {
         int piece_type = move.piece_type;
         int count = hand[current_side][piece_type];
 
-        int idx_old = (count >= 20) ? 19 : count;
-        int idx_new = ((count - 1) >= 20) ? 19 : (count - 1);
+        int idx_old = std::clamp(count, 0, 19);
+        int idx_new = std::clamp(count - 1, 0, 19);
         zobrist_hash ^= z_hand[current_side][piece_type][idx_old];
         zobrist_hash ^= z_hand[current_side][piece_type][idx_new];
         if (hand[current_side][move.piece_type] > 0) {
@@ -543,8 +544,8 @@ void BoardState::apply_move(const Shogi::Move &move) {
 
             int captured_type = target.type;
             int count = hand[current_side][captured_type];
-            int idx_old = (count >= 20) ? 19 : count;
-            int idx_new = ((count + 1) >= 20) ? 19 : (count + 1);
+            int idx_old = std::clamp(count, 0, 19);
+            int idx_new = std::clamp(count + 1, 0, 19);
             zobrist_hash ^= z_hand[current_side][captured_type][idx_old];
             zobrist_hash ^= z_hand[current_side][captured_type][idx_new];
             hand[current_side][captured_type]++;
