@@ -154,6 +154,28 @@ int AIPlayer::get_pst_value(PieceType piece_type, Turn turn, Coord coord) {
     return pst[row][col];
 }
 
+int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move) {
+    int score = 0;
+
+    // 駒を取る手
+    if (move.is_capture) {
+        const Cell &target_cell = board.get_cell({move.to_col, move.to_row});
+        if (!target_cell.is_empty()) {
+            int victim_value = PIECE_VALUES[static_cast<int>(target_cell.type)][target_cell.is_promoted ? 1 : 0];
+            int aggressor_value = PIECE_VALUES[static_cast<int>(move.piece_type)][0];
+            // 高い駒を安い駒で取るほど高得点
+            score = 1000000 + victim_value - aggressor_value;
+        }
+    }
+
+    // 成る手
+    if (move.is_promotion) {
+        score += 20000;
+    }
+
+    return score;
+}
+
 int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn turn, uint64_t end_time, bool &timeout,
                          uint64_t &node_count) {
     ++node_count;
@@ -209,7 +231,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     }
 
     auto sort_start = has_tt_move ? moves.begin() + 1 : moves.begin();
-    std::sort(sort_start, moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
+    std::sort(sort_start, moves.end(), [&](const Move &a, const Move &b) {
+        return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+    });
 
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
     Move best_move = moves[0];
@@ -296,8 +320,9 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         }
 
         std::vector<Move> moves = board.get_legal_moves(true);
-
-        std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
+        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+        });
 
         int max_eval = stand_pat;
 
@@ -325,7 +350,10 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         }
 
         std::vector<Move> moves = board.get_legal_moves(true);
-        std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
+        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+        });
+
         int min_eval = stand_pat;
 
         for (const auto &move : moves) {
