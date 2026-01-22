@@ -38,6 +38,7 @@ class BoardState {
     Shogi::Turn turn_to_move_;
     uint64_t zobrist_hash_;
     std::optional<Shogi::Coord> king_pos_[2];
+    uint16_t pawn_columns_[2];
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
@@ -46,6 +47,7 @@ class BoardState {
     [[nodiscard]] bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_nifu(Shogi::PieceType piece_type, Shogi::Turn turn, int col) const;
     void update_king_position_cache();
+    void update_pawn_columns_cache();
 
   public:
     BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);

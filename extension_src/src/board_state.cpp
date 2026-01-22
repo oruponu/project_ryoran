@@ -66,6 +66,8 @@ BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move) {
 
     king_pos_[static_cast<int>(Turn::SENTE)] = std::nullopt;
     king_pos_[static_cast<int>(Turn::GOTE)] = std::nullopt;
+    pawn_columns_[static_cast<int>(Turn::SENTE)] = 0;
+    pawn_columns_[static_cast<int>(Turn::GOTE)] = 0;
 
     zobrist_hash_ = calculate_zobrist_hash();
 }
@@ -109,6 +111,7 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
     }
 
     update_king_position_cache();
+    update_pawn_columns_cache();
 
     // 持ち駒を読み込み
     Node *stands[2];
@@ -446,14 +449,7 @@ bool BoardState::is_nifu(PieceType piece_type, Turn turn, int col) const {
         return false;
     }
 
-    for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-        const Cell &cell = get_cell({col, row});
-        if (!cell.is_empty() && cell.turn == turn && cell.type == PieceType::PAWN && !cell.is_promoted) {
-            return true;
-        }
-    }
-
-    return false;
+    return (pawn_columns_[static_cast<int>(turn)] & (1 << col)) != 0;
 }
 
 bool BoardState::is_king_in_check(Turn turn) const {
@@ -816,6 +812,20 @@ void BoardState::update_king_position_cache() {
     }
 }
 
+void BoardState::update_pawn_columns_cache() {
+    pawn_columns_[static_cast<int>(Turn::SENTE)] = 0;
+    pawn_columns_[static_cast<int>(Turn::GOTE)] = 0;
+
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+            if (cell.type == PieceType::PAWN && !cell.is_promoted) {
+                pawn_columns_[static_cast<int>(cell.turn)] |= (1 << col);
+            }
+        }
+    }
+}
+
 const Cell &BoardState::get_cell(Coord coord) const { return board_[coord.col * Shogi::BOARD_ROWS + coord.row]; }
 
 void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promoted) {
@@ -846,6 +856,10 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
     if (type == PieceType::KING) {
         king_pos_[static_cast<int>(turn)] = coord;
     }
+
+    if (type == PieceType::PAWN && !is_promoted) {
+        pawn_columns_[static_cast<int>(turn)] |= (1 << coord.col);
+    }
 }
 
 void BoardState::clear_cell(Coord coord) {
@@ -862,6 +876,22 @@ void BoardState::clear_cell(Coord coord) {
             auto &cached_pos = king_pos_[static_cast<int>(old_cell.turn)];
             if (cached_pos && cached_pos->col == coord.col && cached_pos->row == coord.row) {
                 cached_pos = std::nullopt;
+            }
+        }
+
+        if (old_cell.type == PieceType::PAWN && !old_cell.is_promoted) {
+            bool has_other_pawn = false;
+            for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+                if (row == coord.row)
+                    continue;
+                const Cell &cell = board_[coord.col * Shogi::BOARD_ROWS + row];
+                if (cell.type == PieceType::PAWN && !cell.is_promoted && cell.turn == old_cell.turn) {
+                    has_other_pawn = true;
+                    break;
+                }
+            }
+            if (!has_other_pawn) {
+                pawn_columns_[static_cast<int>(old_cell.turn)] &= ~(1 << coord.col);
             }
         }
     }
@@ -901,6 +931,10 @@ void BoardState::apply_move(const Move &move) {
         zobrist_hash_ ^=
             g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(piece_type)][0][move.to_col][move.to_row];
         board_[to_idx] = Cell(piece_type, current_side, false);
+
+        if (piece_type == PieceType::PAWN) {
+            pawn_columns_[static_cast<int>(current_side)] |= (1 << move.to_col);
+        }
     } else {
         Cell source = get_cell({move.from_col, move.from_row});
         Cell target = get_cell({move.to_col, move.to_row});
@@ -933,6 +967,16 @@ void BoardState::apply_move(const Move &move) {
 
         if (source.type == PieceType::KING) {
             king_pos_[static_cast<int>(current_side)] = Coord{move.to_col, move.to_row};
+        }
+
+        if (source.type == PieceType::PAWN && !source.is_promoted) {
+            pawn_columns_[static_cast<int>(current_side)] &= ~(1 << move.from_col);
+            if (!is_promoted) {
+                pawn_columns_[static_cast<int>(current_side)] |= (1 << move.to_col);
+            }
+        }
+        if (!target.is_empty() && target.type == PieceType::PAWN && !target.is_promoted) {
+            pawn_columns_[static_cast<int>(opponent_side)] &= ~(1 << move.to_col);
         }
     }
 
