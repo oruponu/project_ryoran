@@ -462,15 +462,132 @@ bool BoardState::is_king_in_check(Turn turn) const {
         return false;
     }
 
-    Turn enemy_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    const int king_col = king_pos->col;
+    const int king_row = king_pos->row;
+    const Turn enemy_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    const int enemy_forward = (enemy_side == Turn::SENTE) ? -1 : 1;
 
-    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Coord coord{col, row};
-            if (const Cell &cell = get_cell(coord);
-                !cell.is_empty() && cell.turn == enemy_side && is_valid_move(coord, *king_pos)) {
+    // 桂馬の利きをチェック
+    const int knight_positions[2][2] = {{-1, -enemy_forward * 2}, {1, -enemy_forward * 2}};
+    for (const auto &pos : knight_positions) {
+        int col = king_col + pos[0];
+        int row = king_row + pos[1];
+        if (col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS) {
+            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+            if (!cell.is_empty() && cell.turn == enemy_side && cell.type == PieceType::KNIGHT && !cell.is_promoted) {
                 return true;
             }
+        }
+    }
+
+    // 歩の利きをチェック
+    {
+        int pawn_row = king_row - enemy_forward;
+        if (pawn_row >= 0 && pawn_row < Shogi::BOARD_ROWS) {
+            const Cell &cell = board_[king_col * Shogi::BOARD_ROWS + pawn_row];
+            if (!cell.is_empty() && cell.turn == enemy_side && cell.type == PieceType::PAWN && !cell.is_promoted) {
+                return true;
+            }
+        }
+    }
+
+    constexpr int directions[8][2] = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}};
+    for (int dir_idx = 0; dir_idx < 8; ++dir_idx) {
+        int dx = directions[dir_idx][0];
+        int dy = directions[dir_idx][1];
+        bool is_diagonal = (dir_idx >= 4);
+
+        for (int dist = 1; dist < 9; ++dist) {
+            int col = king_col + dx * dist;
+            int row = king_row + dy * dist;
+
+            if (col < 0 || col >= Shogi::BOARD_COLS || row < 0 || row >= Shogi::BOARD_ROWS) {
+                break;
+            }
+
+            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+            if (cell.is_empty()) {
+                continue;
+            }
+
+            if (cell.turn == turn) {
+                break;
+            }
+
+            PieceType type = cell.type;
+            bool is_promoted = cell.is_promoted;
+
+            if (dist == 1) {
+                // 玉の利きをチェック
+                if (type == PieceType::KING) {
+                    return true;
+                }
+
+                // 金の利きをチェック
+                bool is_gold_move = (type == PieceType::GOLD) ||
+                                    (is_promoted && (type == PieceType::SILVER || type == PieceType::KNIGHT ||
+                                                     type == PieceType::LANCE || type == PieceType::PAWN));
+                if (is_gold_move) {
+                    int move_dx = -dx;
+                    int move_dy = -dy;
+                    if (enemy_side == Turn::GOTE) {
+                        move_dx = -move_dx;
+                        move_dy = -move_dy;
+                    }
+
+                    bool is_backward_diagonal = (std::abs(move_dx) == 1 && move_dy == 1);
+                    if (!is_backward_diagonal) {
+                        return true;
+                    }
+                }
+
+                // 銀の利きをチェック
+                if (type == PieceType::SILVER && !is_promoted) {
+                    int move_dx = -dx;
+                    int move_dy = -dy;
+                    if (enemy_side == Turn::GOTE) {
+                        move_dx = -move_dx;
+                        move_dy = -move_dy;
+                    }
+
+                    bool is_silver_move = (move_dy == -1) || (std::abs(move_dx) == 1 && move_dy == 1);
+                    if (is_silver_move) {
+                        return true;
+                    }
+                }
+
+                // 竜（斜め1マス）の利きをチェック
+                if (type == PieceType::ROOK && is_promoted && is_diagonal) {
+                    return true;
+                }
+
+                // 馬（縦横1マス）の利きをチェック
+                if (type == PieceType::BISHOP && is_promoted && !is_diagonal) {
+                    return true;
+                }
+            }
+
+            if (is_diagonal) {
+                // 角の利きをチェック
+                if (type == PieceType::BISHOP) {
+                    return true;
+                }
+            } else {
+                // 飛車の利きをチェック
+                if (type == PieceType::ROOK) {
+                    return true;
+                }
+
+                // 香車の利きをチェック
+                if (type == PieceType::LANCE && !is_promoted && dx == 0) {
+                    int lance_forward = (enemy_side == Turn::SENTE) ? -1 : 1;
+                    if (dy == -lance_forward) {
+                        return true;
+                    }
+                }
+            }
+
+            break;
         }
     }
 
