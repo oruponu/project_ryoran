@@ -19,68 +19,6 @@ constexpr std::array HAND_PIECE_TYPES = {
 
 } // namespace
 
-int AIPlayer::evaluate(const BoardState &board) {
-    int score = 0;
-
-    // 盤上の駒
-    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            const Cell &cell = board.get_cell({col, row});
-            if (cell.is_empty()) {
-                continue;
-            }
-
-            int piece_value = PIECE_VALUES[static_cast<int>(cell.type)][cell.is_promoted ? 1 : 0];
-            PieceType lookup_type = cell.type;
-            if (cell.is_promoted) {
-                switch (cell.type) {
-                case PieceType::PAWN:
-                case PieceType::LANCE:
-                case PieceType::KNIGHT:
-                case PieceType::SILVER:
-                    lookup_type = PieceType::GOLD;
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            int pst_bonus = get_pst_value(lookup_type, cell.turn, {col, row});
-            if (cell.turn == Turn::SENTE) {
-                score += piece_value + pst_bonus;
-            } else {
-                score -= piece_value + pst_bonus;
-            }
-        }
-    }
-
-    // 持ち駒
-    for (Turn turn : {Turn::SENTE, Turn::GOTE}) {
-        int sign = (turn == Turn::SENTE) ? 1 : -1;
-        for (PieceType piece_type : HAND_PIECE_TYPES) {
-            score += board.get_hand_count(turn, piece_type) * PIECE_VALUES[static_cast<int>(piece_type)][0] * sign;
-        }
-    }
-
-    return score;
-}
-
-int AIPlayer::get_pst_value(PieceType piece_type, Turn turn, Coord coord) {
-    if (!coord.is_valid() || static_cast<int>(piece_type) < 0 ||
-        static_cast<int>(piece_type) >= Shogi::PIECE_TYPE_COUNT) {
-        return 0;
-    }
-
-    const auto *pst = PST_TABLES[static_cast<int>(piece_type)];
-    if (pst == nullptr) {
-        return 0;
-    }
-
-    int row = (turn == Turn::SENTE) ? coord.row : (Shogi::BOARD_ROWS - 1 - coord.row);
-    int col = (turn == Turn::SENTE) ? coord.col : (Shogi::BOARD_COLS - 1 - coord.col);
-    return pst[row][col];
-}
-
 int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move) {
     int score = 0;
 
@@ -235,7 +173,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
 int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, uint64_t &node_count) {
     ++node_count;
 
-    int stand_pat = evaluate(board);
+    int stand_pat = board.get_score();
 
     if (turn == Turn::SENTE) {
         if (stand_pat >= beta) {
