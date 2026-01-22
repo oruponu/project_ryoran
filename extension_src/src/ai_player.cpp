@@ -92,78 +92,6 @@ constexpr const int (*PST_TABLES[Shogi::PIECE_TYPE_COUNT])[9] = {
 
 } // namespace
 
-std::vector<Move> AIPlayer::get_legal_moves(const BoardState &board, Turn turn, bool only_captures) {
-    std::vector<Move> moves;
-    bool is_enemy_turn = (turn == Turn::GOTE);
-
-    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Coord from{col, row};
-            const Cell &cell = board.get_cell(from);
-
-            // 自駒でないならスキップ
-            if (cell.is_empty() || cell.turn != turn) {
-                continue;
-            }
-
-            for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
-                for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                    Coord to{t_col, t_row};
-                    if (board.is_legal_move(from, to)) {
-                        bool is_capture = !board.get_cell(to).is_empty();
-                        if (only_captures && !is_capture) {
-                            continue;
-                        }
-
-                        bool can_promote = false;
-                        bool must_promote = false;
-
-                        if (!cell.is_promoted && cell.type != PieceType::KING && cell.type != PieceType::GOLD) {
-                            int zone_min = is_enemy_turn ? 6 : 0;
-                            int zone_max = is_enemy_turn ? 8 : 2;
-                            bool from_in_zone = (row >= zone_min && row <= zone_max);
-                            bool to_in_zone = (t_row >= zone_min && t_row <= zone_max);
-
-                            if (from_in_zone || to_in_zone) {
-                                can_promote = true;
-                            }
-                        }
-
-                        if (board.is_dead_end(cell.type, is_enemy_turn, t_row)) {
-                            must_promote = true;
-                        }
-
-                        if (!must_promote) {
-                            moves.emplace_back(col, row, t_col, t_row, cell.type, false, false, is_capture);
-                        }
-
-                        if (can_promote) {
-                            moves.emplace_back(col, row, t_col, t_row, cell.type, true, false, is_capture);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (!only_captures) {
-        for (PieceType piece_type : HAND_PIECE_TYPES) {
-            if (board.get_hand_count(turn, piece_type) > 0) {
-                for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
-                    for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                        Coord to{t_col, t_row};
-                        if (board.is_legal_drop(piece_type, is_enemy_turn, to)) {
-                            moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return moves;
-}
-
 int AIPlayer::evaluate(const BoardState &board) {
     int score = 0;
 
@@ -241,7 +169,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
     }
 
     Turn turn_to_move = board.get_turn_to_move();
-    std::vector<Move> moves = get_legal_moves(board, turn);
+    std::vector<Move> moves = board.get_legal_moves();
     if (moves.empty()) {
         // 投了
         return (turn == turn_to_move) ? -999999 : 999999;
@@ -305,7 +233,7 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
             alpha = stand_pat;
         }
 
-        std::vector<Move> moves = get_legal_moves(board, turn, true);
+        std::vector<Move> moves = board.get_legal_moves(true);
 
         std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
 
@@ -335,7 +263,7 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
             beta = stand_pat;
         }
 
-        std::vector<Move> moves = get_legal_moves(board, turn, true);
+        std::vector<Move> moves = board.get_legal_moves(true);
         std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
         int min_eval = stand_pat;
 
@@ -364,7 +292,7 @@ double AIPlayer::calculate_win_probability(int score) {
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
     Turn root_side = board.get_turn_to_move();
-    std::vector<Move> moves = get_legal_moves(board, root_side);
+    std::vector<Move> moves = board.get_legal_moves();
 
     if (moves.empty()) {
         // 投了

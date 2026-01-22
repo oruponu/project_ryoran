@@ -13,8 +13,6 @@ class AIPlayer {
   private:
     static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 
-    [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(const BoardState &board, Shogi::Turn turn,
-                                                           bool only_captures = false);
     [[nodiscard]] int evaluate(const BoardState &board);
     [[nodiscard]] int get_pst_value(Shogi::PieceType piece_type, Shogi::Turn turn, Shogi::Coord coord);
     [[nodiscard]] int alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Turn turn, uint64_t end_time,

@@ -85,6 +85,8 @@ class BoardState {
     [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
     [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
 
+    [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(bool only_captures = false) const;
+
     // 盤面の操作
     [[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
     void set_cell(Shogi::Coord coord, Shogi::PieceType type, Shogi::Turn turn, bool is_promoted);
