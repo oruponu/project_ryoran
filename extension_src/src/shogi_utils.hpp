@@ -65,6 +65,19 @@ struct Move {
     [[nodiscard]] bool operator!=(const Move &other) const { return !(*this == other); }
 };
 
+struct UndoInfo {
+    Move move;
+    uint8_t captured_type;
+    bool captured_promoted;
+    uint64_t prev_hash;
+    uint16_t prev_pawn_cols[2];
+
+    UndoInfo() : captured_type(static_cast<uint8_t>(PieceType::EMPTY)), captured_promoted(false), prev_hash(0) {
+        prev_pawn_cols[0] = 0;
+        prev_pawn_cols[1] = 0;
+    }
+};
+
 } // namespace Shogi
 
 #endif
