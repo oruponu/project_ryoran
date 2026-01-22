@@ -29,9 +29,9 @@ class AIPlayer {
 
     [[nodiscard]] int evaluate(const BoardState &board);
     [[nodiscard]] int get_pst_value(Shogi::PieceType piece_type, Shogi::Turn turn, Shogi::Coord coord);
-    [[nodiscard]] int alpha_beta(BoardState board, int depth, int alpha, int beta, Shogi::Turn turn, uint64_t end_time,
+    [[nodiscard]] int alpha_beta(BoardState &board, int depth, int alpha, int beta, Shogi::Turn turn, uint64_t end_time,
                                  bool &timeout, uint64_t &node_count);
-    [[nodiscard]] int quiescence_search(BoardState board, int alpha, int beta, Shogi::Turn turn, uint64_t &node_count);
+    [[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, Shogi::Turn turn, uint64_t &node_count);
     [[nodiscard]] double calculate_win_probability(int score);
 
     [[nodiscard]] TTEntry *probe_tt(uint64_t hash);

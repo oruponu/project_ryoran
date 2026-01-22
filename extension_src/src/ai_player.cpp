@@ -154,7 +154,7 @@ int AIPlayer::get_pst_value(PieceType piece_type, Turn turn, Coord coord) {
     return pst[row][col];
 }
 
-int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn turn, uint64_t end_time, bool &timeout,
+int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn turn, uint64_t end_time, bool &timeout,
                          uint64_t &node_count) {
     ++node_count;
 
@@ -217,9 +217,10 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
     if (turn == Turn::SENTE) {
         int max_eval = -99999999;
         for (const Move &move : moves) {
-            BoardState next_board = board;
-            next_board.apply_move(move);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            Shogi::UndoInfo undo = board.apply_move(move);
+            int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            board.undo_move(undo);
+
             if (timeout) {
                 return 0;
             }
@@ -248,9 +249,10 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
     } else {
         int min_eval = 99999999;
         for (const Move &move : moves) {
-            BoardState next_board = board;
-            next_board.apply_move(move);
-            int eval = alpha_beta(next_board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            Shogi::UndoInfo undo = board.apply_move(move);
+            int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            board.undo_move(undo);
+
             if (timeout) {
                 return 0;
             }
@@ -279,7 +281,7 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
     }
 }
 
-int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn, uint64_t &node_count) {
+int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, uint64_t &node_count) {
     ++node_count;
 
     int stand_pat = evaluate(board);
@@ -300,10 +302,9 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
         int max_eval = stand_pat;
 
         for (const auto &move : moves) {
-            BoardState next_board = board;
-            next_board.apply_move(move);
-
-            int eval = quiescence_search(next_board, alpha, beta, Turn::GOTE, node_count);
+            Shogi::UndoInfo undo = board.apply_move(move);
+            int eval = quiescence_search(board, alpha, beta, Turn::GOTE, node_count);
+            board.undo_move(undo);
 
             max_eval = std::max(max_eval, eval);
             alpha = std::max(alpha, eval);
@@ -328,10 +329,9 @@ int AIPlayer::quiescence_search(BoardState board, int alpha, int beta, Turn turn
         int min_eval = stand_pat;
 
         for (const auto &move : moves) {
-            BoardState next_board = board;
-            next_board.apply_move(move);
-
-            int eval = quiescence_search(next_board, alpha, beta, Turn::SENTE, node_count);
+            Shogi::UndoInfo undo = board.apply_move(move);
+            int eval = quiescence_search(board, alpha, beta, Turn::SENTE, node_count);
+            board.undo_move(undo);
 
             min_eval = std::min(min_eval, eval);
             beta = std::min(beta, eval);
@@ -431,11 +431,11 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
                 break;
             }
 
-            BoardState next_board = board;
-            next_board.apply_move(move);
-
-            int score = alpha_beta(next_board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
+            Shogi::UndoInfo undo = board.apply_move(move);
+            int score = alpha_beta(board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
                                    total_node_count);
+            board.undo_move(undo);
+
             if (timeout) {
                 break;
             }
