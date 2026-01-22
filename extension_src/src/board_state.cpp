@@ -951,6 +951,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
     undo.prev_hash = zobrist_hash_;
     undo.prev_pawn_cols[0] = pawn_columns_[0];
     undo.prev_pawn_cols[1] = pawn_columns_[1];
+    undo.prev_score = score_;
 
     Turn current_side = turn_to_move_;
     Turn opponent_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
@@ -1098,6 +1099,7 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
     pawn_columns_[1] = undo.prev_pawn_cols[1];
 
     zobrist_hash_ = undo.prev_hash;
+    score_ = undo.prev_score;
 
     turn_to_move_ = original_side;
 }
