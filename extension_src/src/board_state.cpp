@@ -550,15 +550,7 @@ void BoardState::update_king_position_cache() {
     }
 }
 
-const Cell &BoardState::get_cell(Coord coord) const {
-    if (!coord.is_valid()) {
-        // 範囲外のアクセスなら空のセルを返す
-        static Cell empty_cell;
-        return empty_cell;
-    }
-
-    return board_[coord.col * Shogi::BOARD_ROWS + coord.row];
-}
+const Cell &BoardState::get_cell(Coord coord) const { return board_[coord.col * Shogi::BOARD_ROWS + coord.row]; }
 
 void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promoted) {
     if (!coord.is_valid()) {
