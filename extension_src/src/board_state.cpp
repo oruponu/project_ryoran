@@ -58,6 +58,9 @@ BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move) {
         }
     }
 
+    king_pos_[static_cast<int>(Turn::SENTE)] = std::nullopt;
+    king_pos_[static_cast<int>(Turn::GOTE)] = std::nullopt;
+
     zobrist_hash_ = calculate_zobrist_hash();
 }
 
@@ -98,6 +101,8 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
             }
         }
     }
+
+    update_king_position_cache();
 
     // 持ち駒を読み込み
     Node *stands[2];
@@ -430,23 +435,24 @@ bool BoardState::is_nifu(PieceType piece_type, Turn turn, int col) const {
 }
 
 bool BoardState::is_king_in_check(Turn turn) const {
-    if (auto king_pos = find_king_position(turn); !king_pos) {
-        return false;
-    } else {
-        Turn enemy_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
-
-        for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-            for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-                Coord coord{col, row};
-                if (const Cell &cell = get_cell(coord);
-                    !cell.is_empty() && cell.turn == enemy_side && is_valid_move(coord, *king_pos)) {
-                    return true;
-                }
-            }
-        }
-
+    auto king_pos = get_king_position(turn);
+    if (!king_pos) {
         return false;
     }
+
+    Turn enemy_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            Coord coord{col, row};
+            if (const Cell &cell = get_cell(coord);
+                !cell.is_empty() && cell.turn == enemy_side && is_valid_move(coord, *king_pos)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 std::vector<Move> BoardState::get_legal_moves(bool only_captures) const {
@@ -528,18 +534,20 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) const {
 
 uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash_; }
 
-std::optional<Coord> BoardState::find_king_position(Turn turn) const {
+std::optional<Coord> BoardState::get_king_position(Turn turn) const { return king_pos_[static_cast<int>(turn)]; }
+
+void BoardState::update_king_position_cache() {
+    king_pos_[static_cast<int>(Turn::SENTE)] = std::nullopt;
+    king_pos_[static_cast<int>(Turn::GOTE)] = std::nullopt;
+
     for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
         for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-            Coord coord{col, row};
-            const Cell &cell = get_cell(coord);
-            if (cell.turn == turn && cell.type == PieceType::KING) {
-                return coord;
+            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+            if (cell.type == PieceType::KING) {
+                king_pos_[static_cast<int>(cell.turn)] = Coord{col, row};
             }
         }
     }
-
-    return std::nullopt;
 }
 
 const Cell &BoardState::get_cell(Coord coord) const {
@@ -562,6 +570,12 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
         int old_is_promoted = old_cell.is_promoted ? 1 : 0;
         zobrist_hash_ ^= g_zobrist_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)]
                                         [old_is_promoted][coord.col][coord.row];
+        if (old_cell.type == PieceType::KING) {
+            auto &cached_pos = king_pos_[static_cast<int>(old_cell.turn)];
+            if (cached_pos && cached_pos->col == coord.col && cached_pos->row == coord.row) {
+                cached_pos = std::nullopt;
+            }
+        }
     }
 
     int new_is_promoted = is_promoted ? 1 : 0;
@@ -570,6 +584,10 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
 
     int index = coord.col * Shogi::BOARD_ROWS + coord.row;
     board_[index] = Cell(type, turn, is_promoted);
+
+    if (type == PieceType::KING) {
+        king_pos_[static_cast<int>(turn)] = coord;
+    }
 }
 
 void BoardState::clear_cell(Coord coord) {
@@ -582,6 +600,12 @@ void BoardState::clear_cell(Coord coord) {
         int old_is_promoted = old_cell.is_promoted ? 1 : 0;
         zobrist_hash_ ^= g_zobrist_board[static_cast<int>(old_cell.turn)][static_cast<int>(old_cell.type)]
                                         [old_is_promoted][coord.col][coord.row];
+        if (old_cell.type == PieceType::KING) {
+            auto &cached_pos = king_pos_[static_cast<int>(old_cell.turn)];
+            if (cached_pos && cached_pos->col == coord.col && cached_pos->row == coord.row) {
+                cached_pos = std::nullopt;
+            }
+        }
     }
 
     int index = coord.col * Shogi::BOARD_ROWS + coord.row;
@@ -648,6 +672,10 @@ void BoardState::apply_move(const Move &move) {
 
         board_[to_idx] = Cell(source.type, current_side, is_promoted);
         board_[from_idx] = Cell();
+
+        if (source.type == PieceType::KING) {
+            king_pos_[static_cast<int>(current_side)] = Coord{move.to_col, move.to_row};
+        }
     }
 
     zobrist_hash_ ^= g_zobrist_turn_enemy;

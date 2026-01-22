@@ -37,6 +37,7 @@ class BoardState {
 
     Shogi::Turn turn_to_move_;
     uint64_t zobrist_hash_;
+    std::optional<Shogi::Coord> king_pos_[2];
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
@@ -44,7 +45,7 @@ class BoardState {
     [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
     [[nodiscard]] bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_nifu(Shogi::PieceType piece_type, Shogi::Turn turn, int col) const;
-    [[nodiscard]] std::optional<Shogi::Coord> find_king_position(Shogi::Turn turn) const;
+    void update_king_position_cache();
 
   public:
     BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
@@ -84,6 +85,7 @@ class BoardState {
                                          Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
     [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
+    [[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
 
     [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(bool only_captures = false) const;
 
