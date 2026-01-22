@@ -12,82 +12,9 @@ using Shogi::Turn;
 
 namespace {
 
-constexpr std::array<std::array<int, 2>, Shogi::PIECE_TYPE_COUNT> PIECE_VALUES = {{
-    {99999, 99999}, // KING
-    {640, 950},     // ROOK
-    {570, 830},     // BISHOP
-    {440, 440},     // GOLD
-    {370, 500},     // SILVER
-    {260, 510},     // KNIGHT
-    {230, 490},     // LANCE
-    {90, 530},      // PAWN
-}};
-
 constexpr std::array HAND_PIECE_TYPES = {
     PieceType::PAWN, PieceType::LANCE,  PieceType::KNIGHT, PieceType::SILVER,
     PieceType::GOLD, PieceType::BISHOP, PieceType::ROOK,
-};
-
-constexpr int PST_PAWN[9][9] = {{20, 20, 20, 20, 20, 20, 20, 20, 20},
-                                {20, 20, 20, 20, 20, 20, 20, 20, 20},
-                                {15, 15, 15, 20, 25, 20, 15, 15, 15},
-                                {5, 5, 5, 10, 20, 10, 5, 5, 5},
-                                {0, 0, 0, 5, 10, 5, 0, 0, 0},
-                                {-5, -5, -5, 0, 5, 0, -5, -5, -5},
-                                {-10, -10, -10, -10, 0, -10, -10, -10, -10},
-                                {-10, -10, -10, -10, -10, -10, -10, -10, -10},
-                                {-10, -5, 0, 5, 5, 5, 0, -5, -10}};
-
-constexpr int PST_SILVER[9][9] = {{10, 10, 10, 10, 10, 10, 10, 10, 10},         {10, 10, 10, 10, 10, 10, 10, 10, 10},
-                                  {10, 15, 15, 20, 20, 20, 15, 15, 10},         {5, 10, 15, 25, 30, 25, 15, 10, 5},
-                                  {0, 10, 20, 30, 40, 30, 20, 10, 0},           {-5, 5, 10, 20, 30, 20, 10, 5, -5},
-                                  {-10, 0, 5, 10, 15, 10, 5, 0, -10},           {-10, -10, 0, 0, 0, 0, 0, -10, -10},
-                                  {-10, -10, -10, -10, -10, -10, -10, -10, -10}};
-
-constexpr int PST_GOLD[9][9] = {{10, 10, 10, 10, 10, 10, 10, 10, 10},
-                                {5, 5, 5, 5, 5, 5, 5, 5, 5},
-                                {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                {-5, -5, -5, -5, -5, -5, -5, -5, -5},
-                                {-10, -10, -5, -5, -5, -5, -5, -10, -10},
-                                {-10, -5, 0, 0, 0, 0, 0, -5, -10},
-                                {-5, 0, 10, 10, 10, 10, 10, 0, -5},
-                                {-10, 0, 15, 15, 15, 15, 15, 0, -10},
-                                {-10, -10, -5, 0, 0, 0, -5, -10, -10}};
-
-constexpr int PST_BISHOP[9][9] = {{30, 30, 30, 30, 30, 30, 30, 30, 30},
-                                  {30, 30, 30, 30, 30, 30, 30, 30, 30},
-                                  {20, 20, 20, 20, 20, 20, 20, 20, 20},
-                                  {10, 10, 15, 15, 15, 15, 15, 10, 10},
-                                  {5, 10, 15, 20, 20, 20, 15, 10, 5},
-                                  {0, 5, 10, 10, 10, 10, 10, 5, 0},
-                                  {-5, 0, 0, 0, 0, 0, 0, 0, -5},
-                                  {-10, 5, 0, 0, 0, 0, 0, 5, -10},
-                                  {-10, -10, -10, -10, -10, -10, -10, -10, -10}};
-
-constexpr int PST_ROOK[9][9] = {
-    {40, 40, 40, 40, 40, 40, 40, 40, 40}, {40, 40, 40, 40, 40, 40, 40, 40, 40}, {20, 20, 20, 20, 20, 20, 20, 20, 20},
-    {10, 10, 10, 10, 10, 10, 10, 10, 10}, {0, 5, 5, 5, 5, 5, 5, 5, 0},          {-5, 0, 0, 0, 0, 0, 0, 0, -5},
-    {-10, 0, 0, 0, 0, 0, 0, 0, -10},      {-10, 5, 5, 10, 10, 10, 5, 5, -10},   {-10, 5, 5, 5, 0, 5, 5, 5, -10}};
-
-constexpr int PST_KING[9][9] = {{0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                {-10, -10, -10, -10, -10, -10, -10, -10, -10},
-                                {-15, -15, -15, -15, -15, -15, -15, -15, -15},
-                                {-20, -20, -20, -20, -20, -20, -20, -20, -20},
-                                {-20, -15, -15, -10, -10, -10, -15, -15, -20},
-                                {-15, -10, 0, 0, -10, 0, 0, -10, -15},
-                                {10, 25, 30, 10, -20, 10, 30, 25, 10},
-                                {30, 40, 30, 10, -50, 10, 30, 40, 30}};
-
-constexpr const int (*PST_TABLES[Shogi::PIECE_TYPE_COUNT])[9] = {
-    PST_KING,   // KING
-    PST_ROOK,   // ROOK
-    PST_BISHOP, // BISHOP
-    PST_GOLD,   // GOLD
-    PST_SILVER, // SILVER
-    nullptr,    // KNIGHT
-    nullptr,    // LANCE
-    PST_PAWN,   // PAWN
 };
 
 } // namespace
@@ -161,8 +88,8 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
     if (move.is_capture) {
         const Cell &target_cell = board.get_cell({move.to_col, move.to_row});
         if (!target_cell.is_empty()) {
-            int victim_value = PIECE_VALUES[static_cast<int>(target_cell.type)][target_cell.is_promoted ? 1 : 0];
-            int aggressor_value = PIECE_VALUES[static_cast<int>(move.piece_type)][0];
+            int victim_value = Shogi::PIECE_VALUES[static_cast<int>(target_cell.type)][target_cell.is_promoted ? 1 : 0];
+            int aggressor_value = Shogi::PIECE_VALUES[static_cast<int>(move.piece_type)][0];
             // 高い駒を安い駒で取るほど高得点
             score = 1000000 + victim_value - aggressor_value;
         }
