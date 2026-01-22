@@ -299,14 +299,15 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             break;
         }
 
+        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+        });
+
         if (has_prev_best) {
             auto it = std::find(moves.begin(), moves.end(), best_move_prev_iter);
             if (it != moves.end()) {
                 std::rotate(moves.begin(), it, it + 1);
             }
-        } else {
-            std::sort(moves.begin(), moves.end(),
-                      [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
         }
 
         int alpha = -99999999;
