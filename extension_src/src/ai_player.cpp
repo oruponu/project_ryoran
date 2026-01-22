@@ -163,6 +163,32 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
         return 0;
     }
 
+    uint64_t hash = board.get_zobrist_hash();
+    int original_alpha = alpha;
+    Move tt_best_move{};
+    bool has_tt_move = false;
+
+    TTEntry *tt_entry = probe_tt(hash);
+    if (tt_entry != nullptr && tt_entry->depth >= depth) {
+        if (tt_entry->flag == TTFlag::EXACT) {
+            return tt_entry->score;
+        } else if (tt_entry->flag == TTFlag::LOWER_BOUND) {
+            alpha = std::max(alpha, tt_entry->score);
+        } else if (tt_entry->flag == TTFlag::UPPER_BOUND) {
+            beta = std::min(beta, tt_entry->score);
+        }
+
+        if (alpha >= beta) {
+            return tt_entry->score;
+        }
+    }
+
+    // TTから最善手を取得
+    if (tt_entry != nullptr) {
+        tt_best_move = tt_entry->best_move;
+        has_tt_move = true;
+    }
+
     if (depth <= 0) {
         // 静止探索を実行
         return quiescence_search(board, alpha, beta, turn, node_count);
@@ -175,10 +201,18 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
         return (turn == turn_to_move) ? -999999 : 999999;
     }
 
-    // 取る手を優先
-    std::sort(moves.begin(), moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
+    if (has_tt_move) {
+        auto it = std::find(moves.begin(), moves.end(), tt_best_move);
+        if (it != moves.end()) {
+            std::rotate(moves.begin(), it, it + 1);
+        }
+    }
+
+    auto sort_start = has_tt_move ? moves.begin() + 1 : moves.begin();
+    std::sort(sort_start, moves.end(), [](const Move &a, const Move &b) { return a.is_capture > b.is_capture; });
 
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    Move best_move = moves[0];
 
     if (turn == Turn::SENTE) {
         int max_eval = -99999999;
@@ -190,12 +224,25 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
                 return 0;
             }
 
-            max_eval = std::max(max_eval, eval);
+            if (eval > max_eval) {
+                max_eval = eval;
+                best_move = move;
+            }
             alpha = std::max(alpha, eval);
             if (beta <= alpha) {
                 break; // βカット
             }
         }
+
+        TTFlag flag;
+        if (max_eval <= original_alpha) {
+            flag = TTFlag::UPPER_BOUND;
+        } else if (max_eval >= beta) {
+            flag = TTFlag::LOWER_BOUND;
+        } else {
+            flag = TTFlag::EXACT;
+        }
+        store_tt(hash, max_eval, depth, flag, best_move);
 
         return max_eval;
     } else {
@@ -208,12 +255,25 @@ int AIPlayer::alpha_beta(BoardState board, int depth, int alpha, int beta, Turn 
                 return 0;
             }
 
-            min_eval = std::min(min_eval, eval);
+            if (eval < min_eval) {
+                min_eval = eval;
+                best_move = move;
+            }
             beta = std::min(beta, eval);
             if (beta <= alpha) {
                 break; // αカット
             }
         }
+
+        TTFlag flag;
+        if (min_eval >= beta) {
+            flag = TTFlag::LOWER_BOUND;
+        } else if (min_eval <= original_alpha) {
+            flag = TTFlag::UPPER_BOUND;
+        } else {
+            flag = TTFlag::EXACT;
+        }
+        store_tt(hash, min_eval, depth, flag, best_move);
 
         return min_eval;
     }
@@ -290,6 +350,23 @@ double AIPlayer::calculate_win_probability(int score) {
     return 1.0 / (1.0 + std::pow(10.0, -static_cast<double>(score) / SCALING_FACTOR));
 }
 
+TTEntry *AIPlayer::probe_tt(uint64_t hash) {
+    auto it = transposition_table_.find(hash);
+    if (it != transposition_table_.end() && it->second.hash == hash) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+void AIPlayer::store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Move &best_move) {
+    auto it = transposition_table_.find(hash);
+    if (it == transposition_table_.end() || it->second.depth <= depth) {
+        transposition_table_[hash] = TTEntry{hash, score, depth, flag, best_move};
+    }
+}
+
+void AIPlayer::clear_tt() { transposition_table_.clear(); }
+
 Dictionary AIPlayer::search_best_move(BoardState board) {
     Turn root_side = board.get_turn_to_move();
     std::vector<Move> moves = board.get_legal_moves();
@@ -301,6 +378,12 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         return result;
     }
 
+    if (transposition_table_.size() > TT_SIZE) {
+        UtilityFunctions::print("TT size exceeded limit, clearing. Size was: ",
+                                static_cast<int64_t>(transposition_table_.size()));
+        clear_tt();
+    }
+
     uint64_t start_time = Time::get_singleton()->get_ticks_usec();
     uint64_t strict_limit_time = start_time + TIME_LIMIT_USEC;
 
@@ -309,8 +392,12 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     Move global_best_move = moves[0];
     int global_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
 
-    Move best_move_prev_iter = moves[0];
-    bool has_prev_best = false;
+    // TTから最善手を取得
+    uint64_t root_hash = board.get_zobrist_hash();
+    TTEntry *root_tt = probe_tt(root_hash);
+    Move best_move_prev_iter = (root_tt != nullptr) ? root_tt->best_move : moves[0];
+    bool has_prev_best = (root_tt != nullptr);
+
     uint64_t total_node_count = 0;
 
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
@@ -398,7 +485,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         }
     }
 
-    UtilityFunctions::print("Total nodes searched: ", total_node_count);
+    UtilityFunctions::print("Total nodes searched: ", total_node_count,
+                            ", TT size: ", static_cast<int64_t>(transposition_table_.size()));
 
     const auto &best_move = global_best_move;
     int final_score = (root_side == Turn::SENTE) ? global_best_score : -global_best_score;
