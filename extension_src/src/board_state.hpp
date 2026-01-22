@@ -96,7 +96,8 @@ class BoardState {
     void set_cell(Shogi::Coord coord, Shogi::PieceType type, Shogi::Turn turn, bool is_promoted);
     void clear_cell(Shogi::Coord coord);
     [[nodiscard]] int get_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type) const;
-    void apply_move(const Shogi::Move &move);
+    [[nodiscard]] Shogi::UndoInfo apply_move(const Shogi::Move &move);
+    void undo_move(const Shogi::UndoInfo &undo_info);
 
     // 盤面の出力（デバッグ用）
     void print_board() const;

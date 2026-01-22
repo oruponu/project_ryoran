@@ -909,12 +909,27 @@ int BoardState::get_hand_count(Turn turn, PieceType piece_type) const {
     return hand_[side_idx][type_idx];
 }
 
-void BoardState::apply_move(const Move &move) {
+Shogi::UndoInfo BoardState::apply_move(const Move &move) {
+    Shogi::UndoInfo undo;
+    undo.move = move;
+    undo.prev_hash = zobrist_hash_;
+    undo.prev_pawn_cols[0] = pawn_columns_[0];
+    undo.prev_pawn_cols[1] = pawn_columns_[1];
+
     Turn current_side = turn_to_move_;
     Turn opponent_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
     int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
     int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+
+    Cell target = get_cell({move.to_col, move.to_row});
+    if (!target.is_empty()) {
+        undo.captured_type = static_cast<uint8_t>(target.type);
+        undo.captured_promoted = target.is_promoted;
+    } else {
+        undo.captured_type = static_cast<uint8_t>(PieceType::EMPTY);
+        undo.captured_promoted = false;
+    }
 
     if (move.is_drop) {
         PieceType piece_type = move.piece_type;
@@ -937,7 +952,6 @@ void BoardState::apply_move(const Move &move) {
         }
     } else {
         Cell source = get_cell({move.from_col, move.from_row});
-        Cell target = get_cell({move.to_col, move.to_row});
 
         int src_is_promoted = source.is_promoted ? 1 : 0;
         zobrist_hash_ ^= g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(source.type)][src_is_promoted]
@@ -982,6 +996,55 @@ void BoardState::apply_move(const Move &move) {
 
     zobrist_hash_ ^= g_zobrist_turn_enemy;
     turn_to_move_ = opponent_side;
+
+    return undo;
+}
+
+void BoardState::undo_move(const Shogi::UndoInfo &undo) {
+    const Move &move = undo.move;
+
+    Turn original_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    Turn opponent_side = turn_to_move_;
+
+    int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
+    int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+
+    if (move.is_drop) {
+        board_[to_idx] = Cell();
+        hand_[static_cast<int>(original_side)][static_cast<int>(move.piece_type)]++;
+    } else {
+        Cell moved_piece = get_cell({move.to_col, move.to_row});
+
+        bool was_promoted_before = moved_piece.is_promoted && !move.is_promotion;
+        if (move.is_promotion) {
+            was_promoted_before = false;
+        } else {
+            was_promoted_before = moved_piece.is_promoted;
+        }
+
+        board_[from_idx] = Cell(moved_piece.type, original_side, was_promoted_before);
+
+        PieceType captured_type = static_cast<PieceType>(undo.captured_type);
+        if (captured_type != PieceType::EMPTY) {
+            board_[to_idx] = Cell(captured_type, opponent_side, undo.captured_promoted);
+            if (hand_[static_cast<int>(original_side)][static_cast<int>(captured_type)] > 0) {
+                hand_[static_cast<int>(original_side)][static_cast<int>(captured_type)]--;
+            }
+        } else {
+            board_[to_idx] = Cell();
+        }
+
+        if (moved_piece.type == PieceType::KING) {
+            king_pos_[static_cast<int>(original_side)] = Coord{move.from_col, move.from_row};
+        }
+    }
+
+    pawn_columns_[0] = undo.prev_pawn_cols[0];
+    pawn_columns_[1] = undo.prev_pawn_cols[1];
+
+    zobrist_hash_ = undo.prev_hash;
+
+    turn_to_move_ = original_side;
 }
 
 void BoardState::print_board() const {
