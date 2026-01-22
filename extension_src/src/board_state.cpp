@@ -278,40 +278,50 @@ bool BoardState::is_valid_drop(PieceType piece_type, bool is_enemy, Coord to) co
     return true;
 }
 
-bool BoardState::is_legal_move(Coord from, Coord to) const {
+bool BoardState::is_legal_move(Coord from, Coord to) {
     if (!is_valid_move(from, to)) {
         return false;
     }
 
-    BoardState next_state = *this;
-    Cell piece = next_state.get_cell(from);
-    next_state.set_cell(to, piece.type, piece.turn, piece.is_promoted);
-    next_state.clear_cell(from);
+    const Cell from_cell = get_cell(from);
+    const Cell to_cell = get_cell(to);
+    const int from_idx = from.col * Shogi::BOARD_ROWS + from.row;
+    const int to_idx = to.col * Shogi::BOARD_ROWS + to.row;
+    const auto old_king_pos = king_pos_[static_cast<int>(from_cell.turn)];
 
-    // 王手放置になる手を除外
-    if (next_state.is_king_in_check(piece.turn)) {
-        return false;
+    board_[to_idx] = from_cell;
+    board_[from_idx] = Cell();
+
+    if (from_cell.type == PieceType::KING) {
+        king_pos_[static_cast<int>(from_cell.turn)] = to;
     }
 
-    return true;
+    // 王手放置になる手を除外
+    const bool in_check = is_king_in_check(from_cell.turn);
+
+    board_[from_idx] = from_cell;
+    board_[to_idx] = to_cell;
+    king_pos_[static_cast<int>(from_cell.turn)] = old_king_pos;
+
+    return !in_check;
 }
 
-bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) const {
+bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) {
     if (!is_valid_drop(piece_type, is_enemy, to)) {
         return false;
     }
 
-    BoardState next_state = *this;
-    Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
-    next_state.set_cell(to, piece_type, turn, false);
-    next_state.hand_[static_cast<int>(turn)][static_cast<int>(piece_type)]--;
+    const Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
+    const int to_idx = to.col * Shogi::BOARD_ROWS + to.row;
+
+    board_[to_idx] = Cell(piece_type, turn, false);
 
     // 王手放置になる手を除外
-    if (next_state.is_king_in_check(turn)) {
-        return false;
-    }
+    const bool in_check = is_king_in_check(turn);
 
-    return true;
+    board_[to_idx] = Cell();
+
+    return !in_check;
 }
 
 bool BoardState::can_move_geometry(PieceType piece_type, bool is_enemy, bool is_promoted, Coord from, Coord to) const {
@@ -467,7 +477,7 @@ bool BoardState::is_king_in_check(Turn turn) const {
     return false;
 }
 
-std::vector<Move> BoardState::get_legal_moves(bool only_captures) const {
+std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
     constexpr std::array HAND_PIECE_TYPES = {
         PieceType::PAWN, PieceType::LANCE,  PieceType::KNIGHT, PieceType::SILVER,
         PieceType::GOLD, PieceType::BISHOP, PieceType::ROOK,

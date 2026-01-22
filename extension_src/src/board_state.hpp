@@ -79,15 +79,15 @@ class BoardState {
 
     [[nodiscard]] uint64_t get_zobrist_hash() const;
 
-    [[nodiscard]] bool is_legal_move(Shogi::Coord from, Shogi::Coord to) const;
-    [[nodiscard]] bool is_legal_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
+    [[nodiscard]] bool is_legal_move(Shogi::Coord from, Shogi::Coord to);
+    [[nodiscard]] bool is_legal_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to);
     [[nodiscard]] bool can_move_geometry(Shogi::PieceType piece_type, bool is_enemy, bool is_promoted,
                                          Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
     [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
     [[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
 
-    [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(bool only_captures = false) const;
+    [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(bool only_captures = false);
 
     // 盤面の操作
     [[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
