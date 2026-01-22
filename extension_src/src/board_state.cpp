@@ -51,7 +51,7 @@ bool g_zobrist_initialized = false;
 
 } // namespace
 
-BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move) {
+BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(0) {
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
         board_[i] = Cell();
@@ -139,6 +139,7 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
     }
 
     zobrist_hash_ = calculate_zobrist_hash();
+    score_ = calculate_score();
 }
 
 void BoardState::load_zobrist_params(const String &path) {
@@ -216,6 +217,41 @@ uint64_t BoardState::calculate_zobrist_hash() const {
     }
 
     return hash;
+}
+
+int BoardState::calculate_score() const {
+    int score = 0;
+
+    // 盤上の駒
+    for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+        for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
+            const Cell &cell = get_cell({col, row});
+            if (cell.is_empty()) {
+                continue;
+            }
+
+            int piece_score = Shogi::get_piece_score(cell.type, cell.is_promoted, cell.turn, col, row);
+            if (cell.turn == Turn::SENTE) {
+                score += piece_score;
+            } else {
+                score -= piece_score;
+            }
+        }
+    }
+
+    // 持ち駒
+    for (Turn turn : {Turn::SENTE, Turn::GOTE}) {
+        int sign = (turn == Turn::SENTE) ? 1 : -1;
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            int count = hand_[static_cast<int>(turn)][piece_type];
+            if (count > 0) {
+                int value = Shogi::PIECE_VALUES[piece_type][0];
+                score += count * value * sign;
+            }
+        }
+    }
+
+    return score;
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {
@@ -918,6 +954,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
     Turn current_side = turn_to_move_;
     Turn opponent_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    int sign = (current_side == Turn::SENTE) ? 1 : -1;
 
     int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
     int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
@@ -934,6 +971,10 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
     if (move.is_drop) {
         PieceType piece_type = move.piece_type;
         int count = hand_[static_cast<int>(current_side)][static_cast<int>(piece_type)];
+
+        int hand_value = Shogi::PIECE_VALUES[static_cast<int>(piece_type)][0];
+        int board_score = Shogi::get_piece_score(piece_type, false, current_side, move.to_col, move.to_row);
+        score_ += sign * (board_score - hand_value);
 
         int idx_old = std::clamp(count, 0, 19);
         int idx_new = std::clamp(count - 1, 0, 19);
@@ -953,11 +994,21 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
     } else {
         Cell source = get_cell({move.from_col, move.from_row});
 
+        int from_score =
+            Shogi::get_piece_score(source.type, source.is_promoted, current_side, move.from_col, move.from_row);
+        score_ -= sign * from_score;
+
         int src_is_promoted = source.is_promoted ? 1 : 0;
         zobrist_hash_ ^= g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(source.type)][src_is_promoted]
                                         [move.from_col][move.from_row];
 
         if (!target.is_empty()) {
+            int captured_score =
+                Shogi::get_piece_score(target.type, target.is_promoted, opponent_side, move.to_col, move.to_row);
+            score_ += sign * captured_score;
+            int hand_value = Shogi::PIECE_VALUES[static_cast<int>(target.type)][0];
+            score_ += sign * hand_value;
+
             int tgt_is_promoted = target.is_promoted ? 1 : 0;
             zobrist_hash_ ^= g_zobrist_board[static_cast<int>(opponent_side)][static_cast<int>(target.type)]
                                             [tgt_is_promoted][move.to_col][move.to_row];
@@ -972,6 +1023,10 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
         }
 
         bool is_promoted = move.is_promotion || source.is_promoted;
+
+        int to_score = Shogi::get_piece_score(source.type, is_promoted, current_side, move.to_col, move.to_row);
+        score_ += sign * to_score;
+
         int new_is_promoted = is_promoted ? 1 : 0;
         zobrist_hash_ ^= g_zobrist_board[static_cast<int>(current_side)][static_cast<int>(source.type)][new_is_promoted]
                                         [move.to_col][move.to_row];

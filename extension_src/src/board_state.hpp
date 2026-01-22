@@ -37,10 +37,12 @@ class BoardState {
 
     Shogi::Turn turn_to_move_;
     uint64_t zobrist_hash_;
+    int score_;
     std::optional<Shogi::Coord> king_pos_[2];
     uint16_t pawn_columns_[2];
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
+    [[nodiscard]] int calculate_score() const;
 
     [[nodiscard]] bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
@@ -54,6 +56,7 @@ class BoardState {
     explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
     [[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }
+    [[nodiscard]] int get_score() const { return score_; }
 
     [[nodiscard]] bool operator==(const BoardState &other) const {
         if (turn_to_move_ != other.turn_to_move_) {
