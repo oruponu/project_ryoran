@@ -27,16 +27,16 @@ constexpr int BOARD_SIZE = 81;
 // 駒の種類数
 constexpr int PIECE_TYPE_COUNT = 8;
 
-// 駒の価値
+// Apery（WCSC26）に基づく駒の価値
 constexpr std::array<std::array<int, 2>, PIECE_TYPE_COUNT> PIECE_VALUES = {{
-    {99999, 99999}, // KING
-    {640, 950},     // ROOK
-    {570, 830},     // BISHOP
-    {440, 440},     // GOLD
-    {370, 500},     // SILVER
-    {260, 510},     // KNIGHT
-    {230, 490},     // LANCE
-    {90, 530},      // PAWN
+    {15000, 15000}, // KING
+    {990, 1395},    // ROOK
+    {855, 945},     // BISHOP
+    {540, 540},     // GOLD
+    {495, 540},     // SILVER
+    {405, 540},     // KNIGHT
+    {315, 540},     // LANCE
+    {90, 540},      // PAWN
 }};
 
 // Piece-Square Table
