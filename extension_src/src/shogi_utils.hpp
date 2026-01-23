@@ -39,6 +39,9 @@ constexpr std::array<std::array<int, 2>, PIECE_TYPE_COUNT> PIECE_VALUES = {{
     {90, 540},      // PAWN
 }};
 
+// 盤上の駒の価値を調整
+inline constexpr int apply_board_discount(int score) { return score - (score * 104 / 1024); }
+
 // Piece-Square Table
 constexpr int PST_PAWN[9][9] = {{20, 20, 20, 20, 20, 20, 20, 20, 20},
                                 {20, 20, 20, 20, 20, 20, 20, 20, 20},

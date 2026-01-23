@@ -231,6 +231,8 @@ int BoardState::calculate_score() const {
             }
 
             int piece_score = Shogi::get_piece_score(cell.type, cell.is_promoted, cell.turn, col, row);
+            piece_score = Shogi::apply_board_discount(piece_score);
+
             if (cell.turn == Turn::SENTE) {
                 score += piece_score;
             } else {
@@ -975,6 +977,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
         int hand_value = Shogi::PIECE_VALUES[static_cast<int>(piece_type)][0];
         int board_score = Shogi::get_piece_score(piece_type, false, current_side, move.to_col, move.to_row);
+        board_score = Shogi::apply_board_discount(board_score);
         score_ += sign * (board_score - hand_value);
 
         int idx_old = std::clamp(count, 0, 19);
@@ -997,6 +1000,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
         int from_score =
             Shogi::get_piece_score(source.type, source.is_promoted, current_side, move.from_col, move.from_row);
+        from_score = Shogi::apply_board_discount(from_score);
         score_ -= sign * from_score;
 
         int src_is_promoted = source.is_promoted ? 1 : 0;
@@ -1006,6 +1010,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
         if (!target.is_empty()) {
             int captured_score =
                 Shogi::get_piece_score(target.type, target.is_promoted, opponent_side, move.to_col, move.to_row);
+            captured_score = Shogi::apply_board_discount(captured_score);
             score_ += sign * captured_score;
             int hand_value = Shogi::PIECE_VALUES[static_cast<int>(target.type)][0];
             score_ += sign * hand_value;
@@ -1026,6 +1031,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
         bool is_promoted = move.is_promotion || source.is_promoted;
 
         int to_score = Shogi::get_piece_score(source.type, is_promoted, current_side, move.to_col, move.to_row);
+        to_score = Shogi::apply_board_discount(to_score);
         score_ += sign * to_score;
 
         int new_is_promoted = is_promoted ? 1 : 0;
