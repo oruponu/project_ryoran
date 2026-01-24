@@ -1,11 +1,11 @@
 #ifndef BOARD_STATE_HPP
 #define BOARD_STATE_HPP
 
+#include "bitboard.hpp"
+#include "shogi_utils.hpp"
 #include <godot_cpp/classes/node2d.hpp>
 #include <optional>
 #include <vector>
-
-#include "shogi_utils.hpp"
 
 using namespace godot;
 
@@ -32,6 +32,18 @@ struct Cell {
 
 class BoardState {
   private:
+    // すべての駒のBitboard
+    Bitboard bitboard_all_;
+
+    // 手番別のBitboard
+    Bitboard bitboard_side_[2];
+
+    // 手番別・駒種別のBitboard
+    Bitboard bitboard_piece_[2][Shogi::PIECE_TYPE_COUNT];
+
+    // 手番別の成り駒のBitboard
+    Bitboard bitboard_promoted_[2];
+
     Cell board_[Shogi::BOARD_SIZE];
     int hand_[2][Shogi::PIECE_TYPE_COUNT];
 
@@ -40,6 +52,10 @@ class BoardState {
     int score_;
     std::optional<Shogi::Coord> king_pos_[2];
     uint16_t pawn_columns_[2];
+
+    void build_bitboard();
+    void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
+    void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
     [[nodiscard]] int calculate_score() const;
