@@ -543,6 +543,12 @@ bool BoardState::is_legal_move(Coord from, Coord to) {
     board_[to_idx] = from_cell;
     board_[from_idx] = Cell();
 
+    remove_piece_from_bitboard(from_idx, from_cell.turn, from_cell.type, from_cell.is_promoted);
+    if (!to_cell.is_empty()) {
+        remove_piece_from_bitboard(to_idx, to_cell.turn, to_cell.type, to_cell.is_promoted);
+    }
+    add_piece_to_bitboard(to_idx, from_cell.turn, from_cell.type, from_cell.is_promoted);
+
     if (from_cell.type == PieceType::KING) {
         king_pos_[static_cast<int>(from_cell.turn)] = to;
     }
@@ -553,6 +559,12 @@ bool BoardState::is_legal_move(Coord from, Coord to) {
     board_[from_idx] = from_cell;
     board_[to_idx] = to_cell;
     king_pos_[static_cast<int>(from_cell.turn)] = old_king_pos;
+
+    remove_piece_from_bitboard(to_idx, from_cell.turn, from_cell.type, from_cell.is_promoted);
+    if (!to_cell.is_empty()) {
+        add_piece_to_bitboard(to_idx, to_cell.turn, to_cell.type, to_cell.is_promoted);
+    }
+    add_piece_to_bitboard(from_idx, from_cell.turn, from_cell.type, from_cell.is_promoted);
 
     return !in_check;
 }
@@ -567,10 +579,14 @@ bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) {
 
     board_[to_idx] = Cell(piece_type, turn, false);
 
+    add_piece_to_bitboard(to_idx, turn, piece_type, false);
+
     // 王手放置になる手を除外
     const bool in_check = is_king_in_check(turn);
 
     board_[to_idx] = Cell();
+
+    remove_piece_from_bitboard(to_idx, turn, piece_type, false);
 
     return !in_check;
 }
@@ -701,138 +717,70 @@ bool BoardState::is_nifu(PieceType piece_type, Turn turn, int col) const {
 }
 
 bool BoardState::is_king_in_check(Turn turn) const {
-    auto king_pos = get_king_position(turn);
-    if (!king_pos) {
+    auto king_position = get_king_position(turn);
+    if (!king_position) {
         return false;
     }
 
-    const int king_col = king_pos->col;
-    const int king_row = king_pos->row;
-    const Turn enemy_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
-    const int enemy_forward = (enemy_side == Turn::SENTE) ? -1 : 1;
+    int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
 
-    // 桂馬の利きをチェック
-    const int knight_positions[2][2] = {{-1, -enemy_forward * 2}, {1, -enemy_forward * 2}};
-    for (const auto &pos : knight_positions) {
-        int col = king_col + pos[0];
-        int row = king_row + pos[1];
-        if (col >= 0 && col < Shogi::BOARD_COLS && row >= 0 && row < Shogi::BOARD_ROWS) {
-            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
-            if (!cell.is_empty() && cell.turn == enemy_side && cell.type == PieceType::KNIGHT && !cell.is_promoted) {
-                return true;
-            }
-        }
+    const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    int enemy_index = static_cast<int>(enemy_turn);
+
+    const Bitboard &enemy_pawns = bitboard_piece_[enemy_index][static_cast<int>(PieceType::PAWN)];
+    const Bitboard &enemy_lances = bitboard_piece_[enemy_index][static_cast<int>(PieceType::LANCE)];
+    const Bitboard &enemy_knights = bitboard_piece_[enemy_index][static_cast<int>(PieceType::KNIGHT)];
+    const Bitboard &enemy_silvers = bitboard_piece_[enemy_index][static_cast<int>(PieceType::SILVER)];
+    const Bitboard &enemy_golds = bitboard_piece_[enemy_index][static_cast<int>(PieceType::GOLD)];
+    const Bitboard &enemy_bishops = bitboard_piece_[enemy_index][static_cast<int>(PieceType::BISHOP)];
+    const Bitboard &enemy_rooks = bitboard_piece_[enemy_index][static_cast<int>(PieceType::ROOK)];
+    const Bitboard &enemy_kings = bitboard_piece_[enemy_index][static_cast<int>(PieceType::KING)];
+    const Bitboard &enemy_promoted = bitboard_promoted_[enemy_index];
+    const Bitboard &occupancy = bitboard_all_;
+
+    // 香車の利きをチェック
+    Bitboard lance_attacks = get_lance_attacks(king_square, turn, occupancy);
+    if (!(lance_attacks & (enemy_lances & ~enemy_promoted)).is_empty()) {
+        return true;
+    }
+
+    // 角の利きをチェック
+    Bitboard bishop_attacks = get_bishop_attacks(king_square, occupancy);
+    if (!(bishop_attacks & enemy_bishops).is_empty()) {
+        return true;
+    }
+
+    // 飛車の利きをチェック
+    Bitboard rook_attacks = get_rook_attacks(king_square, occupancy);
+    if (!(rook_attacks & enemy_rooks).is_empty()) {
+        return true;
     }
 
     // 歩の利きをチェック
-    {
-        int pawn_row = king_row - enemy_forward;
-        if (pawn_row >= 0 && pawn_row < Shogi::BOARD_ROWS) {
-            const Cell &cell = board_[king_col * Shogi::BOARD_ROWS + pawn_row];
-            if (!cell.is_empty() && cell.turn == enemy_side && cell.type == PieceType::PAWN && !cell.is_promoted) {
-                return true;
-            }
-        }
+    if (!(get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted)).is_empty()) {
+        return true;
     }
 
-    constexpr int directions[8][2] = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}, {-1, -1}, {1, -1}, {-1, 1}, {1, 1}};
-    for (int dir_idx = 0; dir_idx < 8; ++dir_idx) {
-        int dx = directions[dir_idx][0];
-        int dy = directions[dir_idx][1];
-        bool is_diagonal = (dir_idx >= 4);
+    // 桂馬の利きをチェック
+    if (!(get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted)).is_empty()) {
+        return true;
+    }
 
-        for (int dist = 1; dist < 9; ++dist) {
-            int col = king_col + dx * dist;
-            int row = king_row + dy * dist;
+    // 銀の利きをチェック
+    if (!(get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted)).is_empty()) {
+        return true;
+    }
 
-            if (col < 0 || col >= Shogi::BOARD_COLS || row < 0 || row >= Shogi::BOARD_ROWS) {
-                break;
-            }
+    // 金および金と同じ動きをする成り駒の利きをチェック
+    Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
+    if (!(get_gold_attacks(king_square, turn) & gold_likes).is_empty()) {
+        return true;
+    }
 
-            const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
-            if (cell.is_empty()) {
-                continue;
-            }
-
-            if (cell.turn == turn) {
-                break;
-            }
-
-            PieceType type = cell.type;
-            bool is_promoted = cell.is_promoted;
-
-            if (dist == 1) {
-                // 玉の利きをチェック
-                if (type == PieceType::KING) {
-                    return true;
-                }
-
-                // 金の利きをチェック
-                bool is_gold_move = (type == PieceType::GOLD) ||
-                                    (is_promoted && (type == PieceType::SILVER || type == PieceType::KNIGHT ||
-                                                     type == PieceType::LANCE || type == PieceType::PAWN));
-                if (is_gold_move) {
-                    int move_dx = -dx;
-                    int move_dy = -dy;
-                    if (enemy_side == Turn::GOTE) {
-                        move_dx = -move_dx;
-                        move_dy = -move_dy;
-                    }
-
-                    bool is_backward_diagonal = (std::abs(move_dx) == 1 && move_dy == 1);
-                    if (!is_backward_diagonal) {
-                        return true;
-                    }
-                }
-
-                // 銀の利きをチェック
-                if (type == PieceType::SILVER && !is_promoted) {
-                    int move_dx = -dx;
-                    int move_dy = -dy;
-                    if (enemy_side == Turn::GOTE) {
-                        move_dx = -move_dx;
-                        move_dy = -move_dy;
-                    }
-
-                    bool is_silver_move = (move_dy == -1) || (std::abs(move_dx) == 1 && move_dy == 1);
-                    if (is_silver_move) {
-                        return true;
-                    }
-                }
-
-                // 竜（斜め1マス）の利きをチェック
-                if (type == PieceType::ROOK && is_promoted && is_diagonal) {
-                    return true;
-                }
-
-                // 馬（縦横1マス）の利きをチェック
-                if (type == PieceType::BISHOP && is_promoted && !is_diagonal) {
-                    return true;
-                }
-            }
-
-            if (is_diagonal) {
-                // 角の利きをチェック
-                if (type == PieceType::BISHOP) {
-                    return true;
-                }
-            } else {
-                // 飛車の利きをチェック
-                if (type == PieceType::ROOK) {
-                    return true;
-                }
-
-                // 香車の利きをチェック
-                if (type == PieceType::LANCE && !is_promoted && dx == 0) {
-                    int lance_forward = (enemy_side == Turn::SENTE) ? -1 : 1;
-                    if (dy == -lance_forward) {
-                        return true;
-                    }
-                }
-            }
-
-            break;
-        }
+    // 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
+    Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
+    if (!(get_king_attacks(king_square) & king_likes).is_empty()) {
+        return true;
     }
 
     return false;
