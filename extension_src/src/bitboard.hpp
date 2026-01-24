@@ -47,6 +47,50 @@ struct Bitboard {
 
     bool operator!=(const Bitboard &rhs) const { return !(*this == rhs); }
 
+    int lsb() const {
+        if (lower_ != 0) {
+            unsigned long index;
+#ifdef _MSC_VER
+            _BitScanForward64(&index, lower_);
+#else
+            index = __builtin_ctzll(lower_);
+#endif
+            return static_cast<int>(index);
+        }
+        if (upper_ != 0) {
+            unsigned long index;
+#ifdef _MSC_VER
+            _BitScanForward64(&index, upper_);
+#else
+            index = __builtin_ctzll(upper_);
+#endif
+            return static_cast<int>(index) + 64;
+        }
+        return -1;
+    }
+
+    int msb() const {
+        if (upper_ != 0) {
+            unsigned long index;
+#ifdef _MSC_VER
+            _BitScanReverse64(&index, upper_);
+#else
+            index = 63 - __builtin_clzll(upper_);
+#endif
+            return static_cast<int>(index) + 64;
+        }
+        if (lower_ != 0) {
+            unsigned long index;
+#ifdef _MSC_VER
+            _BitScanReverse64(&index, lower_);
+#else
+            index = 63 - __builtin_clzll(lower_);
+#endif
+            return static_cast<int>(index);
+        }
+        return -1;
+    }
+
     void set(int index) {
         if (index < 64) {
             lower_ |= (1ULL << index);
