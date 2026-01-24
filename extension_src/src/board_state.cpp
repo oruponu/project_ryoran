@@ -787,201 +787,150 @@ bool BoardState::is_king_in_check(Turn turn) const {
 }
 
 std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
-    constexpr std::array HAND_PIECE_TYPES = {
-        PieceType::PAWN, PieceType::LANCE,  PieceType::KNIGHT, PieceType::SILVER,
-        PieceType::GOLD, PieceType::BISHOP, PieceType::ROOK,
-    };
-
     std::vector<Move> moves;
     moves.reserve(128);
 
-    const bool is_enemy_turn = (turn_to_move_ == Turn::GOTE);
-    const int sign = is_enemy_turn ? -1 : 1;
-    const int zone_min = is_enemy_turn ? 6 : 0;
-    const int zone_max = is_enemy_turn ? 8 : 2;
+    const Turn current_turn = turn_to_move_;
+    const Turn opponent_turn = (current_turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    const Bitboard my_pieces_bitboard = bitboard_side_[static_cast<int>(current_turn)];
+    const Bitboard opponent_pieces_bitboard = bitboard_side_[static_cast<int>(opponent_turn)];
+    const Bitboard occupancy = bitboard_all_;
+    const int promotion_row_min = (current_turn == Turn::SENTE) ? 0 : 6;
+    const int promotion_row_max = (current_turn == Turn::SENTE) ? 2 : 8;
+    auto is_promotion_rank = [&](int row) { return (row >= promotion_row_min && row <= promotion_row_max); };
 
-    auto try_add_move = [&](int from_col, int from_row, int to_col, int to_row, const Cell &cell) -> bool {
-        Coord from{from_col, from_row};
-        Coord to{to_col, to_row};
+    // 盤上の駒
+    for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+        PieceType type = static_cast<PieceType>(piece_type);
+        Bitboard pieces = bitboard_piece_[static_cast<int>(current_turn)][piece_type];
+        Bitboard promoted_pieces = bitboard_promoted_[static_cast<int>(current_turn)];
 
-        if (!to.is_valid()) {
-            return false;
-        }
+        while (!pieces.is_empty()) {
+            int from_index = pieces.lsb();
+            pieces.clear(from_index);
 
-        const Cell &target = get_cell(to);
+            Bitboard from_bitboard;
+            from_bitboard.set(from_index);
+            bool is_promoted = !(promoted_pieces & from_bitboard).is_empty();
 
-        // 味方の駒がある場所には移動不可
-        if (!target.is_empty() && target.turn == turn_to_move_) {
-            return false;
-        }
+            Coord from{from_index / Shogi::BOARD_ROWS, from_index % Shogi::BOARD_ROWS};
+            Bitboard attacks;
 
-        if (!is_legal_move(from, to)) {
-            return false;
-        }
-
-        bool is_capture = !target.is_empty();
-        if (only_captures && !is_capture) {
-            return true;
-        }
-
-        bool can_promote = false;
-        bool must_promote = false;
-
-        if (!cell.is_promoted && cell.type != PieceType::KING && cell.type != PieceType::GOLD) {
-            bool from_in_zone = (from_row >= zone_min && from_row <= zone_max);
-            bool to_in_zone = (to_row >= zone_min && to_row <= zone_max);
-            if (from_in_zone || to_in_zone) {
-                can_promote = true;
-            }
-        }
-
-        if (is_dead_end(cell.type, is_enemy_turn, to_row)) {
-            must_promote = true;
-        }
-
-        if (!must_promote) {
-            moves.emplace_back(from_col, from_row, to_col, to_row, cell.type, false, false, is_capture);
-        }
-
-        if (can_promote) {
-            moves.emplace_back(from_col, from_row, to_col, to_row, cell.type, true, false, is_capture);
-        }
-
-        return true;
-    };
-
-    // 近接駒の移動を追加
-    auto add_step_moves = [&](int col, int row, const Cell &cell, const StepMoves &pattern) {
-        for (int i = 0; i < pattern.count; ++i) {
-            int to_col = col + pattern.dirs[i].dx * sign;
-            int to_row = row + pattern.dirs[i].dy * sign;
-            try_add_move(col, row, to_col, to_row, cell);
-        }
-    };
-
-    // 近接駒の移動を追加（玉と成り駒の追加移動）
-    auto add_step_moves_no_sign = [&](int col, int row, const Cell &cell, const StepMoves &pattern) {
-        for (int i = 0; i < pattern.count; ++i) {
-            int to_col = col + pattern.dirs[i].dx;
-            int to_row = row + pattern.dirs[i].dy;
-            try_add_move(col, row, to_col, to_row, cell);
-        }
-    };
-
-    // 走り駒の移動を追加
-    auto add_slide_moves = [&](int col, int row, const Cell &cell, const SlideMoves &pattern, bool apply_sign) {
-        for (int i = 0; i < pattern.count; ++i) {
-            int dx = pattern.dirs[i].dx * (apply_sign ? sign : 1);
-            int dy = pattern.dirs[i].dy * (apply_sign ? sign : 1);
-
-            for (int dist = 1; dist < 9; ++dist) {
-                int to_col = col + dx * dist;
-                int to_row = row + dy * dist;
-                Coord to{to_col, to_row};
-
-                if (!to.is_valid()) {
-                    break;
+            // 駒の利き
+            if (is_promoted) {
+                if (type == PieceType::BISHOP) {
+                    attacks = get_bishop_attacks(from_index, occupancy) | get_king_attacks(from_index);
+                } else if (type == PieceType::ROOK) {
+                    attacks = get_rook_attacks(from_index, occupancy) | get_king_attacks(from_index);
+                } else {
+                    attacks = attacks_gold_[static_cast<int>(current_turn)][from_index];
                 }
-
-                const Cell &target = get_cell(to);
-                bool blocked = !target.is_empty();
-
-                if (blocked && target.turn == turn_to_move_) {
+            } else {
+                switch (type) {
+                case PieceType::PAWN:
+                    attacks = attacks_pawn_[static_cast<int>(current_turn)][from_index];
                     break;
-                }
-
-                try_add_move(col, row, to_col, to_row, cell);
-
-                if (blocked) {
+                case PieceType::LANCE:
+                    attacks = get_lance_attacks(from_index, current_turn, occupancy);
+                    break;
+                case PieceType::KNIGHT:
+                    attacks = attacks_knight_[static_cast<int>(current_turn)][from_index];
+                    break;
+                case PieceType::SILVER:
+                    attacks = attacks_silver_[static_cast<int>(current_turn)][from_index];
+                    break;
+                case PieceType::GOLD:
+                    attacks = attacks_gold_[static_cast<int>(current_turn)][from_index];
+                    break;
+                case PieceType::BISHOP:
+                    attacks = get_bishop_attacks(from_index, occupancy);
+                    break;
+                case PieceType::ROOK:
+                    attacks = get_rook_attacks(from_index, occupancy);
+                    break;
+                case PieceType::KING:
+                    attacks = attacks_king_[from_index];
+                    break;
+                default:
                     break;
                 }
             }
-        }
-    };
 
-    for (int idx = 0; idx < Shogi::BOARD_SIZE; ++idx) {
-        const Cell &cell = board_[idx];
+            attacks = attacks & ~my_pieces_bitboard;
 
-        if (cell.is_empty() || cell.turn != turn_to_move_) {
-            continue;
-        }
+            while (!attacks.is_empty()) {
+                int to_index = attacks.lsb();
+                attacks.clear(to_index);
 
-        int col = idx / Shogi::BOARD_ROWS;
-        int row = idx % Shogi::BOARD_ROWS;
+                Coord to{to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS};
 
-        PieceType piece_type = cell.type;
-        bool is_promoted = cell.is_promoted;
+                Bitboard to_bitboard;
+                to_bitboard.set(to_index);
+                bool is_capture = !(opponent_pieces_bitboard & to_bitboard).is_empty();
 
-        switch (piece_type) {
-        case PieceType::PAWN:
-            if (is_promoted) {
-                add_step_moves(col, row, cell, STEP_GOLD);
-            } else {
-                add_step_moves(col, row, cell, STEP_PAWN);
+                if (only_captures && !is_capture) {
+                    continue;
+                }
+
+                if (!is_legal_move(from, to)) {
+                    continue;
+                }
+
+                bool can_promote = false;
+                bool must_promote = false;
+
+                // 成り判定
+                if (!is_promoted && type != PieceType::KING && type != PieceType::GOLD) {
+                    if (is_promotion_rank(from.row) || is_promotion_rank(to.row)) {
+                        can_promote = true;
+                    }
+                }
+
+                if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
+                    must_promote = true;
+                }
+
+                if (!must_promote) {
+                    moves.emplace_back(from.col, from.row, to.col, to.row, type, false, false, is_capture);
+                }
+
+                if (can_promote) {
+                    moves.emplace_back(from.col, from.row, to.col, to.row, type, true, false, is_capture);
+                }
             }
-            break;
-
-        case PieceType::LANCE:
-            if (is_promoted) {
-                add_step_moves(col, row, cell, STEP_GOLD);
-            } else {
-                add_slide_moves(col, row, cell, SLIDE_LANCE, true);
-            }
-            break;
-
-        case PieceType::KNIGHT:
-            if (is_promoted) {
-                add_step_moves(col, row, cell, STEP_GOLD);
-            } else {
-                add_step_moves(col, row, cell, STEP_KNIGHT);
-            }
-            break;
-
-        case PieceType::SILVER:
-            if (is_promoted) {
-                add_step_moves(col, row, cell, STEP_GOLD);
-            } else {
-                add_step_moves(col, row, cell, STEP_SILVER);
-            }
-            break;
-
-        case PieceType::GOLD:
-            add_step_moves(col, row, cell, STEP_GOLD);
-            break;
-
-        case PieceType::BISHOP:
-            add_slide_moves(col, row, cell, SLIDE_BISHOP, false);
-            if (is_promoted) {
-                add_step_moves_no_sign(col, row, cell, STEP_PROMOTED_BISHOP);
-            }
-            break;
-
-        case PieceType::ROOK:
-            add_slide_moves(col, row, cell, SLIDE_ROOK, false);
-            if (is_promoted) {
-                add_step_moves_no_sign(col, row, cell, STEP_PROMOTED_ROOK);
-            }
-            break;
-
-        case PieceType::KING:
-            add_step_moves_no_sign(col, row, cell, STEP_KING);
-            break;
-
-        default:
-            break;
         }
     }
 
+    // 持ち駒
     if (!only_captures) {
-        for (PieceType piece_type : HAND_PIECE_TYPES) {
-            if (get_hand_count(turn_to_move_, piece_type) > 0) {
-                for (int t_col = 0; t_col < Shogi::BOARD_COLS; ++t_col) {
-                    for (int t_row = 0; t_row < Shogi::BOARD_ROWS; ++t_row) {
-                        Coord to{t_col, t_row};
-                        if (is_legal_drop(piece_type, is_enemy_turn, to)) {
-                            moves.emplace_back(0, 0, t_col, t_row, piece_type, false, true, false);
-                        }
-                    }
+        Bitboard empty_cells = ~occupancy;
+
+        constexpr std::array<PieceType, 7> HAND_TYPES = {PieceType::PAWN,   PieceType::LANCE, PieceType::KNIGHT,
+                                                         PieceType::SILVER, PieceType::GOLD,  PieceType::BISHOP,
+                                                         PieceType::ROOK};
+
+        for (PieceType type : HAND_TYPES) {
+            if (get_hand_count(current_turn, type) == 0) {
+                continue;
+            }
+
+            Bitboard target_bitboard = empty_cells;
+
+            while (!target_bitboard.is_empty()) {
+                int to_index = target_bitboard.lsb();
+                target_bitboard.clear(to_index);
+
+                Coord to{to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS};
+
+                if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
+                    continue;
+                }
+                if (type == PieceType::PAWN && is_nifu(type, current_turn, to.col)) {
+                    continue;
+                }
+
+                if (is_legal_drop(type, current_turn == Turn::GOTE, to)) {
+                    moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
                 }
             }
         }
