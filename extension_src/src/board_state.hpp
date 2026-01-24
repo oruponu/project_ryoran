@@ -32,6 +32,15 @@ struct Cell {
 
 class BoardState {
   private:
+    inline static bool attack_tables_initialized_;
+
+    // 近接駒の利き
+    inline static Bitboard attacks_pawn_[2][Shogi::BOARD_SIZE];
+    inline static Bitboard attacks_knight_[2][Shogi::BOARD_SIZE];
+    inline static Bitboard attacks_silver_[2][Shogi::BOARD_SIZE];
+    inline static Bitboard attacks_gold_[2][Shogi::BOARD_SIZE];
+    inline static Bitboard attacks_king_[Shogi::BOARD_SIZE];
+
     // すべての駒のBitboard
     Bitboard bitboard_all_;
 
@@ -52,6 +61,26 @@ class BoardState {
     int score_;
     std::optional<Shogi::Coord> king_pos_[2];
     uint16_t pawn_columns_[2];
+
+    static void initialize_attack_tables();
+
+    static const Bitboard &get_pawn_attacks(int square, Shogi::Turn turn) {
+        return attacks_pawn_[static_cast<int>(turn)][square];
+    }
+
+    static const Bitboard &get_knight_attacks(int square, Shogi::Turn turn) {
+        return attacks_knight_[static_cast<int>(turn)][square];
+    }
+
+    static const Bitboard &get_silver_attacks(int square, Shogi::Turn turn) {
+        return attacks_silver_[static_cast<int>(turn)][square];
+    }
+
+    static const Bitboard &get_gold_attacks(int square, Shogi::Turn turn) {
+        return attacks_gold_[static_cast<int>(turn)][square];
+    }
+
+    static const Bitboard &get_king_attacks(int square) { return attacks_king_[square]; }
 
     void build_bitboard();
     void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);

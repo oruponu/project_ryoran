@@ -52,6 +52,8 @@ bool g_zobrist_initialized = false;
 } // namespace
 
 BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(0) {
+    initialize_attack_tables();
+
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
         board_[i] = Cell();
@@ -188,6 +190,60 @@ void BoardState::load_zobrist_params(const String &path) {
     g_zobrist_initialized = true;
 
     UtilityFunctions::print("Zobrist parameters loaded successfully.");
+}
+
+void BoardState::initialize_attack_tables() {
+    if (attack_tables_initialized_) {
+        return;
+    }
+
+    auto set_if_valid = [](Bitboard &bitboard, Coord coord) {
+        if (coord.is_valid()) {
+            bitboard.set(coord.col * Shogi::BOARD_ROWS + coord.row);
+        }
+    };
+
+    for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+        int col = index / Shogi::BOARD_ROWS;
+        int row = index % Shogi::BOARD_ROWS;
+
+        for (int side = 0; side < 2; ++side) {
+            Shogi::Turn turn = static_cast<Shogi::Turn>(side);
+            int sign = (turn == Shogi::Turn::SENTE) ? -1 : 1;
+
+            // 歩
+            set_if_valid(attacks_pawn_[side][index], {col, row + sign});
+
+            // 桂馬
+            set_if_valid(attacks_knight_[side][index], {col - 1, row + sign * 2});
+            set_if_valid(attacks_knight_[side][index], {col + 1, row + sign * 2});
+            // 銀
+            set_if_valid(attacks_silver_[side][index], {col - 1, row + sign});
+            set_if_valid(attacks_silver_[side][index], {col, row + sign});
+            set_if_valid(attacks_silver_[side][index], {col + 1, row + sign});
+            set_if_valid(attacks_silver_[side][index], {col - 1, row - sign});
+            set_if_valid(attacks_silver_[side][index], {col + 1, row - sign});
+            // 金
+            set_if_valid(attacks_gold_[side][index], {col - 1, row + sign});
+            set_if_valid(attacks_gold_[side][index], {col, row + sign});
+            set_if_valid(attacks_gold_[side][index], {col + 1, row + sign});
+            set_if_valid(attacks_gold_[side][index], {col - 1, row});
+            set_if_valid(attacks_gold_[side][index], {col + 1, row});
+            set_if_valid(attacks_gold_[side][index], {col, row - sign});
+        }
+
+        // 玉
+        for (int dx = -1; dx <= 1; ++dx) {
+            for (int dy = -1; dy <= 1; ++dy) {
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
+                set_if_valid(attacks_king_[index], {col + dx, row + dy});
+            }
+        }
+    }
+
+    attack_tables_initialized_ = true;
 }
 
 void BoardState::build_bitboard() {
