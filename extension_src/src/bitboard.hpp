@@ -115,6 +115,8 @@ struct Bitboard {
         }
     }
 
+    bool is_empty() const { return lower_ == 0 && upper_ == 0; }
+
     void print() const {
         using namespace godot;
         String output = "\n------------------\n";
