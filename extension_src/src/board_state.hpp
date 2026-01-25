@@ -112,6 +112,8 @@ class BoardState {
         return get_rook_attacks(square, occupancy) | get_king_attacks(square);
     }
 
+    Bitboard get_checkers(Shogi::Turn turn) const;
+
     void build_bitboard();
     void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
     void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);

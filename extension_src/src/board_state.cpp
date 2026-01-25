@@ -345,6 +345,61 @@ Bitboard BoardState::get_rook_attacks(int square, const Bitboard &occupancy) con
     return attacks;
 }
 
+Bitboard BoardState::get_checkers(Turn turn) const {
+    Bitboard checkers;
+    auto king_position = get_king_position(turn);
+    if (!king_position.has_value()) {
+        return checkers;
+    }
+
+    int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+
+    const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    int enemy_index = static_cast<int>(enemy_turn);
+
+    const Bitboard &enemy_pawns = bitboard_piece_[enemy_index][static_cast<int>(PieceType::PAWN)];
+    const Bitboard &enemy_lances = bitboard_piece_[enemy_index][static_cast<int>(PieceType::LANCE)];
+    const Bitboard &enemy_knights = bitboard_piece_[enemy_index][static_cast<int>(PieceType::KNIGHT)];
+    const Bitboard &enemy_silvers = bitboard_piece_[enemy_index][static_cast<int>(PieceType::SILVER)];
+    const Bitboard &enemy_golds = bitboard_piece_[enemy_index][static_cast<int>(PieceType::GOLD)];
+    const Bitboard &enemy_bishops = bitboard_piece_[enemy_index][static_cast<int>(PieceType::BISHOP)];
+    const Bitboard &enemy_rooks = bitboard_piece_[enemy_index][static_cast<int>(PieceType::ROOK)];
+    const Bitboard &enemy_kings = bitboard_piece_[enemy_index][static_cast<int>(PieceType::KING)];
+    const Bitboard &enemy_promoted = bitboard_promoted_[enemy_index];
+    const Bitboard occupancy = bitboard_all_;
+
+    // 香車の利き
+    Bitboard lance_attacks = get_lance_attacks(king_square, turn, occupancy);
+    checkers |= (lance_attacks & (enemy_lances & ~enemy_promoted));
+
+    // 角の利き
+    Bitboard bishop_attacks = get_bishop_attacks(king_square, occupancy);
+    checkers |= (bishop_attacks & enemy_bishops);
+
+    // 飛車の利き
+    Bitboard rook_attacks = get_rook_attacks(king_square, occupancy);
+    checkers |= (rook_attacks & enemy_rooks);
+
+    // 歩の利き
+    checkers |= (get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted));
+
+    // 桂馬の利き
+    checkers |= (get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted));
+
+    // 銀の利き
+    checkers |= (get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted));
+
+    // 金および金と同じ動きをする成り駒の利きをチェック
+    Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
+    checkers |= (get_gold_attacks(king_square, turn) & gold_likes);
+
+    // 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
+    Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
+    checkers |= (get_king_attacks(king_square) & king_likes);
+
+    return checkers;
+}
+
 void BoardState::build_bitboard() {
     bitboard_all_ = Bitboard();
     bitboard_side_[0] = Bitboard();
@@ -871,11 +926,43 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
     auto is_promotion_rank = [&](int row) { return (row >= promotion_row_min && row <= promotion_row_max); };
     PinMasks pin_masks = calculate_pin_masks(turn_to_move_);
 
+    Bitboard checkers = get_checkers(current_turn);
+    Bitboard evasion_mask;
+    if (checkers.is_empty()) {
+        // 王手なし
+        evasion_mask = ~Bitboard();
+    } else if (checkers.count() > 1) {
+        // 両王手
+        evasion_mask = Bitboard();
+    } else {
+        // 単独王手
+        int checker_index = checkers.lsb();
+        evasion_mask.set(checker_index);
+
+        auto king_position = get_king_position(current_turn);
+        if (king_position.has_value()) {
+            int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+            for (int dir = 0; dir < 8; ++dir) {
+                Bitboard ray = rays_[dir][king_square];
+                if (ray.is_set(checker_index)) {
+                    Bitboard between = ray ^ rays_[dir][checker_index];
+                    evasion_mask |= between;
+                    break;
+                }
+            }
+        }
+    }
+
     // 盤上の駒
     for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
         PieceType type = static_cast<PieceType>(piece_type);
         Bitboard pieces = bitboard_piece_[static_cast<int>(current_turn)][piece_type];
         Bitboard promoted_pieces = bitboard_promoted_[static_cast<int>(current_turn)];
+
+        // 両王手されている場合、玉以外の駒の移動は不可
+        if (type != PieceType::KING && checkers.count() > 1) {
+            continue;
+        }
 
         while (!pieces.is_empty()) {
             int from_index = pieces.lsb();
@@ -929,8 +1016,12 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
             }
 
             attacks = attacks & ~my_pieces_bitboard;
-            if (!(pin_masks.pinned & from_bitboard).is_empty()) {
-                attacks &= pin_masks.valid_ray_masks[from_index];
+            if (type != PieceType::KING) {
+                if (!(pin_masks.pinned & from_bitboard).is_empty()) {
+                    attacks &= pin_masks.valid_ray_masks[from_index];
+                }
+
+                attacks &= evasion_mask;
             }
 
             while (!attacks.is_empty()) {
@@ -977,35 +1068,38 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
     }
 
     // 持ち駒
-    if (!only_captures) {
+    if (!only_captures && checkers.count() <= 1) {
         Bitboard empty_cells = ~occupancy;
+        Bitboard valid_drop_targets = empty_cells & evasion_mask;
 
-        constexpr std::array<PieceType, 7> HAND_TYPES = {PieceType::PAWN,   PieceType::LANCE, PieceType::KNIGHT,
-                                                         PieceType::SILVER, PieceType::GOLD,  PieceType::BISHOP,
-                                                         PieceType::ROOK};
+        if (!valid_drop_targets.is_empty()) {
+            constexpr std::array<PieceType, 7> HAND_TYPES = {PieceType::PAWN,   PieceType::LANCE, PieceType::KNIGHT,
+                                                             PieceType::SILVER, PieceType::GOLD,  PieceType::BISHOP,
+                                                             PieceType::ROOK};
 
-        for (PieceType type : HAND_TYPES) {
-            if (get_hand_count(current_turn, type) == 0) {
-                continue;
-            }
-
-            Bitboard target_bitboard = empty_cells;
-
-            while (!target_bitboard.is_empty()) {
-                int to_index = target_bitboard.lsb();
-                target_bitboard.clear(to_index);
-
-                Coord to{to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS};
-
-                if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
-                    continue;
-                }
-                if (type == PieceType::PAWN && is_nifu(type, current_turn, to.col)) {
+            for (PieceType type : HAND_TYPES) {
+                if (get_hand_count(current_turn, type) == 0) {
                     continue;
                 }
 
-                if (is_legal_drop(type, current_turn == Turn::GOTE, to)) {
-                    moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
+                Bitboard target_bitboard = valid_drop_targets;
+
+                while (!target_bitboard.is_empty()) {
+                    int to_index = target_bitboard.lsb();
+                    target_bitboard.clear(to_index);
+
+                    Coord to{to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS};
+
+                    if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
+                        continue;
+                    }
+                    if (type == PieceType::PAWN && is_nifu(type, current_turn, to.col)) {
+                        continue;
+                    }
+
+                    if (is_legal_drop(type, current_turn == Turn::GOTE, to)) {
+                        moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
+                    }
                 }
             }
         }
