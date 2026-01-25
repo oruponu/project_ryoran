@@ -22,6 +22,7 @@ bool g_zobrist_initialized = false;
 
 BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(0) {
     initialize_attack_tables();
+    initialize_eval_tables();
 
     // 盤面を初期化
     for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
@@ -232,6 +233,22 @@ void BoardState::initialize_attack_tables() {
     }
 
     attack_tables_initialized_ = true;
+}
+
+void BoardState::initialize_eval_tables() {
+    if (eval_tables_initialized_) {
+        return;
+    }
+
+    for (int king_index = 0; king_index < Shogi::BOARD_SIZE; ++king_index) {
+        for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+            int dist = distance(king_index, index);
+            defense_weight_table_[king_index][index] = KING_DEFENSE_WEIGHTS[dist];
+            threat_weight_table_[king_index][index] = KING_THREAT_WEIGHTS[dist];
+        }
+    }
+
+    eval_tables_initialized_ = true;
 }
 
 Bitboard BoardState::get_lance_attacks(int square, Turn turn, const Bitboard &occupancy) const {
@@ -559,6 +576,98 @@ int BoardState::calculate_score() const {
     }
 
     return score;
+}
+
+int BoardState::calculate_spatial_score() const {
+    auto king_position_black = get_king_position(Turn::SENTE);
+    auto king_position_white = get_king_position(Turn::GOTE);
+
+    if (!king_position_black.has_value() || !king_position_white.has_value()) {
+        return 0;
+    }
+
+    int king_index_black = king_position_black->col * Shogi::BOARD_ROWS + king_position_black->row;
+    int king_index_white = king_position_white->col * Shogi::BOARD_ROWS + king_position_white->row;
+    long long score_black_raw = 0;
+    long long score_white_raw = 0;
+
+    const Bitboard &occupancy = bitboard_all_;
+
+    for (int side = 0; side < 2; ++side) {
+        Shogi::Turn turn = static_cast<Shogi::Turn>(side);
+        bool is_black = (turn == Shogi::Turn::SENTE);
+
+        for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+            Shogi::PieceType type = static_cast<Shogi::PieceType>(piece_type);
+            Bitboard pieces = bitboard_piece_[side][piece_type];
+            Bitboard promoted_pieces = bitboard_promoted_[side];
+
+            while (!pieces.is_empty()) {
+                int from_index = pieces.lsb();
+                pieces.clear(from_index);
+
+                bool is_promoted = promoted_pieces.is_set(from_index);
+                Bitboard attacks;
+                if (is_promoted) {
+                    switch (type) {
+                    case PieceType::BISHOP:
+                        attacks = get_promoted_bishop_attacks(from_index, occupancy);
+                        break;
+                    case PieceType::ROOK:
+                        attacks = get_promoted_rook_attacks(from_index, occupancy);
+                        break;
+                    default:
+                        attacks = get_gold_attacks(from_index, turn);
+                        break;
+                    }
+                } else {
+                    switch (type) {
+                    case PieceType::PAWN:
+                        attacks = get_pawn_attacks(from_index, turn);
+                        break;
+                    case PieceType::LANCE:
+                        attacks = get_lance_attacks(from_index, turn, occupancy);
+                        break;
+                    case PieceType::KNIGHT:
+                        attacks = get_knight_attacks(from_index, turn);
+                        break;
+                    case PieceType::SILVER:
+                        attacks = get_silver_attacks(from_index, turn);
+                        break;
+                    case PieceType::GOLD:
+                        attacks = get_gold_attacks(from_index, turn);
+                        break;
+                    case PieceType::BISHOP:
+                        attacks = get_bishop_attacks(from_index, occupancy);
+                        break;
+                    case PieceType::ROOK:
+                        attacks = get_rook_attacks(from_index, occupancy);
+                        break;
+                    case PieceType::KING:
+                        attacks = get_king_attacks(from_index);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+
+                while (!attacks.is_empty()) {
+                    int target_index = attacks.lsb();
+                    attacks.clear(target_index);
+
+                    if (is_black) {
+                        score_black_raw += defense_weight_table_[king_index_black][target_index];
+                        score_black_raw += threat_weight_table_[king_index_white][target_index];
+                    } else {
+                        score_white_raw += defense_weight_table_[king_index_white][target_index];
+                        score_white_raw += threat_weight_table_[king_index_black][target_index];
+                    }
+                }
+            }
+        }
+    }
+
+    return (int)((score_black_raw - score_white_raw) / 1024);
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {

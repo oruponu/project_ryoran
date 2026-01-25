@@ -42,7 +42,11 @@ struct PinMasks {
 
 class BoardState {
   private:
+    static constexpr int KING_DEFENSE_WEIGHTS[9] = {84992, 42496, 28330, 21248, 16998, 14165, 12141, 10624, 9443};
+    static constexpr int KING_THREAT_WEIGHTS[9] = {94208, 47104, 31402, 23552, 18841, 15701, 13458, 11776, 10467};
+
     inline static bool attack_tables_initialized_;
+    inline static bool eval_tables_initialized_;
 
     // 近接駒の利き
     inline static Bitboard attacks_pawn_[2][Shogi::BOARD_SIZE];
@@ -54,6 +58,9 @@ class BoardState {
     // 走り駒の利き
     inline static Bitboard sttacks_lance_[2][Shogi::BOARD_SIZE];
     inline static Bitboard rays_[8][Shogi::BOARD_SIZE];
+
+    inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
+    inline static int threat_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
 
     // すべての駒のBitboard
     Bitboard bitboard_all_;
@@ -77,6 +84,7 @@ class BoardState {
     uint16_t pawn_columns_[2];
 
     static void initialize_attack_tables();
+    static void initialize_eval_tables();
 
     static Bitboard get_ray(int square, int direction) { return rays_[direction][square]; }
 
@@ -97,6 +105,14 @@ class BoardState {
     }
 
     static const Bitboard &get_king_attacks(int square) { return attacks_king_[square]; }
+
+    static int distance(int lhs, int rhs) {
+        int col1 = lhs / Shogi::BOARD_ROWS;
+        int row1 = lhs % Shogi::BOARD_ROWS;
+        int col2 = rhs / Shogi::BOARD_ROWS;
+        int row2 = rhs % Shogi::BOARD_ROWS;
+        return std::max(std::abs(col1 - col2), std::abs(row1 - row2));
+    }
 
     Bitboard get_lance_attacks(int square, Shogi::Turn turn, const Bitboard &occupancy) const;
 
@@ -122,6 +138,7 @@ class BoardState {
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
     [[nodiscard]] int calculate_score() const;
+    [[nodiscard]] int calculate_spatial_score() const;
 
     [[nodiscard]] bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
@@ -134,7 +151,7 @@ class BoardState {
     explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
     [[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }
-    [[nodiscard]] int get_score() const { return score_; }
+    [[nodiscard]] int get_score() const { return score_ + calculate_spatial_score(); }
 
     [[nodiscard]] bool operator==(const BoardState &other) const {
         if (turn_to_move_ != other.turn_to_move_) {
