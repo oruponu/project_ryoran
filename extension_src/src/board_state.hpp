@@ -44,6 +44,7 @@ class BoardState {
   private:
     static constexpr int KING_DEFENSE_WEIGHTS[9] = {84992, 42496, 28330, 21248, 16998, 14165, 12141, 10624, 9443};
     static constexpr int KING_THREAT_WEIGHTS[9] = {94208, 47104, 31402, 23552, 18841, 15701, 13458, 11776, 10467};
+    static constexpr int KKPEE_PIECE_STATE_COUNT = 40;
 
     inline static bool attack_tables_initialized_;
     inline static bool eval_tables_initialized_;
@@ -59,6 +60,8 @@ class BoardState {
     inline static Bitboard sttacks_lance_[2][Shogi::BOARD_SIZE];
     inline static Bitboard rays_[8][Shogi::BOARD_SIZE];
 
+    inline static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3]
+                                      [KKPEE_PIECE_STATE_COUNT];
     inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
     inline static int threat_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
     inline static int multi_effect_weight_table_[11];
@@ -86,6 +89,8 @@ class BoardState {
 
     static void initialize_attack_tables();
     static void initialize_eval_tables();
+
+    static int get_kkpee_piece_index(const Cell &cell);
 
     static Bitboard get_ray(int square, int direction) { return rays_[direction][square]; }
 

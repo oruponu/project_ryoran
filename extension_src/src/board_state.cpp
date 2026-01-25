@@ -253,7 +253,54 @@ void BoardState::initialize_eval_tables() {
             count == 0 ? 0 : static_cast<int>(6365 - std::pow(0.8525, count - 1) * 5341);
     }
 
+    std::vector<std::vector<std::vector<long long>>> defense_effect_value(
+        Shogi::BOARD_SIZE, std::vector<std::vector<long long>>(Shogi::BOARD_SIZE, std::vector<long long>(3)));
+    std::vector<std::vector<std::vector<long long>>> threat_effect_value(
+        Shogi::BOARD_SIZE, std::vector<std::vector<long long>>(Shogi::BOARD_SIZE, std::vector<long long>(3)));
+    for (int king_index = 0; king_index < Shogi::BOARD_SIZE; ++king_index) {
+        for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+            for (int effect_count = 0; effect_count < 3; ++effect_count) {
+                long long multi_effect = multi_effect_weight_table_[effect_count];
+                defense_effect_value[king_index][index][effect_count] =
+                    (multi_effect * defense_weight_table_[king_index][index]) / (1024 * 1024);
+                threat_effect_value[king_index][index][effect_count] =
+                    (multi_effect * threat_weight_table_[king_index][index]) / (1024 * 1024);
+            }
+        }
+    }
+
+    for (int king_black_index = 0; king_black_index < Shogi::BOARD_SIZE; ++king_black_index) {
+        for (int king_white_index = 0; king_white_index < Shogi::BOARD_SIZE; ++king_white_index) {
+            for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+                for (int black_effect_count = 0; black_effect_count < 3; ++black_effect_count) {
+                    for (int white_effect_count = 0; white_effect_count < 3; ++white_effect_count) {
+                        long long score = 0;
+                        score += defense_effect_value[king_black_index][index][black_effect_count];
+                        score -= threat_effect_value[king_black_index][index][white_effect_count];
+                        score -= defense_effect_value[king_white_index][index][white_effect_count];
+                        score += threat_effect_value[king_white_index][index][black_effect_count];
+                        for (int piece_index = 0; piece_index < KKPEE_PIECE_STATE_COUNT; ++piece_index) {
+                            kkpee_table_[king_black_index][king_white_index][index][black_effect_count]
+                                        [white_effect_count][piece_index] = static_cast<int16_t>(score);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     eval_tables_initialized_ = true;
+}
+
+int BoardState::get_kkpee_piece_index(const Cell &cell) {
+    if (cell.is_empty()) {
+        return 0;
+    }
+
+    int type_index = static_cast<int>(cell.type);
+    int promoted_index = cell.is_promoted ? 8 : 0;
+    int turn_index = (cell.turn == Turn::GOTE) ? 16 : 0;
+    return 1 + type_index + promoted_index + turn_index;
 }
 
 Bitboard BoardState::get_lance_attacks(int square, Turn turn, const Bitboard &occupancy) const {
@@ -665,27 +712,15 @@ int BoardState::calculate_spatial_score() const {
         }
     }
 
-    long long score_raw = 0;
-
+    long long score = 0;
     for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-        int count_black = effects[0][index];
-        int count_white = effects[1][index];
-        long long multi_effect_black = multi_effect_weight_table_[count_black];
-        long long multi_effect_white = multi_effect_weight_table_[count_white];
-
-        int defense_value_black = defense_weight_table_[king_index_black][index];
-        int threat_value_black = threat_weight_table_[king_index_white][index];
-        int defense_value_white = defense_weight_table_[king_index_white][index];
-        int threat_value_white = threat_weight_table_[king_index_black][index];
-
-        long long score_around_black_king =
-            (multi_effect_black * defense_value_black) - (multi_effect_white * threat_value_white);
-        long long score_around_white_king =
-            (multi_effect_white * defense_value_white) - (multi_effect_black * threat_value_black);
-        score_raw += (score_around_black_king - score_around_white_king);
+        int count_black = std::min(effects[0][index], 2);
+        int count_white = std::min(effects[1][index], 2);
+        int piece_index = get_kkpee_piece_index(board_[index]);
+        score += kkpee_table_[king_index_black][king_index_white][index][count_black][count_white][piece_index];
     }
 
-    return (int)(score_raw / (1024 * 1024));
+    return static_cast<int>(score);
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {
