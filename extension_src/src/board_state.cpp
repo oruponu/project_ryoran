@@ -269,19 +269,48 @@ void BoardState::initialize_eval_tables() {
         }
     }
 
+    const int support_weights[3] = {0, 33, 43};
+    const int attack_weights[3] = {0, 113, 122};
+
     for (int king_black_index = 0; king_black_index < Shogi::BOARD_SIZE; ++king_black_index) {
         for (int king_white_index = 0; king_white_index < Shogi::BOARD_SIZE; ++king_white_index) {
             for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
                 for (int black_effect_count = 0; black_effect_count < 3; ++black_effect_count) {
                     for (int white_effect_count = 0; white_effect_count < 3; ++white_effect_count) {
-                        long long score = 0;
-                        score += defense_effect_value[king_black_index][index][black_effect_count];
-                        score -= threat_effect_value[king_black_index][index][white_effect_count];
-                        score -= defense_effect_value[king_white_index][index][white_effect_count];
-                        score += threat_effect_value[king_white_index][index][black_effect_count];
+                        double base_score = 0;
+                        base_score += defense_effect_value[king_black_index][index][black_effect_count];
+                        base_score -= threat_effect_value[king_black_index][index][white_effect_count];
+                        base_score -= defense_effect_value[king_white_index][index][white_effect_count];
+                        base_score += threat_effect_value[king_white_index][index][black_effect_count];
                         for (int piece_index = 0; piece_index < KKPEE_PIECE_STATE_COUNT; ++piece_index) {
+                            double final_score = base_score;
+                            if (piece_index > 0) {
+                                int piece_state = piece_index - 1;
+                                bool is_white = (piece_state >= 16);
+                                piece_state %= 16;
+                                bool is_promoted = (piece_state >= 8);
+                                Shogi::PieceType piece_type = static_cast<Shogi::PieceType>(piece_state % 8);
+
+                                if (piece_type != Shogi::PieceType::KING) {
+                                    int piece_value =
+                                        Shogi::PIECE_VALUES[static_cast<int>(piece_type)][is_promoted ? 1 : 0];
+                                    if (!is_white) {
+                                        final_score +=
+                                            (double)piece_value * support_weights[black_effect_count] / 4096.0;
+                                        final_score -=
+                                            (double)piece_value * attack_weights[white_effect_count] / 4096.0;
+                                    } else {
+                                        final_score -=
+                                            (double)piece_value * support_weights[white_effect_count] / 4096.0;
+                                        final_score +=
+                                            (double)piece_value * attack_weights[black_effect_count] / 4096.0;
+                                    }
+                                }
+                            }
+
                             kkpee_table_[king_black_index][king_white_index][index][black_effect_count]
-                                        [white_effect_count][piece_index] = static_cast<int16_t>(score);
+                                        [white_effect_count][piece_index] =
+                                            static_cast<int16_t>(final_score * EVAL_SCALE_FACTOR);
                         }
                     }
                 }
@@ -720,7 +749,7 @@ int BoardState::calculate_spatial_score() const {
         score += kkpee_table_[king_index_black][king_index_white][index][count_black][count_white][piece_index];
     }
 
-    return static_cast<int>(score);
+    return static_cast<int>(score / EVAL_SCALE_FACTOR);
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {

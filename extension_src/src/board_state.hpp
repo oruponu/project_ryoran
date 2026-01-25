@@ -45,6 +45,7 @@ class BoardState {
     static constexpr int KING_DEFENSE_WEIGHTS[9] = {84992, 42496, 28330, 21248, 16998, 14165, 12141, 10624, 9443};
     static constexpr int KING_THREAT_WEIGHTS[9] = {94208, 47104, 31402, 23552, 18841, 15701, 13458, 11776, 10467};
     static constexpr int KKPEE_PIECE_STATE_COUNT = 40;
+    static constexpr int EVAL_SCALE_FACTOR = 32;
 
     inline static bool attack_tables_initialized_;
     inline static bool eval_tables_initialized_;
