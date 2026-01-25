@@ -41,7 +41,11 @@ struct Bitboard {
 
     Bitboard operator^(const Bitboard &rhs) const { return Bitboard(lower_ ^ rhs.lower_, upper_ ^ rhs.upper_); }
 
-    Bitboard operator~() const { return Bitboard(~lower_, ~upper_); }
+    Bitboard operator~() const {
+        // ビットを反転したあとに盤面の範囲外のビットをマスク
+        constexpr uint64_t upper_mask = (1ULL << 17) - 1;
+        return Bitboard(~lower_, ~upper_ & upper_mask);
+    }
 
     bool operator==(const Bitboard &rhs) const { return lower_ == rhs.lower_ && upper_ == rhs.upper_; }
 
