@@ -53,6 +53,10 @@ class BoardState {
         305, 275, 320, 500, 530, 560, 445, 510, 395, 455, 490, 410, 345, 275, 250, 355, 295, 280, 420, 235, 135,
         335, 370, 385, 255, 295, 200, 265, 305, 305, 255, 225, 245, 295, 200, 320, 275, 70,  200};
 
+    // 方角ごとの利きの価値
+    inline static const int DEFENSE_DIRECTION_WEIGHT[10] = {1120, 1872, 112, 760, 744, 880, 1320, 600, 904, 1024};
+    inline static const int THREAT_DIRECTION_WEIGHT[10] = {1056, 1714, 1688, 1208, 248, 240, 496, 816, 928, 1024};
+
     inline static bool attack_tables_initialized_;
     inline static bool eval_tables_initialized_;
 
@@ -98,6 +102,8 @@ class BoardState {
     static void initialize_eval_tables();
 
     static int get_kkpee_piece_index(const Cell &cell);
+
+    static int get_relative_direction(int from_index, int to_index);
 
     static Bitboard get_ray(int square, int direction) { return rays_[direction][square]; }
 

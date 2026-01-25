@@ -259,12 +259,15 @@ void BoardState::initialize_eval_tables() {
         Shogi::BOARD_SIZE, std::vector<std::vector<long long>>(Shogi::BOARD_SIZE, std::vector<long long>(3)));
     for (int king_index = 0; king_index < Shogi::BOARD_SIZE; ++king_index) {
         for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+            int direction = get_relative_direction(king_index, index);
             for (int effect_count = 0; effect_count < 3; ++effect_count) {
                 long long multi_effect = multi_effect_weight_table_[effect_count];
                 defense_effect_value[king_index][index][effect_count] =
-                    (multi_effect * defense_weight_table_[king_index][index]) / (1024 * 1024);
+                    (multi_effect * defense_weight_table_[king_index][index] * DEFENSE_DIRECTION_WEIGHT[direction]) /
+                    (1024LL * 1024 * 1024);
                 threat_effect_value[king_index][index][effect_count] =
-                    (multi_effect * threat_weight_table_[king_index][index]) / (1024 * 1024);
+                    (multi_effect * threat_weight_table_[king_index][index] * THREAT_DIRECTION_WEIGHT[direction]) /
+                    (1024LL * 1024 * 1024);
             }
         }
     }
@@ -286,13 +289,16 @@ void BoardState::initialize_eval_tables() {
                 int inv_row = 8 - row;
                 int position_bonus_index_white = (8 - inv_col) + inv_row * 9;
 
+                int inv_king_white_index = Shogi::BOARD_SIZE - 1 - king_white_index;
+                int inv_index = Shogi::BOARD_SIZE - 1 - index;
+
                 for (int black_effect_count = 0; black_effect_count < 3; ++black_effect_count) {
                     for (int white_effect_count = 0; white_effect_count < 3; ++white_effect_count) {
                         double base_score = 0;
                         base_score += defense_effect_value[king_black_index][index][black_effect_count];
                         base_score -= threat_effect_value[king_black_index][index][white_effect_count];
-                        base_score -= defense_effect_value[king_white_index][index][white_effect_count];
-                        base_score += threat_effect_value[king_white_index][index][black_effect_count];
+                        base_score -= defense_effect_value[inv_king_white_index][inv_index][white_effect_count];
+                        base_score += threat_effect_value[inv_king_white_index][inv_index][black_effect_count];
                         for (int piece_index = 0; piece_index < KKPEE_PIECE_STATE_COUNT; ++piece_index) {
                             double final_score = base_score;
                             bool is_empty = (piece_index == 0);
@@ -383,6 +389,63 @@ int BoardState::get_kkpee_piece_index(const Cell &cell) {
     int promoted_index = cell.is_promoted ? 8 : 0;
     int turn_index = (cell.turn == Turn::GOTE) ? 16 : 0;
     return 1 + type_index + promoted_index + turn_index;
+}
+
+int BoardState::get_relative_direction(int from_index, int to_index) {
+    int col_from = from_index / Shogi::BOARD_ROWS;
+    int row_from = from_index % Shogi::BOARD_ROWS;
+    int col_to = to_index / Shogi::BOARD_ROWS;
+    int row_to = to_index % Shogi::BOARD_ROWS;
+
+    int diff_col = col_to - col_from;
+    int diff_row = row_to - row_from;
+
+    if (diff_col > 0) {
+        diff_col = -diff_col;
+    }
+
+    if (diff_col == 0 && diff_row == 0) {
+        // 同じマス
+        return 9;
+    }
+    if (diff_col == 0 && diff_row < 0) {
+        // 北
+        return 0;
+    }
+    if (diff_col > diff_row && diff_row < 0) {
+        // 北北東
+        return 1;
+    }
+    if (diff_col == diff_row && diff_row < 0) {
+        // 北東
+        return 2;
+    }
+    if (diff_col < diff_row && diff_row < 0) {
+        // 東北東
+        return 3;
+    }
+    if (diff_col < 0 && diff_row == 0) {
+        // 東
+        return 4;
+    }
+    if (diff_col < -diff_row && diff_row > 0) {
+        // 東南東
+        return 5;
+    }
+    if (diff_col == -diff_row && diff_row > 0) {
+        // 南東
+        return 6;
+    }
+    if (diff_col > -diff_row && diff_row > 0) {
+        // 南南東
+        return 7;
+    }
+    if (diff_col == 0 && diff_row > 0) {
+        // 南
+        return 8;
+    }
+
+    return 9;
 }
 
 Bitboard BoardState::get_lance_attacks(int square, Turn turn, const Bitboard &occupancy) const {
