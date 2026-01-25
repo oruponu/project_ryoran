@@ -1038,8 +1038,10 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
                     continue;
                 }
 
-                if (!is_legal_move(from, to)) {
-                    continue;
+                if (type == PieceType::KING) {
+                    if (!is_legal_move(from, to)) {
+                        continue;
+                    }
                 }
 
                 bool can_promote = false;
@@ -1097,9 +1099,7 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
                         continue;
                     }
 
-                    if (is_legal_drop(type, current_turn == Turn::GOTE, to)) {
-                        moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
-                    }
+                    moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
                 }
             }
         }
