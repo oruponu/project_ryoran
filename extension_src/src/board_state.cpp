@@ -275,6 +275,17 @@ void BoardState::initialize_eval_tables() {
     for (int king_black_index = 0; king_black_index < Shogi::BOARD_SIZE; ++king_black_index) {
         for (int king_white_index = 0; king_white_index < Shogi::BOARD_SIZE; ++king_white_index) {
             for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+                bool is_near_black_king = (distance(index, king_black_index) == 1);
+                bool is_near_white_king = (distance(index, king_white_index) == 1);
+
+                int col = index / Shogi::BOARD_ROWS;
+                int row = index % Shogi::BOARD_ROWS;
+                int position_bonus_index_black = (8 - col) + row * 9;
+
+                int inv_col = 8 - col;
+                int inv_row = 8 - row;
+                int position_bonus_index_white = (8 - inv_col) + inv_row * 9;
+
                 for (int black_effect_count = 0; black_effect_count < 3; ++black_effect_count) {
                     for (int white_effect_count = 0; white_effect_count < 3; ++white_effect_count) {
                         double base_score = 0;
@@ -284,14 +295,56 @@ void BoardState::initialize_eval_tables() {
                         base_score += threat_effect_value[king_white_index][index][black_effect_count];
                         for (int piece_index = 0; piece_index < KKPEE_PIECE_STATE_COUNT; ++piece_index) {
                             double final_score = base_score;
-                            if (piece_index > 0) {
+                            bool is_empty = (piece_index == 0);
+                            bool is_white = false;
+                            bool is_promoted = false;
+                            Shogi::PieceType piece_type = Shogi::PieceType::EMPTY;
+                            if (!is_empty) {
                                 int piece_state = piece_index - 1;
-                                bool is_white = (piece_state >= 16);
+                                is_white = (piece_state >= 16);
                                 piece_state %= 16;
-                                bool is_promoted = (piece_state >= 8);
-                                Shogi::PieceType piece_type = static_cast<Shogi::PieceType>(piece_state % 8);
+                                is_promoted = (piece_state >= 8);
+                                piece_type = static_cast<Shogi::PieceType>(piece_state % 8);
+                            }
 
-                                if (piece_type != Shogi::PieceType::KING) {
+                            // 先手玉の周辺
+                            if (is_near_black_king) {
+                                if (black_effect_count <= 1) {
+                                    if (is_empty || is_white) {
+                                        final_score -= 11.0;
+                                    } else {
+                                        final_score += 20.0;
+                                    }
+                                } else {
+                                    if (!is_empty && !is_white) {
+                                        final_score += 11.0;
+                                    }
+                                }
+                            }
+
+                            // 後手玉の周辺
+                            if (is_near_white_king) {
+                                if (white_effect_count <= 1) {
+                                    if (is_empty || !is_white) {
+                                        final_score += 11.0;
+                                    } else {
+                                        final_score -= 20.0;
+                                    }
+                                } else {
+                                    if (!is_empty && is_white) {
+                                        final_score -= 11.0;
+                                    }
+                                }
+                            }
+
+                            if (!is_empty) {
+                                if (piece_type == Shogi::PieceType::KING) {
+                                    if (!is_white) {
+                                        final_score += KING_POSITION_BONUS[position_bonus_index_black];
+                                    } else {
+                                        final_score -= KING_POSITION_BONUS[position_bonus_index_white];
+                                    }
+                                } else {
                                     int piece_value =
                                         Shogi::PIECE_VALUES[static_cast<int>(piece_type)][is_promoted ? 1 : 0];
                                     if (!is_white) {
