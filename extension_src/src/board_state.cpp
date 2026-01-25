@@ -396,6 +396,77 @@ void BoardState::remove_piece_from_bitboard(int index, Turn turn, PieceType type
     }
 }
 
+PinMasks BoardState::calculate_pin_masks(Turn turn) const {
+    PinMasks pin_masks;
+    pin_masks.pinned = Bitboard();
+
+    auto king_position = get_king_position(turn);
+    if (!king_position.has_value()) {
+        return pin_masks;
+    }
+
+    int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+
+    Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    int my_index = static_cast<int>(turn);
+    int enemy_index = static_cast<int>(enemy_turn);
+
+    const Bitboard &enemy_lances = bitboard_piece_[enemy_index][static_cast<int>(PieceType::LANCE)];
+    const Bitboard &enemy_bishops = bitboard_piece_[enemy_index][static_cast<int>(PieceType::BISHOP)];
+    const Bitboard &enemy_rooks = bitboard_piece_[enemy_index][static_cast<int>(PieceType::ROOK)];
+    const Bitboard &enemy_promoted = bitboard_promoted_[enemy_index];
+
+    Bitboard enemy_line_sliders = enemy_rooks | (enemy_promoted & enemy_bishops);
+    Bitboard enemy_diagonal_sliders = enemy_bishops | (enemy_promoted & enemy_rooks);
+
+    for (int dir = 0; dir < 8; ++dir) {
+        Bitboard sliders;
+        if (dir % 2 != 0) {
+            sliders = enemy_diagonal_sliders;
+        } else {
+            sliders = enemy_line_sliders;
+            if (dir == 0 && enemy_turn == Turn::GOTE) {
+                sliders |= enemy_lances;
+            } else if (dir == 4 && enemy_turn == Turn::SENTE) {
+                sliders |= enemy_lances;
+            }
+        }
+
+        Bitboard ray = rays_[dir][king_square];
+        Bitboard attackers = ray & sliders;
+        if (attackers.is_empty()) {
+            continue;
+        }
+
+        int attacker_square;
+
+        // 最も玉に近い攻撃駒を特定
+        if (dir >= 1 && dir <= 4) {
+            attacker_square = attackers.lsb();
+        } else {
+            attacker_square = attackers.msb();
+        }
+
+        Bitboard path = ray ^ rays_[dir][attacker_square];
+        path.set(attacker_square);
+
+        Bitboard between = path & bitboard_all_;
+        between.clear(attacker_square);
+
+        if (between.count() == 1) {
+            int pinned_square = between.lsb();
+            Bitboard pinned;
+            pinned.set(pinned_square);
+            if (!(pinned & bitboard_side_[my_index]).is_empty()) {
+                pin_masks.pinned.set(pinned_square);
+                pin_masks.valid_ray_masks[pinned_square] = path;
+            }
+        }
+    }
+
+    return pin_masks;
+}
+
 uint64_t BoardState::calculate_zobrist_hash() const {
     uint64_t hash = 0;
 
@@ -798,6 +869,7 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
     const int promotion_row_min = (current_turn == Turn::SENTE) ? 0 : 6;
     const int promotion_row_max = (current_turn == Turn::SENTE) ? 2 : 8;
     auto is_promotion_rank = [&](int row) { return (row >= promotion_row_min && row <= promotion_row_max); };
+    PinMasks pin_masks = calculate_pin_masks(turn_to_move_);
 
     // 盤上の駒
     for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
@@ -857,6 +929,9 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
             }
 
             attacks = attacks & ~my_pieces_bitboard;
+            if (!(pin_masks.pinned & from_bitboard).is_empty()) {
+                attacks &= pin_masks.valid_ray_masks[from_index];
+            }
 
             while (!attacks.is_empty()) {
                 int to_index = attacks.lsb();

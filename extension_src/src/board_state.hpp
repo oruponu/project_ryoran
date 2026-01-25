@@ -30,6 +30,16 @@ struct Cell {
     [[nodiscard]] bool operator!=(const Cell &other) const { return !(*this == other); }
 };
 
+struct PinMasks {
+    // ピンされている味方駒
+    Bitboard pinned;
+
+    // ピンされた駒の移動可能範囲
+    Bitboard valid_ray_masks[Shogi::BOARD_SIZE];
+
+    PinMasks() { pinned = Bitboard(); }
+};
+
 class BoardState {
   private:
     inline static bool attack_tables_initialized_;
@@ -105,6 +115,8 @@ class BoardState {
     void build_bitboard();
     void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
     void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
+
+    PinMasks calculate_pin_masks(Shogi::Turn turn) const;
 
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
     [[nodiscard]] int calculate_score() const;
