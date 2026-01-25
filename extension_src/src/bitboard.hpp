@@ -117,6 +117,14 @@ struct Bitboard {
 
     bool is_empty() const { return lower_ == 0 && upper_ == 0; }
 
+    int count() const {
+#ifdef _MSC_VER
+        return static_cast<int>(__popcnt64(lower_) + __popcnt64(upper_));
+#else
+        return __builtin_popcountll(lower_) + __builtin_popcountll(upper_);
+#endif
+    }
+
     void print() const {
         using namespace godot;
         String output = "\n------------------\n";
