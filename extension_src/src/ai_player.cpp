@@ -170,6 +170,229 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     }
 }
 
+std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth) {
+    dfpn_table_.clear();
+    uint64_t node_count = 0;
+    uint64_t max_nodes = 100000;
+
+    int pn = 1;
+    int dn = 1;
+
+    dfpn_search(board, board.get_turn_to_move(), INFINITY_PN, INFINITY_PN, pn, dn, max_depth, node_count, max_nodes);
+
+    if (pn == 0) {
+        std::vector<Shogi::Move> moves = generate_check_moves(board);
+        for (const auto &move : moves) {
+            Shogi::UndoInfo undo = board.apply_move(move);
+            uint64_t hash = board.get_zobrist_hash();
+
+            int child_pn = 1;
+            if (dfpn_table_.count(hash)) {
+                child_pn = dfpn_table_[hash].pn;
+            }
+
+            board.undo_move(undo);
+
+            if (child_pn == 0) {
+                return move;
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::vector<Shogi::Move> AIPlayer::generate_check_moves(BoardState &board) {
+    std::vector<Shogi::Move> moves = board.get_legal_moves();
+    std::vector<Shogi::Move> check_moves;
+    Turn enemy_turn = (board.get_turn_to_move() == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+
+    for (const auto &move : moves) {
+        Shogi::UndoInfo undo = board.apply_move(move);
+        if (board.is_king_in_check(enemy_turn)) {
+            check_moves.push_back(move);
+        }
+
+        board.undo_move(undo);
+    }
+
+    return check_moves;
+}
+
+void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
+                           int depth, uint64_t &node_count, const uint64_t max_nodes) {
+    ++node_count;
+    uint64_t hash = board.get_zobrist_hash();
+
+    if (dfpn_table_.count(hash)) {
+        const auto &entry = dfpn_table_[hash];
+        if (entry.pn == 0 || entry.dn == 0 || entry.pn >= INFINITY_PN || entry.dn >= INFINITY_PN) {
+            pn = entry.pn;
+            dn = entry.dn;
+            return;
+        }
+
+        if (entry.pn >= threshold_pn || entry.dn >= threshold_dn) {
+            pn = entry.pn;
+            dn = entry.dn;
+            return;
+        }
+
+        pn = entry.pn;
+        dn = entry.dn;
+    } else {
+        dn = 1;
+        pn = 1;
+    }
+
+    if (node_count > max_nodes || depth <= 0) {
+        return;
+    }
+
+    bool is_attacker = (board.get_turn_to_move() == turn);
+    std::vector<Shogi::Move> moves;
+    if (is_attacker) {
+        moves = generate_check_moves(board);
+    } else {
+        moves = board.get_legal_moves();
+    }
+
+    if (moves.empty()) {
+        pn = is_attacker ? INFINITY_PN : 0;
+        dn = is_attacker ? 0 : INFINITY_PN;
+        dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
+        return;
+    }
+
+    std::vector<ChildNode> children;
+    children.reserve(moves.size());
+
+    for (const auto &move : moves) {
+        Shogi::UndoInfo undo = board.apply_move(move);
+        uint64_t child_hash = board.get_zobrist_hash();
+        int child_pn = 1;
+        int child_dn = 1;
+
+        if (dfpn_table_.count(child_hash)) {
+            child_pn = dfpn_table_[child_hash].pn;
+            child_dn = dfpn_table_[child_hash].dn;
+        }
+
+        children.push_back({move, child_hash, child_pn, child_dn});
+        board.undo_move(undo);
+
+        if (is_attacker) {
+            if (child_pn == 0) {
+                pn = 0;
+                dn = INFINITY_PN;
+                dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
+                return;
+            }
+        } else {
+            if (child_pn >= INFINITY_PN) {
+                pn = INFINITY_PN;
+                dn = 0;
+                dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
+                return;
+            }
+        }
+    }
+
+    while (true) {
+        int min_pn = INFINITY_PN;
+        int min_dn = INFINITY_PN;
+        long long sum_pn = 0;
+        long long sum_dn = 0;
+
+        int best_index = -1;
+        int second_best_pn = INFINITY_PN;
+        int second_best_dn = INFINITY_PN;
+
+        for (int i = 0; i < children.size(); ++i) {
+            const auto &child = children[i];
+            if (is_attacker) {
+                sum_dn += child.dn;
+                if (child.pn < min_pn) {
+                    second_best_pn = min_pn;
+                    min_pn = child.pn;
+                    best_index = i;
+                } else if (child.pn < second_best_pn) {
+                    second_best_pn = child.pn;
+                }
+            } else {
+                sum_pn += child.pn;
+                if (child.dn < min_dn) {
+                    second_best_dn = min_dn;
+                    min_dn = child.dn;
+                    best_index = i;
+                } else if (child.dn < second_best_dn) {
+                    second_best_dn = child.dn;
+                }
+            }
+        }
+
+        if (sum_pn > INFINITY_PN) {
+            sum_pn = INFINITY_PN;
+        }
+        if (sum_dn > INFINITY_PN) {
+            sum_dn = INFINITY_PN;
+        }
+
+        if (is_attacker) {
+            pn = min_pn;
+            dn = (int)sum_dn;
+        } else {
+            pn = (int)sum_pn;
+            dn = min_dn;
+        }
+
+        if (pn >= threshold_pn || dn >= threshold_dn || pn == 0 || dn == 0) {
+            break;
+        }
+        if (node_count > max_nodes) {
+            break;
+        }
+
+        ChildNode &best_child = children[best_index];
+        int next_threshold_pn;
+        int next_threshold_dn;
+
+        if (is_attacker) {
+            next_threshold_pn = std::min(threshold_pn, second_best_pn + 1);
+            long long dn_others = sum_dn - best_child.dn;
+            if (threshold_dn >= INFINITY_PN) {
+                next_threshold_dn = INFINITY_PN;
+            } else {
+                next_threshold_dn = threshold_dn - (int)dn_others;
+                if (next_threshold_dn < 0) {
+                    next_threshold_dn = 0;
+                }
+            }
+        } else {
+            long long pn_others = sum_pn - best_child.pn;
+            if (threshold_pn >= INFINITY_PN) {
+                next_threshold_pn = INFINITY_PN;
+            } else {
+                next_threshold_pn = threshold_pn - (int)pn_others;
+                if (next_threshold_pn < 0) {
+                    next_threshold_pn = 0;
+                }
+            }
+
+            next_threshold_dn = std::min(threshold_dn, second_best_dn + 1);
+        }
+
+        Shogi::UndoInfo undo = board.apply_move(best_child.move);
+
+        dfpn_search(board, turn, next_threshold_pn, next_threshold_dn, best_child.pn, best_child.dn, depth - 1,
+                    node_count, max_nodes);
+
+        board.undo_move(undo);
+    }
+
+    dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
+}
+
 int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, uint64_t &node_count) {
     ++node_count;
 
@@ -262,6 +485,24 @@ void AIPlayer::clear_tt() { transposition_table_.clear(); }
 
 Dictionary AIPlayer::search_best_move(BoardState board) {
     Turn root_side = board.get_turn_to_move();
+
+    auto mate_move = find_mate(board, 21);
+    if (mate_move.has_value()) {
+        UtilityFunctions::print("Checkmate proven.");
+
+        const auto &move = mate_move.value();
+        Dictionary result;
+        result["from_col"] = move.from_col;
+        result["from_row"] = move.from_row;
+        result["to_col"] = move.to_col;
+        result["to_row"] = move.to_row;
+        result["piece_type"] = static_cast<int>(move.piece_type);
+        result["is_promotion"] = move.is_promotion;
+        result["is_drop"] = move.is_drop;
+        result["win_rate"] = 1.0;
+        return result;
+    }
+
     std::vector<Move> moves = board.get_legal_moves();
 
     if (moves.empty()) {
@@ -326,8 +567,20 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             }
 
             Shogi::UndoInfo undo = board.apply_move(move);
-            int score = alpha_beta(board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
+
+            bool is_mated = false;
+            if (find_mate(board, 5).has_value()) {
+                is_mated = true;
+            }
+
+            int score;
+            if (is_mated) {
+                score = (root_side == Turn::SENTE) ? -999999 : 999999;
+            } else {
+                score = alpha_beta(board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
                                    total_node_count);
+            }
+
             board.undo_move(undo);
 
             if (timeout) {
