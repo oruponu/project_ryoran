@@ -248,6 +248,11 @@ void BoardState::initialize_eval_tables() {
         }
     }
 
+    for (int count = 0; count < 11; ++count) {
+        multi_effect_weight_table_[count] =
+            count == 0 ? 0 : static_cast<int>(6365 - std::pow(0.8525, count - 1) * 5341);
+    }
+
     eval_tables_initialized_ = true;
 }
 
@@ -588,15 +593,13 @@ int BoardState::calculate_spatial_score() const {
 
     int king_index_black = king_position_black->col * Shogi::BOARD_ROWS + king_position_black->row;
     int king_index_white = king_position_white->col * Shogi::BOARD_ROWS + king_position_white->row;
-    long long score_black_raw = 0;
-    long long score_white_raw = 0;
+
+    int effects[2][Shogi::BOARD_SIZE] = {0};
 
     const Bitboard &occupancy = bitboard_all_;
 
     for (int side = 0; side < 2; ++side) {
         Shogi::Turn turn = static_cast<Shogi::Turn>(side);
-        bool is_black = (turn == Shogi::Turn::SENTE);
-
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             Shogi::PieceType type = static_cast<Shogi::PieceType>(piece_type);
             Bitboard pieces = bitboard_piece_[side][piece_type];
@@ -654,20 +657,35 @@ int BoardState::calculate_spatial_score() const {
                 while (!attacks.is_empty()) {
                     int target_index = attacks.lsb();
                     attacks.clear(target_index);
-
-                    if (is_black) {
-                        score_black_raw += defense_weight_table_[king_index_black][target_index];
-                        score_black_raw += threat_weight_table_[king_index_white][target_index];
-                    } else {
-                        score_white_raw += defense_weight_table_[king_index_white][target_index];
-                        score_white_raw += threat_weight_table_[king_index_black][target_index];
+                    if (effects[side][target_index] < 10) {
+                        effects[side][target_index]++;
                     }
                 }
             }
         }
     }
 
-    return (int)((score_black_raw - score_white_raw) / 1024);
+    long long score_raw = 0;
+
+    for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+        int count_black = effects[0][index];
+        int count_white = effects[1][index];
+        long long multi_effect_black = multi_effect_weight_table_[count_black];
+        long long multi_effect_white = multi_effect_weight_table_[count_white];
+
+        int defense_value_black = defense_weight_table_[king_index_black][index];
+        int threat_value_black = threat_weight_table_[king_index_white][index];
+        int defense_value_white = defense_weight_table_[king_index_white][index];
+        int threat_value_white = threat_weight_table_[king_index_black][index];
+
+        long long score_around_black_king =
+            (multi_effect_black * defense_value_black) - (multi_effect_white * threat_value_white);
+        long long score_around_white_king =
+            (multi_effect_white * defense_value_white) - (multi_effect_black * threat_value_black);
+        score_raw += (score_around_black_king - score_around_white_king);
+    }
+
+    return (int)(score_raw / (1024 * 1024));
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {

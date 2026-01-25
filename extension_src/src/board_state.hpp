@@ -61,6 +61,7 @@ class BoardState {
 
     inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
     inline static int threat_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
+    inline static int multi_effect_weight_table_[11];
 
     // すべての駒のBitboard
     Bitboard bitboard_all_;
