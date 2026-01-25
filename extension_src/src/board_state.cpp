@@ -13,37 +13,6 @@ using Shogi::Turn;
 
 namespace {
 
-struct Direction {
-    int dx;
-    int dy;
-};
-
-struct StepMoves {
-    Direction dirs[8];
-    int count;
-};
-
-struct SlideMoves {
-    Direction dirs[4];
-    int count;
-};
-
-// 近接駒の移動方向
-constexpr StepMoves STEP_PAWN = {{{0, -1}}, 1};
-constexpr StepMoves STEP_KNIGHT = {{{-1, -2}, {1, -2}}, 2};
-constexpr StepMoves STEP_SILVER = {{{-1, -1}, {0, -1}, {1, -1}, {-1, 1}, {1, 1}}, 5};
-constexpr StepMoves STEP_GOLD = {{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {0, 1}}, 6};
-constexpr StepMoves STEP_KING = {{{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}, 8};
-
-// 走り駒の移動方向
-constexpr SlideMoves SLIDE_LANCE = {{{0, -1}}, 1};
-constexpr SlideMoves SLIDE_BISHOP = {{{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}, 4};
-constexpr SlideMoves SLIDE_ROOK = {{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}, 4};
-
-// 成り駒の追加移動方向
-constexpr StepMoves STEP_PROMOTED_BISHOP = {{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}, 4};
-constexpr StepMoves STEP_PROMOTED_ROOK = {{{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}, 4};
-
 uint64_t g_zobrist_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
 uint64_t g_zobrist_hand[2][Shogi::PIECE_TYPE_COUNT][20];
 uint64_t g_zobrist_turn_enemy;
@@ -593,6 +562,11 @@ int BoardState::calculate_score() const {
 }
 
 bool BoardState::is_valid_move(Coord from, Coord to) const {
+    const Cell &piece = get_cell(from);
+    if (piece.is_empty()) {
+        return false;
+    }
+
     // 盤面の範囲外には移動不可
     if (!to.is_valid()) {
         return false;
@@ -603,27 +577,61 @@ bool BoardState::is_valid_move(Coord from, Coord to) const {
         return false;
     }
 
-    const Cell &piece = get_cell(from);
-    bool is_enemy = (piece.turn == Turn::GOTE);
-
-    // ルールで認められていない場所には移動不可
-    if (!can_move_geometry(piece.type, is_enemy, piece.is_promoted, from, to)) {
-        return false;
-    }
-
-    if (piece.type != PieceType::KNIGHT) {
-        if (is_path_blocked(from, to)) {
-            return false;
-        }
-    }
-
     // 味方の駒がある場所には移動不可
     const Cell &target = get_cell(to);
     if (!target.is_empty() && target.turn == piece.turn) {
         return false;
     }
 
-    return true;
+    int from_index = from.col * Shogi::BOARD_ROWS + from.row;
+    int to_index = to.col * Shogi::BOARD_ROWS + to.row;
+    int side = static_cast<int>(piece.turn);
+
+    Bitboard attacks;
+    if (piece.is_promoted) {
+        switch (piece.type) {
+        case PieceType::BISHOP:
+            attacks = get_bishop_attacks(from_index, bitboard_all_) | attacks_king_[from_index];
+            break;
+        case PieceType::ROOK:
+            attacks = get_rook_attacks(from_index, bitboard_all_) | attacks_king_[from_index];
+            break;
+        default:
+            attacks = get_gold_attacks(from_index, piece.turn);
+            break;
+        }
+    } else {
+        switch (piece.type) {
+        case PieceType::PAWN:
+            attacks = attacks_pawn_[side][from_index];
+            break;
+        case PieceType::LANCE:
+            attacks = get_lance_attacks(from_index, piece.turn, bitboard_all_);
+            break;
+        case PieceType::KNIGHT:
+            attacks = attacks_knight_[side][from_index];
+            break;
+        case PieceType::SILVER:
+            attacks = attacks_silver_[side][from_index];
+            break;
+        case PieceType::GOLD:
+            attacks = attacks_gold_[side][from_index];
+            break;
+        case PieceType::BISHOP:
+            attacks = get_bishop_attacks(from_index, bitboard_all_);
+            break;
+        case PieceType::ROOK:
+            attacks = get_rook_attacks(from_index, bitboard_all_);
+            break;
+        case PieceType::KING:
+            attacks = attacks_king_[from_index];
+            break;
+        default:
+            return false;
+        }
+    }
+
+    return attacks.is_set(to_index);
 }
 
 bool BoardState::is_valid_drop(PieceType piece_type, bool is_enemy, Coord to) const {
@@ -715,110 +723,6 @@ bool BoardState::is_legal_drop(PieceType piece_type, bool is_enemy, Coord to) {
     remove_piece_from_bitboard(to_idx, turn, piece_type, false);
 
     return !in_check;
-}
-
-bool BoardState::can_move_geometry(PieceType piece_type, bool is_enemy, bool is_promoted, Coord from, Coord to) const {
-    int dx = to.col - from.col;
-    int dy = to.row - from.row;
-    int sign = is_enemy ? -1 : 1;
-
-    PieceType effective_type = piece_type;
-    if (is_promoted) {
-        switch (piece_type) {
-        case PieceType::SILVER:
-        case PieceType::KNIGHT:
-        case PieceType::LANCE:
-        case PieceType::PAWN:
-            effective_type = PieceType::GOLD;
-            break;
-        default:
-            break;
-        }
-    }
-
-    int abs_dx = std::abs(dx);
-    int abs_dy = std::abs(dy);
-
-    // 走り駒のチェック
-    switch (effective_type) {
-    case PieceType::LANCE:
-        return (dx == 0 && dy * sign < 0);
-
-    case PieceType::BISHOP:
-        if (abs_dx == abs_dy && abs_dx > 0) {
-            return true;
-        }
-        if (is_promoted && abs_dx + abs_dy == 1) {
-            return true;
-        }
-        return false;
-
-    case PieceType::ROOK:
-        if ((dx == 0 || dy == 0) && (abs_dx + abs_dy > 0)) {
-            return true;
-        }
-        if (is_promoted && abs_dx == 1 && abs_dy == 1) {
-            return true;
-        }
-        return false;
-
-    default:
-        break;
-    }
-
-    // 近接駒のチェック
-    const StepMoves *moves = nullptr;
-    switch (effective_type) {
-    case PieceType::PAWN:
-        moves = &STEP_PAWN;
-        break;
-    case PieceType::KNIGHT:
-        moves = &STEP_KNIGHT;
-        break;
-    case PieceType::SILVER:
-        moves = &STEP_SILVER;
-        break;
-    case PieceType::GOLD:
-        moves = &STEP_GOLD;
-        break;
-    case PieceType::KING:
-        moves = &STEP_KING;
-        break;
-    default:
-        return false;
-    }
-
-    for (int i = 0; i < moves->count; ++i) {
-        int expected_dx = moves->dirs[i].dx * sign;
-        int expected_dy = moves->dirs[i].dy * sign;
-        if (dx == expected_dx && dy == expected_dy) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool BoardState::is_path_blocked(Coord from, Coord to) const {
-    int dx = to.col - from.col;
-    int dy = to.row - from.row;
-    int steps = std::max(std::abs(dx), std::abs(dy));
-
-    if (steps <= 1) {
-        return false;
-    }
-
-    int step_x = (dx == 0) ? 0 : (dx > 0 ? 1 : -1);
-    int step_y = (dy == 0) ? 0 : (dy > 0 ? 1 : -1);
-
-    for (int i = 1; i < steps; ++i) {
-        Coord check{from.col + step_x * i, from.row + step_y * i};
-        if (!get_cell(check).is_empty()) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 bool BoardState::is_dead_end(PieceType piece_type, bool is_enemy, int to_row) const {

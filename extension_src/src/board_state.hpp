@@ -125,7 +125,6 @@ class BoardState {
 
     [[nodiscard]] bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
-    [[nodiscard]] bool is_path_blocked(Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_nifu(Shogi::PieceType piece_type, Shogi::Turn turn, int col) const;
     void update_king_position_cache();
     void update_pawn_columns_cache();
@@ -165,8 +164,6 @@ class BoardState {
 
     [[nodiscard]] bool is_legal_move(Shogi::Coord from, Shogi::Coord to);
     [[nodiscard]] bool is_legal_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to);
-    [[nodiscard]] bool can_move_geometry(Shogi::PieceType piece_type, bool is_enemy, bool is_promoted,
-                                         Shogi::Coord from, Shogi::Coord to) const;
     [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
     [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
     [[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
