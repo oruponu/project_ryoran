@@ -86,9 +86,7 @@ struct Move {
     bool is_drop;
     bool is_capture;
 
-    Move()
-        : from_col(0), from_row(0), to_col(0), to_row(0), piece_type(PieceType::EMPTY), is_promotion(false),
-          is_drop(false), is_capture(false) {}
+    Move() {}
 
     Move(int fc, int fr, int tc, int tr, PieceType pt, bool promo, bool drop, bool capture)
         : from_col(static_cast<uint8_t>(fc)), from_row(static_cast<uint8_t>(fr)), to_col(static_cast<uint8_t>(tc)),
@@ -101,6 +99,35 @@ struct Move {
     }
 
     [[nodiscard]] bool operator!=(const Move &other) const { return !(*this == other); }
+};
+
+struct MoveList {
+    // 1局面あたりの将棋の合法手は最大593手
+    static constexpr int MAX_MOVES = 600;
+
+    Move moves[MAX_MOVES];
+    int count = 0;
+
+    MoveList() : count(0) {}
+
+    void clear() { count = 0; }
+
+    void push(const Move &move) {
+        if (count < MAX_MOVES) {
+            moves[count++] = move;
+        }
+    }
+
+    Move &operator[](int index) { return moves[index]; }
+    const Move &operator[](int index) const { return moves[index]; }
+
+    [[nodiscard]] Move *begin() { return moves; }
+    [[nodiscard]] Move *end() { return moves + count; }
+    [[nodiscard]] const Move *begin() const { return moves; }
+    [[nodiscard]] const Move *end() const { return moves + count; }
+
+    [[nodiscard]] int size() const { return count; }
+    [[nodiscard]] bool is_empty() const { return count == 0; }
 };
 
 struct UndoInfo {
