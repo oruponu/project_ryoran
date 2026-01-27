@@ -204,7 +204,7 @@ class BoardState {
     [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
     [[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
 
-    [[nodiscard]] std::vector<Shogi::Move> get_legal_moves(bool only_captures = false);
+    void get_legal_moves(Shogi::MoveList &move_list, bool only_captures = false);
 
     // 盤面の操作
     [[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;

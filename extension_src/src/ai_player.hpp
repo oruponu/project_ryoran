@@ -49,7 +49,7 @@ class AIPlayer {
     std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth);
     void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
                      int depth, uint64_t &node_count, const uint64_t max_nodes);
-    std::vector<Shogi::Move> generate_check_moves(BoardState &board);
+    void generate_check_moves(BoardState &board, Shogi::MoveList &move_list);
     [[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, Shogi::Turn turn, uint64_t &node_count);
     [[nodiscard]] double calculate_win_probability(int score);
 

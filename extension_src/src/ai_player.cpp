@@ -82,30 +82,32 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     }
 
     Turn turn_to_move = board.get_turn_to_move();
-    std::vector<Move> moves = board.get_legal_moves();
-    if (moves.empty()) {
+
+    Shogi::MoveList move_list;
+    board.get_legal_moves(move_list);
+    if (move_list.is_empty()) {
         // 投了
         return (turn == turn_to_move) ? -999999 : 999999;
     }
 
     if (has_tt_move) {
-        auto it = std::find(moves.begin(), moves.end(), tt_best_move);
-        if (it != moves.end()) {
-            std::rotate(moves.begin(), it, it + 1);
+        auto it = std::find(move_list.begin(), move_list.end(), tt_best_move);
+        if (it != move_list.end()) {
+            std::rotate(move_list.begin(), it, it + 1);
         }
     }
 
-    auto sort_start = has_tt_move ? moves.begin() + 1 : moves.begin();
-    std::sort(sort_start, moves.end(), [&](const Move &a, const Move &b) {
+    auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
+    std::sort(sort_start, move_list.end(), [&](const Move &a, const Move &b) {
         return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
     });
 
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
-    Move best_move = moves[0];
+    Move best_move = move_list[0];
 
     if (turn == Turn::SENTE) {
         int max_eval = -99999999;
-        for (const Move &move : moves) {
+        for (const Move &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
             board.undo_move(undo);
@@ -137,7 +139,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
         return max_eval;
     } else {
         int min_eval = 99999999;
-        for (const Move &move : moves) {
+        for (const Move &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
             int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
             board.undo_move(undo);
@@ -181,8 +183,9 @@ std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth)
     dfpn_search(board, board.get_turn_to_move(), INFINITY_PN, INFINITY_PN, pn, dn, max_depth, node_count, max_nodes);
 
     if (pn == 0) {
-        std::vector<Shogi::Move> moves = generate_check_moves(board);
-        for (const auto &move : moves) {
+        Shogi::MoveList move_list;
+        generate_check_moves(board, move_list);
+        for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
             uint64_t hash = board.get_zobrist_hash();
 
@@ -202,21 +205,20 @@ std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth)
     return std::nullopt;
 }
 
-std::vector<Shogi::Move> AIPlayer::generate_check_moves(BoardState &board) {
-    std::vector<Shogi::Move> moves = board.get_legal_moves();
-    std::vector<Shogi::Move> check_moves;
-    Turn enemy_turn = (board.get_turn_to_move() == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+void AIPlayer::generate_check_moves(BoardState &board, Shogi::MoveList &move_list) {
+    move_list.clear();
 
-    for (const auto &move : moves) {
+    Shogi::MoveList candidates;
+    board.get_legal_moves(candidates);
+    Turn enemy_turn = (board.get_turn_to_move() == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    for (const auto &move : candidates) {
         Shogi::UndoInfo undo = board.apply_move(move);
         if (board.is_king_in_check(enemy_turn)) {
-            check_moves.push_back(move);
+            move_list.push(move);
         }
 
         board.undo_move(undo);
     }
-
-    return check_moves;
 }
 
 void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
@@ -250,14 +252,14 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
     }
 
     bool is_attacker = (board.get_turn_to_move() == turn);
-    std::vector<Shogi::Move> moves;
+    Shogi::MoveList move_list;
     if (is_attacker) {
-        moves = generate_check_moves(board);
+        generate_check_moves(board, move_list);
     } else {
-        moves = board.get_legal_moves();
+        board.get_legal_moves(move_list);
     }
 
-    if (moves.empty()) {
+    if (move_list.is_empty()) {
         pn = is_attacker ? INFINITY_PN : 0;
         dn = is_attacker ? 0 : INFINITY_PN;
         dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
@@ -265,9 +267,9 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
     }
 
     std::vector<ChildNode> children;
-    children.reserve(moves.size());
+    children.reserve(move_list.size());
 
-    for (const auto &move : moves) {
+    for (const auto &move : move_list) {
         Shogi::UndoInfo undo = board.apply_move(move);
         uint64_t child_hash = board.get_zobrist_hash();
         int child_pn = 1;
@@ -407,14 +409,15 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
             alpha = stand_pat;
         }
 
-        std::vector<Move> moves = board.get_legal_moves(true);
-        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+        Shogi::MoveList move_list;
+        board.get_legal_moves(move_list, true);
+        std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
 
         int max_eval = stand_pat;
 
-        for (const auto &move : moves) {
+        for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
             int eval = quiescence_search(board, alpha, beta, Turn::GOTE, node_count);
             board.undo_move(undo);
@@ -437,14 +440,15 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
             beta = stand_pat;
         }
 
-        std::vector<Move> moves = board.get_legal_moves(true);
-        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+        Shogi::MoveList move_list;
+        board.get_legal_moves(move_list, true);
+        std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
 
         int min_eval = stand_pat;
 
-        for (const auto &move : moves) {
+        for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
             int eval = quiescence_search(board, alpha, beta, Turn::SENTE, node_count);
             board.undo_move(undo);
@@ -503,9 +507,10 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         return result;
     }
 
-    std::vector<Move> moves = board.get_legal_moves();
+    Shogi::MoveList move_list;
+    board.get_legal_moves(move_list);
 
-    if (moves.empty()) {
+    if (move_list.is_empty()) {
         // 投了
         Dictionary result;
         result["win_rate"] = 0.0;
@@ -523,13 +528,13 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     int max_depth_limit = 10;
 
-    Move global_best_move = moves[0];
+    Move global_best_move = move_list[0];
     int global_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
 
     // TTから最善手を取得
     uint64_t root_hash = board.get_zobrist_hash();
     TTEntry *root_tt = probe_tt(root_hash);
-    Move best_move_prev_iter = (root_tt != nullptr) ? root_tt->best_move : moves[0];
+    Move best_move_prev_iter = (root_tt != nullptr) ? root_tt->best_move : move_list[0];
     bool has_prev_best = (root_tt != nullptr);
 
     uint64_t total_node_count = 0;
@@ -540,27 +545,27 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
             break;
         }
 
-        std::sort(moves.begin(), moves.end(), [&](const Move &a, const Move &b) {
+        std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
 
         if (has_prev_best) {
-            auto it = std::find(moves.begin(), moves.end(), best_move_prev_iter);
-            if (it != moves.end()) {
-                std::rotate(moves.begin(), it, it + 1);
+            auto it = std::find(move_list.begin(), move_list.end(), best_move_prev_iter);
+            if (it != move_list.end()) {
+                std::rotate(move_list.begin(), it, it + 1);
             }
         }
 
         int alpha = -99999999;
         int beta = 99999999;
-        Move current_depth_best_move = moves[0];
+        Move current_depth_best_move = move_list[0];
         int current_depth_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
         Turn next_turn_side = (root_side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
         uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
         bool timeout = false;
 
-        for (const auto &move : moves) {
+        for (const auto &move : move_list) {
             if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
                 timeout = true;
                 break;

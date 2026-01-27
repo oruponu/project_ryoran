@@ -1123,9 +1123,8 @@ bool BoardState::is_king_in_check(Turn turn) const {
     return false;
 }
 
-std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
-    std::vector<Move> moves;
-    moves.reserve(128);
+void BoardState::get_legal_moves(Shogi::MoveList &move_list, bool only_captures) {
+    move_list.clear();
 
     const Turn current_turn = turn_to_move_;
     const Turn opponent_turn = (current_turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
@@ -1270,11 +1269,11 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
                 }
 
                 if (!must_promote) {
-                    moves.emplace_back(from.col, from.row, to.col, to.row, type, false, false, is_capture);
+                    move_list.push(Shogi::Move(from.col, from.row, to.col, to.row, type, false, false, is_capture));
                 }
 
                 if (can_promote) {
-                    moves.emplace_back(from.col, from.row, to.col, to.row, type, true, false, is_capture);
+                    move_list.push(Shogi::Move(from.col, from.row, to.col, to.row, type, true, false, is_capture));
                 }
             }
         }
@@ -1310,13 +1309,11 @@ std::vector<Move> BoardState::get_legal_moves(bool only_captures) {
                         continue;
                     }
 
-                    moves.emplace_back(0, 0, to.col, to.row, type, false, true, false);
+                    move_list.push(Shogi::Move(0, 0, to.col, to.row, type, false, true, false));
                 }
             }
         }
     }
-
-    return moves;
 }
 
 uint64_t BoardState::get_zobrist_hash() const { return zobrist_hash_; }
