@@ -1,5 +1,4 @@
-#ifndef BITBOARD_HPP
-#define BITBOARD_HPP
+#pragma once
 
 #include "shogi_utils.hpp"
 #include <cstdint>
@@ -147,5 +146,3 @@ struct Bitboard {
         UtilityFunctions::print(output);
     }
 };
-
-#endif

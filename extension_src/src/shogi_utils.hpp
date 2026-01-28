@@ -1,5 +1,4 @@
-#ifndef SHOGI_UTILS_HPP
-#define SHOGI_UTILS_HPP
+#pragma once
 
 #include <array>
 
@@ -146,5 +145,3 @@ struct UndoInfo {
 };
 
 } // namespace Shogi
-
-#endif

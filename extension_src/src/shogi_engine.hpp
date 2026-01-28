@@ -1,5 +1,4 @@
-#ifndef SHOGI_ENGINE_HPP
-#define SHOGI_ENGINE_HPP
+#pragma once
 
 #include "board_state.hpp"
 #include <godot_cpp/classes/node2d.hpp>
@@ -54,5 +53,3 @@ class ShogiEngine : public RefCounted {
     void update_state(Node2D *main_node);
     [[nodiscard]] Dictionary search_best_move();
 };
-
-#endif

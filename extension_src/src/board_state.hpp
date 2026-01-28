@@ -1,5 +1,4 @@
-#ifndef BOARD_STATE_HPP
-#define BOARD_STATE_HPP
+#pragma once
 
 #include "bitboard.hpp"
 #include "shogi_utils.hpp"
@@ -217,5 +216,3 @@ class BoardState {
     // 盤面の出力（デバッグ用）
     void print_board() const;
 };
-
-#endif

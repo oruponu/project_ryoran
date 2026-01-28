@@ -1,5 +1,4 @@
-#ifndef AI_PLAYER_HPP
-#define AI_PLAYER_HPP
+#pragma once
 
 #include "board_state.hpp"
 #include "shogi_engine.hpp"
@@ -65,5 +64,3 @@ class AIPlayer {
 };
 
 } // namespace godot
-
-#endif
