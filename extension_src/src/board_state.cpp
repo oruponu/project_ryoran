@@ -786,17 +786,17 @@ int BoardState::calculate_spatial_score() const {
     int king_index_black = king_position_black->col * Shogi::BOARD_ROWS + king_position_black->row;
     int king_index_white = king_position_white->col * Shogi::BOARD_ROWS + king_position_white->row;
 
-    int effects[2][Shogi::BOARD_SIZE] = {0};
+    Bitboard attacks_any[2];
+    Bitboard attacks_multi[2];
 
     const Bitboard &occupancy = bitboard_all_;
 
     for (int side = 0; side < 2; ++side) {
         Shogi::Turn turn = static_cast<Shogi::Turn>(side);
+        const Bitboard promoted_pieces = bitboard_promoted_[side];
         for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
             Shogi::PieceType type = static_cast<Shogi::PieceType>(piece_type);
             Bitboard pieces = bitboard_piece_[side][piece_type];
-            Bitboard promoted_pieces = bitboard_promoted_[side];
-
             while (!pieces.is_empty()) {
                 int from_index = pieces.lsb();
                 pieces.clear(from_index);
@@ -846,21 +846,20 @@ int BoardState::calculate_spatial_score() const {
                     }
                 }
 
-                while (!attacks.is_empty()) {
-                    int target_index = attacks.lsb();
-                    attacks.clear(target_index);
-                    if (effects[side][target_index] < 10) {
-                        effects[side][target_index]++;
-                    }
-                }
+                attacks_multi[side] |= (attacks_any[side] & attacks);
+                attacks_any[side] |= attacks;
             }
         }
     }
 
     long long score = 0;
     for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-        int count_black = std::min(effects[0][index], 2);
-        int count_white = std::min(effects[1][index], 2);
+        auto count_attacks = [&](int side) {
+            return attacks_any[side].is_set(index) + attacks_multi[side].is_set(index);
+        };
+        int count_black = count_attacks(0);
+        int count_white = count_attacks(1);
+
         int piece_index = get_kkpee_piece_index(board_[index]);
         score += kkpee_table_[king_index_black][king_index_white][index][count_black][count_white][piece_index];
     }
