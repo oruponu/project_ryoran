@@ -21,7 +21,7 @@ bool g_zobrist_initialized = false;
 } // namespace
 
 BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(0) {
-    initialize_attack_tables();
+    AttackTable::initialize();
     Evaluator::initialize();
 
     // 盤面を初期化
@@ -162,159 +162,6 @@ void BoardState::load_zobrist_params(const String &path) {
     UtilityFunctions::print("Zobrist parameters loaded successfully.");
 }
 
-void BoardState::initialize_attack_tables() {
-    if (attack_tables_initialized_) {
-        return;
-    }
-
-    auto set_if_valid = [](Bitboard &bitboard, Coord coord) {
-        if (coord.is_valid()) {
-            bitboard.set(coord.col * Shogi::BOARD_ROWS + coord.row);
-        }
-    };
-
-    for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-        int col = index / Shogi::BOARD_ROWS;
-        int row = index % Shogi::BOARD_ROWS;
-
-        for (int side = 0; side < 2; ++side) {
-            Shogi::Turn turn = static_cast<Shogi::Turn>(side);
-            int sign = (turn == Shogi::Turn::SENTE) ? -1 : 1;
-
-            // 歩
-            set_if_valid(attacks_pawn_[side][index], {col, row + sign});
-
-            // 桂馬
-            set_if_valid(attacks_knight_[side][index], {col - 1, row + sign * 2});
-            set_if_valid(attacks_knight_[side][index], {col + 1, row + sign * 2});
-            // 銀
-            set_if_valid(attacks_silver_[side][index], {col - 1, row + sign});
-            set_if_valid(attacks_silver_[side][index], {col, row + sign});
-            set_if_valid(attacks_silver_[side][index], {col + 1, row + sign});
-            set_if_valid(attacks_silver_[side][index], {col - 1, row - sign});
-            set_if_valid(attacks_silver_[side][index], {col + 1, row - sign});
-            // 金
-            set_if_valid(attacks_gold_[side][index], {col - 1, row + sign});
-            set_if_valid(attacks_gold_[side][index], {col, row + sign});
-            set_if_valid(attacks_gold_[side][index], {col + 1, row + sign});
-            set_if_valid(attacks_gold_[side][index], {col - 1, row});
-            set_if_valid(attacks_gold_[side][index], {col + 1, row});
-            set_if_valid(attacks_gold_[side][index], {col, row - sign});
-        }
-
-        // 玉
-        for (int dx = -1; dx <= 1; ++dx) {
-            for (int dy = -1; dy <= 1; ++dy) {
-                if (dx == 0 && dy == 0) {
-                    continue;
-                }
-                set_if_valid(attacks_king_[index], {col + dx, row + dy});
-            }
-        }
-    }
-
-    // 走り駒
-    int dxs[8] = {0, 1, 1, 1, 0, -1, -1, -1};
-    int dys[8] = {-1, -1, 0, 1, 1, 1, 0, -1};
-    for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-        int col = index / Shogi::BOARD_ROWS;
-        int row = index % Shogi::BOARD_ROWS;
-
-        for (int dir = 0; dir < 8; ++dir) {
-            Bitboard ray;
-            Coord coord = {col + dxs[dir], row + dys[dir]};
-            while (coord.is_valid()) {
-                ray.set(coord.col * Shogi::BOARD_ROWS + coord.row);
-                coord.col += dxs[dir];
-                coord.row += dys[dir];
-            }
-            rays_[dir][index] = ray;
-        }
-    }
-
-    attack_tables_initialized_ = true;
-}
-
-Bitboard BoardState::get_lance_attacks(int square, Turn turn, const Bitboard &occupancy) const {
-    int direction = (turn == Turn::SENTE) ? 0 : 4; // 0: 上，4: 下
-    Bitboard ray = rays_[direction][square];
-    Bitboard blockers = ray & occupancy;
-
-    if (!blockers.is_empty()) {
-        int blocker_index;
-        if (turn == Turn::SENTE) {
-            blocker_index = blockers.msb();
-        } else {
-            blocker_index = blockers.lsb();
-        }
-
-        Bitboard ray_from_blocker = rays_[direction][blocker_index];
-        return ray & ~ray_from_blocker;
-    }
-
-    return ray;
-}
-
-Bitboard BoardState::get_bishop_attacks(int square, const Bitboard &occupancy) const {
-    Bitboard attacks;
-    int directions[4] = {1, 3, 5, 7}; // 1: 右上，3: 右下，5: 左下，7: 左上
-
-    for (int dir = 0; dir < 4; ++dir) {
-        int direction = directions[dir];
-        Bitboard ray = rays_[direction][square];
-        Bitboard blockers = ray & occupancy;
-
-        if (!blockers.is_empty()) {
-            int blocker_index;
-
-            // 左下と左上はindexが減る方向
-            // 右上と右下はindexが増える方向
-            if (direction == 5 || direction == 7) {
-                blocker_index = blockers.msb();
-            } else {
-                blocker_index = blockers.lsb();
-            }
-
-            Bitboard ray_from_blocker = rays_[direction][blocker_index];
-            attacks |= (ray & ~ray_from_blocker);
-        } else {
-            attacks |= ray;
-        }
-    }
-
-    return attacks;
-}
-
-Bitboard BoardState::get_rook_attacks(int square, const Bitboard &occupancy) const {
-    Bitboard attacks;
-    int directions[4] = {0, 2, 4, 6}; // 0: 上，2: 右，4: 下，6: 左
-
-    for (int dir = 0; dir < 4; ++dir) {
-        int direction = directions[dir];
-        Bitboard ray = rays_[direction][square];
-        Bitboard blockers = ray & occupancy;
-
-        if (!blockers.is_empty()) {
-            int blocker_index;
-
-            // 上と左はindexが減る方向
-            // 下と右はindexが増える方向
-            if (direction == 0 || direction == 6) {
-                blocker_index = blockers.msb();
-            } else {
-                blocker_index = blockers.lsb();
-            }
-
-            Bitboard ray_from_blocker = rays_[direction][blocker_index];
-            attacks |= (ray & ~ray_from_blocker);
-        } else {
-            attacks |= ray;
-        }
-    }
-
-    return attacks;
-}
-
 Bitboard BoardState::get_checkers(Turn turn) const {
     Bitboard checkers;
     auto king_position = get_king_position(turn);
@@ -339,33 +186,33 @@ Bitboard BoardState::get_checkers(Turn turn) const {
     const Bitboard occupancy = bitboard_all_;
 
     // 香車の利き
-    Bitboard lance_attacks = get_lance_attacks(king_square, turn, occupancy);
+    Bitboard lance_attacks = AttackTable::get_lance_attacks(king_square, turn, occupancy);
     checkers |= (lance_attacks & (enemy_lances & ~enemy_promoted));
 
     // 角の利き
-    Bitboard bishop_attacks = get_bishop_attacks(king_square, occupancy);
+    Bitboard bishop_attacks = AttackTable::get_bishop_attacks(king_square, occupancy);
     checkers |= (bishop_attacks & enemy_bishops);
 
     // 飛車の利き
-    Bitboard rook_attacks = get_rook_attacks(king_square, occupancy);
+    Bitboard rook_attacks = AttackTable::get_rook_attacks(king_square, occupancy);
     checkers |= (rook_attacks & enemy_rooks);
 
     // 歩の利き
-    checkers |= (get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted));
+    checkers |= (AttackTable::get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted));
 
     // 桂馬の利き
-    checkers |= (get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted));
+    checkers |= (AttackTable::get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted));
 
     // 銀の利き
-    checkers |= (get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted));
+    checkers |= (AttackTable::get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted));
 
     // 金および金と同じ動きをする成り駒の利きをチェック
     Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
-    checkers |= (get_gold_attacks(king_square, turn) & gold_likes);
+    checkers |= (AttackTable::get_gold_attacks(king_square, turn) & gold_likes);
 
     // 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
     Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
-    checkers |= (get_king_attacks(king_square) & king_likes);
+    checkers |= (AttackTable::get_king_attacks(king_square) & king_likes);
 
     return checkers;
 }
@@ -457,7 +304,7 @@ PinMasks BoardState::calculate_pin_masks(Turn turn) const {
             }
         }
 
-        Bitboard ray = rays_[dir][king_square];
+        Bitboard ray = AttackTable::get_ray(king_square, dir);
         Bitboard attackers = ray & sliders;
         if (attackers.is_empty()) {
             continue;
@@ -472,7 +319,7 @@ PinMasks BoardState::calculate_pin_masks(Turn turn) const {
             attacker_square = attackers.msb();
         }
 
-        Bitboard path = ray ^ rays_[dir][attacker_square];
+        Bitboard path = ray ^ AttackTable::get_ray(attacker_square, dir);
         path.set(attacker_square);
 
         Bitboard between = path & bitboard_all_;
@@ -555,40 +402,40 @@ bool BoardState::is_valid_move(Coord from, Coord to) const {
     if (piece.is_promoted) {
         switch (piece.type) {
         case PieceType::BISHOP:
-            attacks = get_bishop_attacks(from_index, bitboard_all_) | attacks_king_[from_index];
+            attacks = AttackTable::get_promoted_bishop_attacks(from_index, bitboard_all_);
             break;
         case PieceType::ROOK:
-            attacks = get_rook_attacks(from_index, bitboard_all_) | attacks_king_[from_index];
+            attacks = AttackTable::get_promoted_rook_attacks(from_index, bitboard_all_);
             break;
         default:
-            attacks = get_gold_attacks(from_index, piece.turn);
+            attacks = AttackTable::get_gold_attacks(from_index, piece.turn);
             break;
         }
     } else {
         switch (piece.type) {
         case PieceType::PAWN:
-            attacks = attacks_pawn_[side][from_index];
+            attacks = AttackTable::get_pawn_attacks(from_index, piece.turn);
             break;
         case PieceType::LANCE:
-            attacks = get_lance_attacks(from_index, piece.turn, bitboard_all_);
+            attacks = AttackTable::get_lance_attacks(from_index, piece.turn, bitboard_all_);
             break;
         case PieceType::KNIGHT:
-            attacks = attacks_knight_[side][from_index];
+            attacks = AttackTable::get_knight_attacks(from_index, piece.turn);
             break;
         case PieceType::SILVER:
-            attacks = attacks_silver_[side][from_index];
+            attacks = AttackTable::get_silver_attacks(from_index, piece.turn);
             break;
         case PieceType::GOLD:
-            attacks = attacks_gold_[side][from_index];
+            attacks = AttackTable::get_gold_attacks(from_index, piece.turn);
             break;
         case PieceType::BISHOP:
-            attacks = get_bishop_attacks(from_index, bitboard_all_);
+            attacks = AttackTable::get_bishop_attacks(from_index, bitboard_all_);
             break;
         case PieceType::ROOK:
-            attacks = get_rook_attacks(from_index, bitboard_all_);
+            attacks = AttackTable::get_rook_attacks(from_index, bitboard_all_);
             break;
         case PieceType::KING:
-            attacks = attacks_king_[from_index];
+            attacks = AttackTable::get_king_attacks(from_index);
             break;
         default:
             return false;
@@ -733,47 +580,47 @@ bool BoardState::is_king_in_check(Turn turn) const {
     const Bitboard &occupancy = bitboard_all_;
 
     // 香車の利きをチェック
-    Bitboard lance_attacks = get_lance_attacks(king_square, turn, occupancy);
+    Bitboard lance_attacks = AttackTable::get_lance_attacks(king_square, turn, occupancy);
     if (!(lance_attacks & (enemy_lances & ~enemy_promoted)).is_empty()) {
         return true;
     }
 
     // 角の利きをチェック
-    Bitboard bishop_attacks = get_bishop_attacks(king_square, occupancy);
+    Bitboard bishop_attacks = AttackTable::get_bishop_attacks(king_square, occupancy);
     if (!(bishop_attacks & enemy_bishops).is_empty()) {
         return true;
     }
 
     // 飛車の利きをチェック
-    Bitboard rook_attacks = get_rook_attacks(king_square, occupancy);
+    Bitboard rook_attacks = AttackTable::get_rook_attacks(king_square, occupancy);
     if (!(rook_attacks & enemy_rooks).is_empty()) {
         return true;
     }
 
     // 歩の利きをチェック
-    if (!(get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted)).is_empty()) {
+    if (!(AttackTable::get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted)).is_empty()) {
         return true;
     }
 
     // 桂馬の利きをチェック
-    if (!(get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted)).is_empty()) {
+    if (!(AttackTable::get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted)).is_empty()) {
         return true;
     }
 
     // 銀の利きをチェック
-    if (!(get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted)).is_empty()) {
+    if (!(AttackTable::get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted)).is_empty()) {
         return true;
     }
 
     // 金および金と同じ動きをする成り駒の利きをチェック
     Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
-    if (!(get_gold_attacks(king_square, turn) & gold_likes).is_empty()) {
+    if (!(AttackTable::get_gold_attacks(king_square, turn) & gold_likes).is_empty()) {
         return true;
     }
 
     // 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
     Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
-    if (!(get_king_attacks(king_square) & king_likes).is_empty()) {
+    if (!(AttackTable::get_king_attacks(king_square) & king_likes).is_empty()) {
         return true;
     }
 
@@ -810,9 +657,9 @@ void BoardState::get_legal_moves(Shogi::MoveList &move_list, bool only_captures)
         if (king_position.has_value()) {
             int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
             for (int dir = 0; dir < 8; ++dir) {
-                Bitboard ray = rays_[dir][king_square];
+                Bitboard ray = AttackTable::get_ray(king_square, dir);
                 if (ray.is_set(checker_index)) {
-                    Bitboard between = ray ^ rays_[dir][checker_index];
+                    Bitboard between = ray ^ AttackTable::get_ray(checker_index, dir);
                     evasion_mask |= between;
                     break;
                 }
@@ -845,37 +692,37 @@ void BoardState::get_legal_moves(Shogi::MoveList &move_list, bool only_captures)
             // 駒の利き
             if (is_promoted) {
                 if (type == PieceType::BISHOP) {
-                    attacks = get_bishop_attacks(from_index, occupancy) | get_king_attacks(from_index);
+                    attacks = AttackTable::get_promoted_bishop_attacks(from_index, occupancy);
                 } else if (type == PieceType::ROOK) {
-                    attacks = get_rook_attacks(from_index, occupancy) | get_king_attacks(from_index);
+                    attacks = AttackTable::get_promoted_rook_attacks(from_index, occupancy);
                 } else {
-                    attacks = attacks_gold_[static_cast<int>(current_turn)][from_index];
+                    attacks = AttackTable::get_gold_attacks(from_index, current_turn);
                 }
             } else {
                 switch (type) {
                 case PieceType::PAWN:
-                    attacks = attacks_pawn_[static_cast<int>(current_turn)][from_index];
+                    attacks = AttackTable::get_pawn_attacks(from_index, current_turn);
                     break;
                 case PieceType::LANCE:
-                    attacks = get_lance_attacks(from_index, current_turn, occupancy);
+                    attacks = AttackTable::get_lance_attacks(from_index, current_turn, occupancy);
                     break;
                 case PieceType::KNIGHT:
-                    attacks = attacks_knight_[static_cast<int>(current_turn)][from_index];
+                    attacks = AttackTable::get_knight_attacks(from_index, current_turn);
                     break;
                 case PieceType::SILVER:
-                    attacks = attacks_silver_[static_cast<int>(current_turn)][from_index];
+                    attacks = AttackTable::get_silver_attacks(from_index, current_turn);
                     break;
                 case PieceType::GOLD:
-                    attacks = attacks_gold_[static_cast<int>(current_turn)][from_index];
+                    attacks = AttackTable::get_gold_attacks(from_index, current_turn);
                     break;
                 case PieceType::BISHOP:
-                    attacks = get_bishop_attacks(from_index, occupancy);
+                    attacks = AttackTable::get_bishop_attacks(from_index, occupancy);
                     break;
                 case PieceType::ROOK:
-                    attacks = get_rook_attacks(from_index, occupancy);
+                    attacks = AttackTable::get_rook_attacks(from_index, occupancy);
                     break;
                 case PieceType::KING:
-                    attacks = attacks_king_[from_index];
+                    attacks = AttackTable::get_king_attacks(from_index);
                     break;
                 default:
                     break;

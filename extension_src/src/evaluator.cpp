@@ -1,4 +1,5 @@
 #include "evaluator.hpp"
+#include "attack_table.hpp"
 #include "board_state.hpp"
 #include <cmath>
 #include <vector>
@@ -287,40 +288,40 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
                 if (is_promoted) {
                     switch (type) {
                     case PieceType::BISHOP:
-                        attacks = board.get_promoted_bishop_attacks(from_index, occupancy);
+                        attacks = AttackTable::get_promoted_bishop_attacks(from_index, occupancy);
                         break;
                     case PieceType::ROOK:
-                        attacks = board.get_promoted_rook_attacks(from_index, occupancy);
+                        attacks = AttackTable::get_promoted_rook_attacks(from_index, occupancy);
                         break;
                     default:
-                        attacks = BoardState::get_gold_attacks(from_index, turn);
+                        attacks = AttackTable::get_gold_attacks(from_index, turn);
                         break;
                     }
                 } else {
                     switch (type) {
                     case PieceType::PAWN:
-                        attacks = BoardState::get_pawn_attacks(from_index, turn);
+                        attacks = AttackTable::get_pawn_attacks(from_index, turn);
                         break;
                     case PieceType::LANCE:
-                        attacks = board.get_lance_attacks(from_index, turn, occupancy);
+                        attacks = AttackTable::get_lance_attacks(from_index, turn, occupancy);
                         break;
                     case PieceType::KNIGHT:
-                        attacks = BoardState::get_knight_attacks(from_index, turn);
+                        attacks = AttackTable::get_knight_attacks(from_index, turn);
                         break;
                     case PieceType::SILVER:
-                        attacks = BoardState::get_silver_attacks(from_index, turn);
+                        attacks = AttackTable::get_silver_attacks(from_index, turn);
                         break;
                     case PieceType::GOLD:
-                        attacks = BoardState::get_gold_attacks(from_index, turn);
+                        attacks = AttackTable::get_gold_attacks(from_index, turn);
                         break;
                     case PieceType::BISHOP:
-                        attacks = board.get_bishop_attacks(from_index, occupancy);
+                        attacks = AttackTable::get_bishop_attacks(from_index, occupancy);
                         break;
                     case PieceType::ROOK:
-                        attacks = board.get_rook_attacks(from_index, occupancy);
+                        attacks = AttackTable::get_rook_attacks(from_index, occupancy);
                         break;
                     case PieceType::KING:
-                        attacks = BoardState::get_king_attacks(from_index);
+                        attacks = AttackTable::get_king_attacks(from_index);
                         break;
                     default:
                         break;
