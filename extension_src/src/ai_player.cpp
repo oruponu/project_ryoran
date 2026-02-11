@@ -1,4 +1,5 @@
 #include "ai_player.hpp"
+#include "move_generator.hpp"
 #include <algorithm>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -84,7 +85,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     Turn turn_to_move = board.get_turn_to_move();
 
     Shogi::MoveList move_list;
-    board.get_legal_moves(move_list);
+    MoveGenerator::get_legal_moves(board, move_list);
     if (move_list.is_empty()) {
         // 投了
         return (turn == turn_to_move) ? -999999 : 999999;
@@ -209,11 +210,11 @@ void AIPlayer::generate_check_moves(BoardState &board, Shogi::MoveList &move_lis
     move_list.clear();
 
     Shogi::MoveList candidates;
-    board.get_legal_moves(candidates);
+    MoveGenerator::get_legal_moves(board, candidates);
     Turn enemy_turn = (board.get_turn_to_move() == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
     for (const auto &move : candidates) {
         Shogi::UndoInfo undo = board.apply_move(move);
-        if (board.is_king_in_check(enemy_turn)) {
+        if (MoveGenerator::is_king_in_check(board, enemy_turn)) {
             move_list.push(move);
         }
 
@@ -256,7 +257,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
     if (is_attacker) {
         generate_check_moves(board, move_list);
     } else {
-        board.get_legal_moves(move_list);
+        MoveGenerator::get_legal_moves(board, move_list);
     }
 
     if (move_list.is_empty()) {
@@ -410,7 +411,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         }
 
         Shogi::MoveList move_list;
-        board.get_legal_moves(move_list, true);
+        MoveGenerator::get_legal_moves(board, move_list, true);
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
@@ -441,7 +442,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         }
 
         Shogi::MoveList move_list;
-        board.get_legal_moves(move_list, true);
+        MoveGenerator::get_legal_moves(board, move_list, true);
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
@@ -508,7 +509,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     }
 
     Shogi::MoveList move_list;
-    board.get_legal_moves(move_list);
+    MoveGenerator::get_legal_moves(board, move_list);
 
     if (move_list.is_empty()) {
         // 投了

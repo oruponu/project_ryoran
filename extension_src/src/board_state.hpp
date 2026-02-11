@@ -42,6 +42,7 @@ struct PinMasks {
 };
 
 class BoardState {
+    friend class MoveGenerator;
     friend class Evaluator;
 
   private:
@@ -66,19 +67,12 @@ class BoardState {
     std::optional<Shogi::Coord> king_pos_[2];
     uint16_t pawn_columns_[2];
 
-    Bitboard get_checkers(Shogi::Turn turn) const;
-
     void build_bitboard();
     void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
     void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
 
-    PinMasks calculate_pin_masks(Shogi::Turn turn) const;
-
     [[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
-    [[nodiscard]] bool is_valid_move(Shogi::Coord from, Shogi::Coord to) const;
-    [[nodiscard]] bool is_valid_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to) const;
-    [[nodiscard]] bool is_nifu(Shogi::PieceType piece_type, Shogi::Turn turn, int col) const;
     void update_king_position_cache();
     void update_pawn_columns_cache();
 
@@ -115,13 +109,7 @@ class BoardState {
 
     [[nodiscard]] uint64_t get_zobrist_hash() const;
 
-    [[nodiscard]] bool is_legal_move(Shogi::Coord from, Shogi::Coord to);
-    [[nodiscard]] bool is_legal_drop(Shogi::PieceType piece_type, bool is_enemy, Shogi::Coord to);
-    [[nodiscard]] bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row) const;
-    [[nodiscard]] bool is_king_in_check(Shogi::Turn turn) const;
     [[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
-
-    void get_legal_moves(Shogi::MoveList &move_list, bool only_captures = false);
 
     // 盤面の操作
     [[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
