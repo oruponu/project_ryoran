@@ -43,23 +43,7 @@ inline constexpr int apply_board_discount(int score) { return score - (score * 1
 
 inline constexpr int get_piece_score(PieceType piece_type, bool is_promoted, Turn turn, int col, int row) {
     int pt = static_cast<int>(piece_type);
-    int piece_value = PIECE_VALUES[pt][is_promoted ? 1 : 0];
-
-    PieceType lookup_type = piece_type;
-    if (is_promoted) {
-        switch (piece_type) {
-        case PieceType::PAWN:
-        case PieceType::LANCE:
-        case PieceType::KNIGHT:
-        case PieceType::SILVER:
-            lookup_type = PieceType::GOLD;
-            break;
-        default:
-            break;
-        }
-    }
-
-    return piece_value;
+    return PIECE_VALUES[pt][is_promoted ? 1 : 0];
 }
 
 struct Coord {

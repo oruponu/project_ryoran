@@ -67,7 +67,6 @@ class BoardState {
     inline static Bitboard attacks_king_[Shogi::BOARD_SIZE];
 
     // 走り駒の利き
-    inline static Bitboard sttacks_lance_[2][Shogi::BOARD_SIZE];
     inline static Bitboard rays_[8][Shogi::BOARD_SIZE];
 
     inline static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3]
