@@ -2,7 +2,7 @@
 
 #include "bitboard.hpp"
 #include "shogi_utils.hpp"
-#include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/node.hpp>
 #include <optional>
 #include <vector>
 

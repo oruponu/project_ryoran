@@ -1,12 +1,8 @@
 #pragma once
 
 #include "board_state.hpp"
-#include "shogi_engine.hpp"
-#include <godot_cpp/classes/node2d.hpp>
-#include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <unordered_map>
-
-namespace godot {
 
 enum class TTFlag : uint8_t { EXACT, LOWER_BOUND, UPPER_BOUND };
 
@@ -60,7 +56,5 @@ class AIPlayer {
     AIPlayer() { transposition_table_.reserve(TT_SIZE); }
     ~AIPlayer() {}
 
-    [[nodiscard]] Dictionary search_best_move(BoardState board);
+    [[nodiscard]] godot::Dictionary search_best_move(BoardState board);
 };
-
-} // namespace godot
