@@ -67,6 +67,16 @@ func _process(_delta: float) -> void:
 		_start_background_analysis()
 
 
+func _exit_tree() -> void:
+	if _ai_thread != null and _ai_thread.is_started():
+		_ai_thread.wait_to_finish()
+		_ai_thread = null
+
+	if _eval_thread != null and _eval_thread.is_started():
+		_eval_thread.wait_to_finish()
+		_eval_thread = null
+
+
 func _on_new_game_button_pressed() -> void:
 	var result = await request_new_game_decision()
 	if not result:
