@@ -181,8 +181,8 @@ func _pick_up(piece: Piece) -> void:
 
 func _attempt_place(piece: Piece) -> void:
 	var local_pos = board.to_local(piece.global_position)
-	var col = floor(local_pos.x / GameConfig.GRID_SIZE)
-	var row = floor(local_pos.y / GameConfig.GRID_SIZE)
+	var col := floori(local_pos.x / GameConfig.GRID_SIZE)
+	var row := floori(local_pos.y / GameConfig.GRID_SIZE)
 
 	# 合法手でないならキャンセル
 	var target_pos = Vector2i(col, row)
