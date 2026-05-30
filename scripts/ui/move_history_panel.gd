@@ -40,18 +40,18 @@ func _append_entry_row(current_turn: int, move_text: String) -> void:
 	turn_number_label.add_theme_font_size_override("font_size", 24)
 	turn_number_label.custom_minimum_size = Vector2(50, 0)
 	turn_number_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	
+
 	var move_text_label = Label.new()
 	move_text_label.text = move_text
 	move_text_label.add_theme_font_size_override("font_size", 24)
-	
+
 	var row_container = HBoxContainer.new()
 	row_container.add_theme_constant_override("separation", 16)
 	row_container.add_child(turn_number_label)
 	row_container.add_child(move_text_label)
-	
+
 	history_list.add_child(row_container)
-	
+
 	await get_tree().process_frame
 	history_scroll.scroll_vertical = history_scroll.get_v_scroll_bar().max_value
 
@@ -59,23 +59,23 @@ func _append_entry_row(current_turn: int, move_text: String) -> void:
 func _format_move_notation(current_turn: int, record: MoveRecord, prev_record: MoveRecord) -> String:
 	var is_player_turn = (current_turn - 1) % 2 == 0
 	var marker = "▲" if is_player_turn else "△"
-	
+
 	var dest_col_str = GameConfig.ARABIC_NUMS[9 - record.to_col - 1]
 	var dest_row_str = GameConfig.KANJI_NUMS[record.to_row]
 	var coord_str = dest_col_str + dest_row_str
-	
+
 	if prev_record != null:
 		if prev_record.to_col == record.to_col and prev_record.to_row == record.to_row:
 			coord_str = "同　"
-	
+
 	var piece_name = _get_piece_name(record.piece, record.is_promotion)
-	
+
 	var action_str = ""
 	if record.is_promotion:
 		action_str = "成"
 	elif record.from_col == -1 and record.from_row == -1:
 		action_str = "打"
-	
+
 	return "%s%s%s%s" % [marker, coord_str, piece_name, action_str]
 
 

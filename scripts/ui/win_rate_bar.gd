@@ -20,18 +20,18 @@ func reset_bar(immediate: bool):
 
 func update_bar(sente_win_rate: float, immediate: bool = false):
 	var target_ratio = clamp(sente_win_rate, 0.0, 1.0)
-	
+
 	var sente_percent = int(target_ratio * 100)
 	if sente_percent == 0 and target_ratio > 0.0:
 		sente_percent = 1
 	var gote_percent = 100 - sente_percent
-	
+
 	sente_value_label.text = str(sente_percent)
 	gote_value_label.text = str(gote_percent)
-	
+
 	if _tween:
 		_tween.kill()
-	
+
 	if immediate:
 		sente_bar.anchor_right = target_ratio
 	else:

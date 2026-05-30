@@ -35,15 +35,15 @@ func _draw() -> void:
 
 func add_piece(piece: Piece, immediate: bool = false) -> void:
 	piece.reparent(self)
-	
+
 	move_child(piece, 0)
-	
+
 	piece.current_col = -1
 	piece.current_row = -1
 	piece.is_enemy = is_enemy
 	piece.is_promoted = false
 	piece._update_display()
-	
+
 	update_layout(immediate)
 
 
@@ -51,7 +51,7 @@ func clear_pieces() -> void:
 	for child in get_children():
 		if child is Piece:
 			child.queue_free()
-	
+
 	for label in _labels.values():
 		label.visible = false
 
@@ -60,67 +60,67 @@ func update_layout(immediate: bool = false) -> void:
 	var groups = {}
 	for type in DISPLAY_ORDER:
 		groups[type] = []
-	
+
 	for child in get_children():
 		if child is Piece and not child.is_held:
 			groups[child.piece_type].append(child)
-	
+
 	for label in _labels.values():
 		label.visible = false
-	
+
 	var stack_index = 0
 	var total_height = GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
-	
+
 	var center_x = 0.0
 	if is_enemy:
 		center_x = GameConfig.GRID_SIZE / 2.0 + 20
 	else:
 		center_x = GameConfig.GRID_SIZE / 2.0
-	
+
 	for type in DISPLAY_ORDER:
 		var pieces = groups[type] as Array
 		if pieces.is_empty():
 			continue
-		
+
 		var center_y = 0.0
 		if is_enemy:
 			center_y = (stack_index * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 		else:
 			center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
-		
+
 		var target_pos = Vector2(center_x, center_y)
-		
+
 		var representative = pieces[0]
 		representative.visible = true
-		
+
 		if immediate:
 			representative.position = target_pos
-			
+
 			for i in range(1, pieces.size()):
 				pieces[i].visible = false
 				pieces[i].position = target_pos
 		else:
 			var dist = representative.position.distance_to(target_pos)
 			var is_capturing = dist > GameConfig.GRID_SIZE
-				
+
 			var tween = create_tween()
 			tween.tween_property(representative, "position", target_pos, 0.2)
-		
+
 			if is_capturing:
 				tween.tween_callback(update_layout)
-			
+
 			for i in range(1, pieces.size()):
 				if !is_capturing:
 					pieces[i].visible = false
 					pieces[i].position = target_pos
-		
+
 		representative.rotation_degrees = 180 if is_enemy else 0
-		
+
 		if pieces.size() > 1:
 			var label = _get_label(type)
 			label.text = str(pieces.size())
 			label.visible = true
-			
+
 			var label_offset = Vector2(35, 0)
 			if is_enemy:
 				label.position = target_pos - label_offset
@@ -128,14 +128,14 @@ func update_layout(immediate: bool = false) -> void:
 			else:
 				label.position = target_pos + label_offset
 				label.rotation_degrees = 0
-		
+
 		stack_index += 1
 
 
 func _get_label(type: Piece.Type) -> Label:
 	if _labels.has(type):
 		return _labels[type]
-	
+
 	var label = Label.new()
 	label.add_theme_color_override("font_color", Color.BLACK)
 	label.add_theme_font_size_override("font_size", 24)

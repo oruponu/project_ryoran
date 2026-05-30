@@ -103,13 +103,13 @@ func init_pos(col: int, row: int, type: Type, _is_enemy: bool, _main: Node) -> v
 	piece_type = type
 	is_enemy = _is_enemy
 	main = _main
-	
+
 	_update_display()
-	
+
 	var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 	position = Vector2(new_x, new_y)
-	
+
 	main.update_board_state(-1, -1, col, row, self)
 
 
@@ -117,7 +117,7 @@ func _update_display() -> void:
 	if not PIECE_DATA.has(piece_type):
 		label.text = "？"
 		return
-	
+
 	var data = PIECE_DATA[piece_type]
 	var disp_text = data.get("default", "？")
 	if is_promoted and data.has("promoted"):
@@ -125,12 +125,12 @@ func _update_display() -> void:
 	elif is_enemy and data.has("enemy"):
 		disp_text = data["enemy"]
 	label.text = disp_text
-	
+
 	if is_promoted:
 		label.modulate = Color(0.8, 0, 0)
 	else:
 		label.modulate = Color.BLACK
-	
+
 	if is_enemy:
 		rotation_degrees = 180
 	else:

@@ -12,7 +12,7 @@ var _check_player: AudioStreamPlayer
 func _ready() -> void:
 	_check_player = AudioStreamPlayer.new()
 	add_child(_check_player)
-	
+
 	volume_db = -6.0
 	_check_player.volume_db = volume_db
 
