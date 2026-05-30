@@ -60,7 +60,8 @@ var is_held = false
 var current_col = -1
 var current_row = -1
 var main: Node
-var _shogi_engine: ShogiEngine = ShogiEngine.new()
+
+static var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
