@@ -170,8 +170,9 @@ func _pick_up(piece: Piece) -> void:
 
 	current_legal_coords = []
 	if piece.current_col == -1 and piece.current_row == -1:
-		if piece.get_parent() is PieceStand:
-			piece.get_parent().update_layout()
+		var stand := piece.get_parent()
+		if stand is PieceStand:
+			stand.update_layout()
 		current_legal_coords = piece.get_legal_drops()
 	else:
 		current_legal_coords = piece.get_legal_moves()
@@ -375,8 +376,9 @@ func _cancel_move(piece: Piece) -> void:
 	holding_piece = null
 
 	if piece.current_col == -1 and piece.current_row == -1:
-		if piece.get_parent() is PieceStand:
-			piece.get_parent().update_layout()
+		var stand := piece.get_parent()
+		if stand is PieceStand:
+			stand.update_layout()
 	else:
 		_update_piece_position(piece, piece.current_col, piece.current_row)
 
