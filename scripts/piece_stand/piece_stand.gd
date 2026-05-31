@@ -42,7 +42,7 @@ func add_piece(piece: Piece, immediate: bool = false) -> void:
 	piece.current_row = -1
 	piece.is_enemy = is_enemy
 	piece.is_promoted = false
-	piece._update_display()
+	piece.refresh_display()
 
 	update_layout(immediate)
 

@@ -114,6 +114,10 @@ func init_pos(col: int, row: int, type: Type, _is_enemy: bool, _main: Node) -> v
 	main.update_board_state(-1, -1, col, row, self)
 
 
+func refresh_display() -> void:
+	_update_display()
+
+
 func _update_display() -> void:
 	if not PIECE_DATA.has(piece_type):
 		label.text = "？"
