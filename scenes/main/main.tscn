@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://btmhrda1vfqfd"]
+[gd_scene format=3 uid="uid://btmhrda1vfqfd"]
 
 [ext_resource type="Script" uid="uid://d17qum8nm311a" path="res://scripts/main/main.gd" id="1_7mycd"]
 [ext_resource type="PackedScene" uid="uid://bpgabjuktqfs4" path="res://scenes/board/board.tscn" id="1_ig7tw"]
@@ -18,51 +18,51 @@ font_size = 128
 font_color = Color(1, 0.2, 0.2, 1)
 outline_size = 32
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1752977430]
 script = ExtResource("1_7mycd")
 
-[node name="Board" parent="." instance=ExtResource("1_ig7tw")]
+[node name="Board" parent="." unique_id=1318660687 instance=ExtResource("1_ig7tw")]
 position = Vector2(485, 135)
 piece_scene = ExtResource("2_0xm2m")
 
-[node name="PlayerPieceStand" parent="." instance=ExtResource("4_1bvp3")]
+[node name="PlayerPieceStand" parent="." unique_id=467315102 instance=ExtResource("4_1bvp3")]
 position = Vector2(1162.5, 297.5)
 
-[node name="EnemyPieceStand" parent="." instance=ExtResource("4_1bvp3")]
+[node name="EnemyPieceStand" parent="." unique_id=499889402 instance=ExtResource("4_1bvp3")]
 position = Vector2(347.5, 112.5)
 is_enemy = true
 
-[node name="MoveHistoryPanel" parent="." instance=ExtResource("5_272bh")]
+[node name="MoveHistoryPanel" parent="." unique_id=1301858096 instance=ExtResource("5_272bh")]
 offset_left = 1300.0
 offset_top = 112.5
 offset_right = 1525.0
 offset_bottom = 787.5
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1114594735]
 offset_left = 32.0
 offset_top = 32.0
 offset_right = 359.0
 offset_bottom = 85.0
 theme_override_constants/separation = 16
 
-[node name="NewGameButton" type="Button" parent="HBoxContainer"]
+[node name="NewGameButton" type="Button" parent="HBoxContainer" unique_id=1480834768]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "新規対局"
 
-[node name="UndoButton" type="Button" parent="HBoxContainer"]
+[node name="UndoButton" type="Button" parent="HBoxContainer" unique_id=882402679]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "待った"
 
-[node name="ResignButton" type="Button" parent="HBoxContainer"]
+[node name="ResignButton" type="Button" parent="HBoxContainer" unique_id=1655901752]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "投了"
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=932890470]
 
-[node name="TurnLabel" type="Label" parent="CanvasLayer"]
+[node name="TurnLabel" type="Label" parent="CanvasLayer" unique_id=352551934]
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -76,7 +76,7 @@ label_settings = SubResource("LabelSettings_1bvp3")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CheckLabel" type="Label" parent="CanvasLayer"]
+[node name="CheckLabel" type="Label" parent="CanvasLayer" unique_id=953141097]
 visible = false
 anchors_preset = 8
 anchor_left = 0.5
@@ -95,14 +95,14 @@ horizontal_alignment = 1
 vertical_alignment = 1
 script = ExtResource("4_lquwl")
 
-[node name="WinRateBar" parent="." instance=ExtResource("7_b1x3f")]
+[node name="WinRateBar" parent="." unique_id=556437155 instance=ExtResource("7_b1x3f")]
 offset_left = 462.5
 offset_top = 810.0
 offset_right = 1137.5
 offset_bottom = 845.0
 
-[node name="CommonDialog" parent="." instance=ExtResource("3_h2yge")]
+[node name="CommonDialog" parent="." unique_id=1564605611 instance=ExtResource("3_h2yge")]
 visible = false
 
-[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="."]
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=265979005]
 script = ExtResource("8_yyfjg")
