@@ -1,3 +1,5 @@
+class_name WinRateBar
+
 extends Control
 
 

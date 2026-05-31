@@ -1,3 +1,5 @@
+class_name CommonDialog
+
 extends CanvasLayer
 
 

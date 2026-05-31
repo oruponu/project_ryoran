@@ -1,3 +1,5 @@
+class_name CheckLabel
+
 extends Label
 
 
