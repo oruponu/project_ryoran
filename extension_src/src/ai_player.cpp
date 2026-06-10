@@ -553,6 +553,9 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     uint64_t total_node_count = 0;
 
+    // ルート局面は反復深化を通じて不変であり、候補手ごとの詰み判定結果は再利用できる
+    std::unordered_map<uint64_t, bool> root_mate_cache;
+
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
         if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
             UtilityFunctions::print("Time limit reached before depth ", depth);
@@ -587,9 +590,14 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
             Shogi::UndoInfo undo = board.apply_move(move);
 
-            bool is_mated = false;
-            if (find_mate(board, 5).has_value()) {
-                is_mated = true;
+            uint64_t child_hash = board.get_zobrist_hash();
+            auto mate_it = root_mate_cache.find(child_hash);
+            bool is_mated;
+            if (mate_it != root_mate_cache.end()) {
+                is_mated = mate_it->second;
+            } else {
+                is_mated = find_mate(board, 5).has_value();
+                root_mate_cache.emplace(child_hash, is_mated);
             }
 
             int score;
