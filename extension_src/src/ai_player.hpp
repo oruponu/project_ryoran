@@ -54,7 +54,7 @@ class AIPlayer {
     void clear_tt();
 
   public:
-    AIPlayer() { transposition_table_.reserve(TT_SIZE); }
+    AIPlayer() {}
     ~AIPlayer() {}
 
     [[nodiscard]] godot::Dictionary search_best_move(BoardState board);

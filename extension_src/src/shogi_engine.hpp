@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ai_player.hpp"
 #include "board_state.hpp"
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
@@ -27,6 +28,7 @@ class ShogiEngine : public RefCounted {
 
     BoardState current_state_;
     Shogi::Turn turn_to_move_ = Shogi::Turn::SENTE;
+    AIPlayer ai_player_;
 
     static void load_book_from_file(const String &path);
 

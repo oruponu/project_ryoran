@@ -554,6 +554,8 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         return result;
     }
 
+    transposition_table_.reserve(TT_SIZE);
+
     if (transposition_table_.size() > TT_SIZE) {
         UtilityFunctions::print("TT size exceeded limit, clearing. Size was: ",
                                 static_cast<int64_t>(transposition_table_.size()));
