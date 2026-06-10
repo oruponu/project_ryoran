@@ -400,23 +400,30 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
     ++node_count;
 
     int stand_pat = board.get_score();
+    bool in_check = MoveGenerator::is_king_in_check(board, turn);
 
     if (turn == Turn::SENTE) {
-        if (stand_pat >= beta) {
-            return beta;
-        }
+        if (!in_check) {
+            if (stand_pat >= beta) {
+                return beta;
+            }
 
-        if (stand_pat > alpha) {
-            alpha = stand_pat;
+            if (stand_pat > alpha) {
+                alpha = stand_pat;
+            }
         }
 
         Shogi::MoveList move_list;
-        MoveGenerator::get_legal_moves(board, move_list, true);
+        MoveGenerator::get_legal_moves(board, move_list, !in_check);
+        if (in_check && move_list.is_empty()) {
+            // 詰み（手番側の負け）
+            return -999999;
+        }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
 
-        int max_eval = stand_pat;
+        int max_eval = in_check ? -99999999 : stand_pat;
 
         for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
@@ -433,21 +440,27 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 
         return max_eval;
     } else {
-        if (stand_pat <= alpha) {
-            return alpha;
-        }
+        if (!in_check) {
+            if (stand_pat <= alpha) {
+                return alpha;
+            }
 
-        if (stand_pat < beta) {
-            beta = stand_pat;
+            if (stand_pat < beta) {
+                beta = stand_pat;
+            }
         }
 
         Shogi::MoveList move_list;
-        MoveGenerator::get_legal_moves(board, move_list, true);
+        MoveGenerator::get_legal_moves(board, move_list, !in_check);
+        if (in_check && move_list.is_empty()) {
+            // 詰み（手番側の負け）
+            return 999999;
+        }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
         });
 
-        int min_eval = stand_pat;
+        int min_eval = in_check ? 99999999 : stand_pat;
 
         for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
