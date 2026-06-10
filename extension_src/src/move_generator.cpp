@@ -526,7 +526,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
                     }
                 }
 
-                if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
+                if (!is_promoted && is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
                     must_promote = true;
                 }
 
