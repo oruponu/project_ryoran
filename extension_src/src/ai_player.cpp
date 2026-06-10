@@ -77,21 +77,19 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
     uint64_t hash = board.get_zobrist_hash();
     int original_alpha = alpha;
+    int original_beta = beta;
     Move tt_best_move{};
     bool has_tt_move = false;
 
+    // 置換表の上限と下限で探索窓を狭めると保存時のフラグ分類が不正確になるため、カットのみに使う
     TTEntry *tt_entry = probe_tt(hash);
     if (tt_entry != nullptr && tt_entry->depth >= depth) {
         int tt_score = score_from_tt(tt_entry->score, ply);
         if (tt_entry->flag == TTFlag::EXACT) {
             return tt_score;
-        } else if (tt_entry->flag == TTFlag::LOWER_BOUND) {
-            alpha = std::max(alpha, tt_score);
-        } else if (tt_entry->flag == TTFlag::UPPER_BOUND) {
-            beta = std::min(beta, tt_score);
-        }
-
-        if (alpha >= beta) {
+        } else if (tt_entry->flag == TTFlag::LOWER_BOUND && tt_score >= beta) {
+            return tt_score;
+        } else if (tt_entry->flag == TTFlag::UPPER_BOUND && tt_score <= alpha) {
             return tt_score;
         }
     }
@@ -155,7 +153,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
         TTFlag flag;
         if (max_eval <= original_alpha) {
             flag = TTFlag::UPPER_BOUND;
-        } else if (max_eval >= beta) {
+        } else if (max_eval >= original_beta) {
             flag = TTFlag::LOWER_BOUND;
         } else {
             flag = TTFlag::EXACT;
@@ -185,7 +183,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
         }
 
         TTFlag flag;
-        if (min_eval >= beta) {
+        if (min_eval >= original_beta) {
             flag = TTFlag::LOWER_BOUND;
         } else if (min_eval <= original_alpha) {
             flag = TTFlag::UPPER_BOUND;
