@@ -80,8 +80,8 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
     const Bitboard &enemy_rooks = board.bitboard_piece_[enemy_index][static_cast<int>(PieceType::ROOK)];
     const Bitboard &enemy_promoted = board.bitboard_promoted_[enemy_index];
 
-    Bitboard enemy_line_sliders = enemy_rooks | (enemy_promoted & enemy_bishops);
-    Bitboard enemy_diagonal_sliders = enemy_bishops | (enemy_promoted & enemy_rooks);
+    Bitboard enemy_line_sliders = enemy_rooks;
+    Bitboard enemy_diagonal_sliders = enemy_bishops;
 
     for (int dir = 0; dir < 8; ++dir) {
         Bitboard sliders;
@@ -90,9 +90,9 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
         } else {
             sliders = enemy_line_sliders;
             if (dir == 0 && enemy_turn == Turn::GOTE) {
-                sliders |= enemy_lances;
+                sliders |= (enemy_lances & ~enemy_promoted);
             } else if (dir == 4 && enemy_turn == Turn::SENTE) {
-                sliders |= enemy_lances;
+                sliders |= (enemy_lances & ~enemy_promoted);
             }
         }
 
