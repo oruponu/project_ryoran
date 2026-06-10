@@ -271,7 +271,14 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
         pn = 1;
     }
 
-    if (node_count > max_nodes || depth <= 0) {
+    if (node_count > max_nodes) {
+        return;
+    }
+
+    // pn/dnが進まないと親が同じ子を選び続けるため、深さ制限に達したノードは不詰み扱いで返す
+    if (depth <= 0) {
+        pn = INFINITY_PN;
+        dn = 0;
         return;
     }
 
