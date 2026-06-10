@@ -1,6 +1,7 @@
 #include "evaluator.hpp"
 #include "attack_table.hpp"
 #include "board_state.hpp"
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -139,9 +140,11 @@ void Evaluator::initialize() {
                                 }
                             }
 
+                            double scaled_score =
+                                std::clamp(final_score * EVAL_SCALE_FACTOR, static_cast<double>(INT16_MIN),
+                                           static_cast<double>(INT16_MAX));
                             kkpee_table_[king_black_index][king_white_index][index][black_effect_count]
-                                        [white_effect_count][piece_index] =
-                                            static_cast<int16_t>(final_score * EVAL_SCALE_FACTOR);
+                                        [white_effect_count][piece_index] = static_cast<int16_t>(scaled_score);
                         }
                     }
                 }

@@ -11,7 +11,7 @@ class Evaluator {
     static constexpr int KING_DEFENSE_WEIGHTS[9] = {84992, 42496, 28330, 21248, 16998, 14165, 12141, 10624, 9443};
     static constexpr int KING_THREAT_WEIGHTS[9] = {94208, 47104, 31402, 23552, 18841, 15701, 13458, 11776, 10467};
     static constexpr int KKPEE_PIECE_STATE_COUNT = 40;
-    static constexpr int EVAL_SCALE_FACTOR = 32;
+    static constexpr int EVAL_SCALE_FACTOR = 16;
 
     inline static const int KING_POSITION_BONUS[Shogi::BOARD_SIZE] = {
         875, 655, 830, 680, 770, 815, 720, 945, 755, 605, 455, 610, 595, 730, 610, 600, 590, 615, 565, 640, 555,
