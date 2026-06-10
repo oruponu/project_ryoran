@@ -18,6 +18,30 @@ constexpr std::array HAND_PIECE_TYPES = {
     PieceType::GOLD, PieceType::BISHOP, PieceType::ROOK,
 };
 
+constexpr int MATE_SCORE = 999999;
+constexpr int MATE_BOUND = MATE_SCORE - 10000;
+
+// 詰みの評価値はルートからの手数を含むため、置換表にはその局面からの手数に変換して格納して取得時に戻す
+int score_to_tt(int score, int ply) {
+    if (score > MATE_BOUND) {
+        return score + ply;
+    }
+    if (score < -MATE_BOUND) {
+        return score - ply;
+    }
+    return score;
+}
+
+int score_from_tt(int score, int ply) {
+    if (score > MATE_BOUND) {
+        return score - ply;
+    }
+    if (score < -MATE_BOUND) {
+        return score + ply;
+    }
+    return score;
+}
+
 } // namespace
 
 int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move) {
@@ -42,8 +66,8 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
     return score;
 }
 
-int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn turn, uint64_t end_time, bool &timeout,
-                         uint64_t &node_count) {
+int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
+                         bool &timeout, uint64_t &node_count) {
     ++node_count;
 
     if (Time::get_singleton()->get_ticks_usec() > end_time) {
@@ -58,16 +82,17 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
 
     TTEntry *tt_entry = probe_tt(hash);
     if (tt_entry != nullptr && tt_entry->depth >= depth) {
+        int tt_score = score_from_tt(tt_entry->score, ply);
         if (tt_entry->flag == TTFlag::EXACT) {
-            return tt_entry->score;
+            return tt_score;
         } else if (tt_entry->flag == TTFlag::LOWER_BOUND) {
-            alpha = std::max(alpha, tt_entry->score);
+            alpha = std::max(alpha, tt_score);
         } else if (tt_entry->flag == TTFlag::UPPER_BOUND) {
-            beta = std::min(beta, tt_entry->score);
+            beta = std::min(beta, tt_score);
         }
 
         if (alpha >= beta) {
-            return tt_entry->score;
+            return tt_score;
         }
     }
 
@@ -79,7 +104,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
 
     if (depth <= 0) {
         // 静止探索を実行
-        return quiescence_search(board, alpha, beta, turn, node_count);
+        return quiescence_search(board, alpha, beta, turn, ply, node_count);
     }
 
     Turn turn_to_move = board.get_turn_to_move();
@@ -88,7 +113,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     MoveGenerator::get_legal_moves(board, move_list);
     if (move_list.is_empty()) {
         // 投了（手番側の負け）
-        return (turn_to_move == Turn::SENTE) ? -999999 : 999999;
+        return (turn_to_move == Turn::SENTE) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply);
     }
 
     if (has_tt_move) {
@@ -110,7 +135,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
         int max_eval = -99999999;
         for (const Move &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            int eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
             board.undo_move(undo);
 
             if (timeout) {
@@ -135,14 +160,14 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
         } else {
             flag = TTFlag::EXACT;
         }
-        store_tt(hash, max_eval, depth, flag, best_move);
+        store_tt(hash, score_to_tt(max_eval, ply), depth, flag, best_move);
 
         return max_eval;
     } else {
         int min_eval = 99999999;
         for (const Move &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = alpha_beta(board, depth - 1, alpha, beta, next_side, end_time, timeout, node_count);
+            int eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
             board.undo_move(undo);
 
             if (timeout) {
@@ -167,7 +192,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
         } else {
             flag = TTFlag::EXACT;
         }
-        store_tt(hash, min_eval, depth, flag, best_move);
+        store_tt(hash, score_to_tt(min_eval, ply), depth, flag, best_move);
 
         return min_eval;
     }
@@ -396,7 +421,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
     dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
 }
 
-int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, uint64_t &node_count) {
+int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, int ply, uint64_t &node_count) {
     ++node_count;
 
     int stand_pat = board.get_score();
@@ -417,7 +442,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         MoveGenerator::get_legal_moves(board, move_list, !in_check);
         if (in_check && move_list.is_empty()) {
             // 詰み（手番側の負け）
-            return -999999;
+            return -(MATE_SCORE - ply);
         }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
@@ -427,7 +452,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 
         for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = quiescence_search(board, alpha, beta, Turn::GOTE, node_count);
+            int eval = quiescence_search(board, alpha, beta, Turn::GOTE, ply + 1, node_count);
             board.undo_move(undo);
 
             max_eval = std::max(max_eval, eval);
@@ -454,7 +479,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         MoveGenerator::get_legal_moves(board, move_list, !in_check);
         if (in_check && move_list.is_empty()) {
             // 詰み（手番側の負け）
-            return 999999;
+            return MATE_SCORE - ply;
         }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
             return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
@@ -464,7 +489,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 
         for (const auto &move : move_list) {
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = quiescence_search(board, alpha, beta, Turn::SENTE, node_count);
+            int eval = quiescence_search(board, alpha, beta, Turn::SENTE, ply + 1, node_count);
             board.undo_move(undo);
 
             min_eval = std::min(min_eval, eval);
@@ -602,9 +627,10 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
             int score;
             if (is_mated) {
-                score = (root_side == Turn::SENTE) ? -999999 : 999999;
+                // 詰みまでの手数が不明なため、どの詰みよりも速い扱いにする
+                score = (root_side == Turn::SENTE) ? -(MATE_SCORE - 1) : (MATE_SCORE - 1);
             } else {
-                score = alpha_beta(board, depth - 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
+                score = alpha_beta(board, depth - 1, 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
                                    total_node_count);
             }
 
@@ -653,7 +679,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
                                 ", WinRate: ", String::num(win_prob * 100.0, 1), "%");
 
         // 詰み筋を見つけたら打ち切り
-        if (global_best_score >= 999999 || global_best_score <= -999999) {
+        if (global_best_score >= MATE_BOUND || global_best_score <= -MATE_BOUND) {
             UtilityFunctions::print("Checkmate found at depth ", depth);
             break;
         }

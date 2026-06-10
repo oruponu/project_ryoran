@@ -39,13 +39,14 @@ class AIPlayer {
     std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
 
     [[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move);
-    [[nodiscard]] int alpha_beta(BoardState &board, int depth, int alpha, int beta, Shogi::Turn turn, uint64_t end_time,
-                                 bool &timeout, uint64_t &node_count);
+    [[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Shogi::Turn turn,
+                                 uint64_t end_time, bool &timeout, uint64_t &node_count);
     std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth);
     void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
                      int depth, uint64_t &node_count, const uint64_t max_nodes);
     void generate_check_moves(BoardState &board, Shogi::MoveList &move_list);
-    [[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, Shogi::Turn turn, uint64_t &node_count);
+    [[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, Shogi::Turn turn, int ply,
+                                        uint64_t &node_count);
     [[nodiscard]] double calculate_win_probability(int score);
 
     [[nodiscard]] TTEntry *probe_tt(uint64_t hash);
