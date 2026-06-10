@@ -87,8 +87,8 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int alpha, int beta, Turn
     Shogi::MoveList move_list;
     MoveGenerator::get_legal_moves(board, move_list);
     if (move_list.is_empty()) {
-        // 投了
-        return (turn == turn_to_move) ? -999999 : 999999;
+        // 投了（手番側の負け）
+        return (turn_to_move == Turn::SENTE) ? -999999 : 999999;
     }
 
     if (has_tt_move) {
