@@ -21,6 +21,12 @@ constexpr std::array HAND_PIECE_TYPES = {
 constexpr int MATE_SCORE = 999999;
 constexpr int MATE_BOUND = MATE_SCORE - 10000;
 
+// 不詰みの証明はノード数上限まで探索しがちなため、思考時間に収まるよう上限を用途別に分ける
+constexpr int OWN_MATE_DEPTH = 21;
+constexpr uint64_t OWN_MATE_NODES = 30000;
+constexpr int MATE_CHECK_DEPTH = 9;
+constexpr uint64_t MATE_CHECK_NODES = 5000;
+
 // 詰みの評価値はルートからの手数を含むため、置換表にはその局面からの手数に変換して格納して取得時に戻す
 int score_to_tt(int score, int ply) {
     if (score > MATE_BOUND) {
@@ -196,10 +202,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
     }
 }
 
-std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth) {
+std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth, uint64_t max_nodes) {
     dfpn_table_.clear();
     uint64_t node_count = 0;
-    uint64_t max_nodes = 100000;
 
     int pn = 1;
     int dn = 1;
@@ -534,7 +539,7 @@ void AIPlayer::clear_tt() { transposition_table_.clear(); }
 Dictionary AIPlayer::search_best_move(BoardState board) {
     Turn root_side = board.get_turn_to_move();
 
-    auto mate_move = find_mate(board, 21);
+    auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES);
     if (mate_move.has_value()) {
         UtilityFunctions::print("Checkmate proven.");
 
@@ -622,23 +627,27 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
             Shogi::UndoInfo undo = board.apply_move(move);
 
-            uint64_t child_hash = board.get_zobrist_hash();
-            auto mate_it = root_mate_cache.find(child_hash);
-            bool is_mated;
-            if (mate_it != root_mate_cache.end()) {
-                is_mated = mate_it->second;
-            } else {
-                is_mated = find_mate(board, 5).has_value();
-                root_mate_cache.emplace(child_hash, is_mated);
-            }
-
-            int score;
-            if (is_mated) {
-                // 詰みまでの手数が不明なため、どの詰みよりも速い扱いにする
-                score = (root_side == Turn::SENTE) ? -(MATE_SCORE - 1) : (MATE_SCORE - 1);
-            } else {
-                score = alpha_beta(board, depth - 1, 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
+            int score = alpha_beta(board, depth - 1, 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
                                    total_node_count);
+
+            // 全候補手の詰み検証は合法手の多い終盤で時間がかかりすぎるため、暫定最善を更新する手のみ検証する
+            bool candidate =
+                (root_side == Turn::SENTE) ? (score > current_depth_best_score) : (score < current_depth_best_score);
+            if (!timeout && candidate) {
+                uint64_t child_hash = board.get_zobrist_hash();
+                auto mate_it = root_mate_cache.find(child_hash);
+                bool is_mated;
+                if (mate_it != root_mate_cache.end()) {
+                    is_mated = mate_it->second;
+                } else {
+                    is_mated = find_mate(board, MATE_CHECK_DEPTH, MATE_CHECK_NODES).has_value();
+                    root_mate_cache.emplace(child_hash, is_mated);
+                }
+
+                if (is_mated) {
+                    // 詰みまでの手数が不明なため、どの詰みよりも速い扱いにする
+                    score = (root_side == Turn::SENTE) ? -(MATE_SCORE - 1) : (MATE_SCORE - 1);
+                }
             }
 
             board.undo_move(undo);
