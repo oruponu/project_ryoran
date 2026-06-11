@@ -119,6 +119,10 @@ class BoardState {
     [[nodiscard]] Shogi::UndoInfo apply_move(const Shogi::Move &move);
     void undo_move(const Shogi::UndoInfo &undo_info);
 
+    // Null Move Pruning用
+    uint64_t make_null_move();
+    void undo_null_move(uint64_t prev_hash);
+
     // 盤面の出力（デバッグ用）
     void print_board() const;
 };

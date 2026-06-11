@@ -73,7 +73,7 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 }
 
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
-                         bool &timeout, uint64_t &node_count) {
+                         bool &timeout, uint64_t &node_count, bool can_null) {
     ++node_count;
 
     if (Time::get_singleton()->get_ticks_usec() > end_time) {
@@ -118,6 +118,30 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
     if (move_list.is_empty()) {
         // 投了（手番側の負け）
         return (turn_to_move == Turn::SENTE) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply);
+    }
+
+    // Null Move Pruning
+    constexpr int NULL_MOVE_R = 2;
+    if (can_null && depth >= 3 && !MoveGenerator::is_king_in_check(board, turn_to_move)) {
+        Turn null_next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+        int static_eval = board.get_score();
+
+        if (turn == Turn::SENTE ? (static_eval >= beta) : (static_eval <= alpha)) {
+            int null_alpha = (turn == Turn::SENTE) ? beta - 1 : alpha;
+            int null_beta = (turn == Turn::SENTE) ? beta : alpha + 1;
+
+            uint64_t null_hash = board.make_null_move();
+            int null_score = alpha_beta(board, depth - 1 - NULL_MOVE_R, ply + 1, null_alpha, null_beta, null_next_side,
+                                        end_time, timeout, node_count, false);
+            board.undo_null_move(null_hash);
+
+            if (timeout) {
+                return 0;
+            }
+            if (turn == Turn::SENTE ? (null_score >= beta) : (null_score <= alpha)) {
+                return (turn == Turn::SENTE) ? beta : alpha;
+            }
+        }
     }
 
     if (has_tt_move) {

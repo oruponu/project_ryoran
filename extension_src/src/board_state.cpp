@@ -535,6 +535,18 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
     turn_to_move_ = original_side;
 }
 
+uint64_t BoardState::make_null_move() {
+    uint64_t prev_hash = zobrist_hash_;
+    zobrist_hash_ ^= g_zobrist_turn_enemy;
+    turn_to_move_ = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    return prev_hash;
+}
+
+void BoardState::undo_null_move(uint64_t prev_hash) {
+    zobrist_hash_ = prev_hash;
+    turn_to_move_ = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+}
+
 void BoardState::print_board() const {
     UtilityFunctions::print("--- Board State ---");
     for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {

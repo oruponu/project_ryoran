@@ -40,7 +40,7 @@ class AIPlayer {
 
     [[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move);
     [[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Shogi::Turn turn,
-                                 uint64_t end_time, bool &timeout, uint64_t &node_count);
+                                 uint64_t end_time, bool &timeout, uint64_t &node_count, bool can_null = true);
     std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);
     void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
                      int depth, uint64_t &node_count, const uint64_t max_nodes);
