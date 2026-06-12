@@ -158,6 +158,8 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
     Turn turn_to_move = board.get_turn_to_move();
     bool in_check = MoveGenerator::is_king_in_check(board, turn_to_move);
+    // 王手延長：王手を受けた側は深さを減らさず読む
+    const int extension = (in_check && ply < MAX_PLY) ? 1 : 0;
 
     Shogi::MoveList move_list;
     MoveGenerator::get_legal_moves(board, move_list);
@@ -229,11 +231,12 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
                 reduction = 0;
             }
 
-            int eval = alpha_beta(board, depth - 1 - reduction, ply + 1, alpha, beta, next_side, end_time, timeout,
-                                  node_count);
+            int eval = alpha_beta(board, depth - 1 + extension - reduction, ply + 1, alpha, beta, next_side, end_time,
+                                  timeout, node_count);
 
             if (!timeout && reduction > 0 && eval > alpha) {
-                eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+                eval = alpha_beta(board, depth - 1 + extension, ply + 1, alpha, beta, next_side, end_time, timeout,
+                                  node_count);
             }
 
             board.undo_move(undo);
@@ -286,11 +289,12 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
                 reduction = 0;
             }
 
-            int eval = alpha_beta(board, depth - 1 - reduction, ply + 1, alpha, beta, next_side, end_time, timeout,
-                                  node_count);
+            int eval = alpha_beta(board, depth - 1 + extension - reduction, ply + 1, alpha, beta, next_side, end_time,
+                                  timeout, node_count);
 
             if (!timeout && reduction > 0 && eval < beta) {
-                eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+                eval = alpha_beta(board, depth - 1 + extension, ply + 1, alpha, beta, next_side, end_time, timeout,
+                                  node_count);
             }
 
             board.undo_move(undo);
