@@ -34,11 +34,18 @@ class AIPlayer {
     static constexpr size_t TT_SIZE = 1 << 20;           // 約100万エントリ
     static constexpr size_t DFPN_TT_SIZE = 1 << 20;
     static constexpr uint32_t INFINITY_PN = 10000000;
+    static constexpr int MAX_PLY = 128;
+    static constexpr int HISTORY_CAP = 700000; // Killer2（800000）を超えさせない上限
 
     std::unordered_map<uint64_t, TTEntry> transposition_table_;
     std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
+    Shogi::Move killer_moves_[MAX_PLY][2]; // 探索の深さごとに2スロット
+    bool killer_valid_[MAX_PLY][2] = {};
+    int history_[2][Shogi::PIECE_TYPE_COUNT][Shogi::BOARD_SIZE] = {};
 
-    [[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move);
+    [[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply);
+    void update_killer(int ply, const Shogi::Move &move);
+    void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);
     [[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Shogi::Turn turn,
                                  uint64_t end_time, bool &timeout, uint64_t &node_count, bool can_null = true);
     std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);

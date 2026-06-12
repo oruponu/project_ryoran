@@ -1,6 +1,7 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <algorithm>
+#include <cstring>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <vector>
@@ -50,17 +51,34 @@ int score_from_tt(int score, int ply) {
 
 } // namespace
 
-int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move) {
+int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply) {
     int score = 0;
 
-    // 駒を取る手
     if (move.is_capture) {
+        // 駒を取る手：MVV-LVA
         const Cell &target_cell = board.get_cell({move.to_col, move.to_row});
         if (!target_cell.is_empty()) {
             int victim_value = Shogi::PIECE_VALUES[static_cast<int>(target_cell.type)][target_cell.is_promoted ? 1 : 0];
             int aggressor_value = Shogi::PIECE_VALUES[static_cast<int>(move.piece_type)][0];
             // 高い駒を安い駒で取るほど高得点
             score = 1000000 + victim_value - aggressor_value;
+        }
+    } else {
+        // 駒を取らない手：Killer / History
+        bool is_killer = false;
+        if (ply < MAX_PLY) {
+            if (killer_valid_[ply][0] && move == killer_moves_[ply][0]) {
+                score = 900000;
+                is_killer = true;
+            } else if (killer_valid_[ply][1] && move == killer_moves_[ply][1]) {
+                score = 800000;
+                is_killer = true;
+            }
+        }
+        if (!is_killer) {
+            int side = static_cast<int>(board.get_turn_to_move());
+            int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+            score = history_[side][static_cast<int>(move.piece_type)][to_sq];
         }
     }
 
@@ -70,6 +88,29 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
     }
 
     return score;
+}
+
+void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
+    if (ply >= MAX_PLY) {
+        return;
+    }
+    if (killer_valid_[ply][0] && killer_moves_[ply][0] == move) {
+        return;
+    }
+    killer_moves_[ply][1] = killer_moves_[ply][0];
+    killer_valid_[ply][1] = killer_valid_[ply][0];
+    killer_moves_[ply][0] = move;
+    killer_valid_[ply][0] = true;
+}
+
+void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int depth) {
+    int side = static_cast<int>(turn);
+    int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+    int &value = history_[side][static_cast<int>(move.piece_type)][to_sq];
+    value += depth * depth;
+    if (value > HISTORY_CAP) {
+        value = HISTORY_CAP;
+    }
 }
 
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
@@ -153,7 +194,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
     auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
     std::sort(sort_start, move_list.end(), [&](const Move &a, const Move &b) {
-        return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+        return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
     });
 
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
@@ -176,6 +217,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
             }
             alpha = std::max(alpha, eval);
             if (beta <= alpha) {
+                if (!move.is_capture) {
+                    update_killer(ply, move);
+                    update_history(turn_to_move, move, depth);
+                }
                 break; // βカット
             }
         }
@@ -208,6 +253,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
             }
             beta = std::min(beta, eval);
             if (beta <= alpha) {
+                if (!move.is_capture) {
+                    update_killer(ply, move);
+                    update_history(turn_to_move, move, depth);
+                }
                 break; // αカット
             }
         }
@@ -479,7 +528,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
             return -(MATE_SCORE - ply);
         }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+            return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
         });
 
         int max_eval = in_check ? -99999999 : stand_pat;
@@ -516,7 +565,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
             return MATE_SCORE - ply;
         }
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+            return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
         });
 
         int min_eval = in_check ? 99999999 : stand_pat;
@@ -598,6 +647,17 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         clear_tt();
     }
 
+    // Killerは探索ごとにクリア
+    // Historyはエージングして対局内の学習を引き継ぐ
+    std::memset(killer_valid_, 0, sizeof(killer_valid_));
+    for (auto &side : history_) {
+        for (auto &piece : side) {
+            for (int &value : piece) {
+                value >>= 1;
+            }
+        }
+    }
+
     uint64_t start_time = Time::get_singleton()->get_ticks_usec();
     uint64_t strict_limit_time = start_time + TIME_LIMIT_USEC;
 
@@ -624,7 +684,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
         }
 
         std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-            return get_move_ordering_score(board, a) > get_move_ordering_score(board, b);
+            return get_move_ordering_score(board, a, 0) > get_move_ordering_score(board, b, 0);
         });
 
         if (has_prev_best) {
