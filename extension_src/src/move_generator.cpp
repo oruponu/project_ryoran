@@ -1,5 +1,7 @@
 #include "move_generator.hpp"
+#include <algorithm>
 #include <array>
+#include <cassert>
 
 using Shogi::Coord;
 using Shogi::PieceType;
@@ -576,4 +578,104 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
             }
         }
     }
+}
+
+Bitboard MoveGenerator::attackers_to(const BoardState &board, int square, Turn side, const Bitboard &occupancy) {
+    int side_index = static_cast<int>(side);
+    Turn reverse_turn = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+
+    const Bitboard &pawns = board.bitboard_piece_[side_index][static_cast<int>(PieceType::PAWN)];
+    const Bitboard &lances = board.bitboard_piece_[side_index][static_cast<int>(PieceType::LANCE)];
+    const Bitboard &knights = board.bitboard_piece_[side_index][static_cast<int>(PieceType::KNIGHT)];
+    const Bitboard &silvers = board.bitboard_piece_[side_index][static_cast<int>(PieceType::SILVER)];
+    const Bitboard &golds = board.bitboard_piece_[side_index][static_cast<int>(PieceType::GOLD)];
+    const Bitboard &bishops = board.bitboard_piece_[side_index][static_cast<int>(PieceType::BISHOP)];
+    const Bitboard &rooks = board.bitboard_piece_[side_index][static_cast<int>(PieceType::ROOK)];
+    const Bitboard &kings = board.bitboard_piece_[side_index][static_cast<int>(PieceType::KING)];
+    const Bitboard &promoted = board.bitboard_promoted_[side_index];
+
+    Bitboard attackers;
+    attackers |= AttackTable::get_pawn_attacks(square, reverse_turn) & (pawns & ~promoted);
+    attackers |= AttackTable::get_knight_attacks(square, reverse_turn) & (knights & ~promoted);
+    attackers |= AttackTable::get_silver_attacks(square, reverse_turn) & (silvers & ~promoted);
+
+    Bitboard gold_likes = golds | (promoted & (pawns | lances | knights | silvers));
+    attackers |= AttackTable::get_gold_attacks(square, reverse_turn) & gold_likes;
+
+    attackers |= AttackTable::get_lance_attacks(square, reverse_turn, occupancy) & (lances & ~promoted);
+    attackers |= AttackTable::get_bishop_attacks(square, occupancy) & bishops;
+    attackers |= AttackTable::get_rook_attacks(square, occupancy) & rooks;
+
+    Bitboard king_likes = kings | (promoted & (bishops | rooks));
+    attackers |= AttackTable::get_king_attacks(square) & king_likes;
+
+    // 取り合いで取り除かれた駒は除外
+    return attackers & occupancy;
+}
+
+int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
+    assert(move.is_capture && !move.is_drop);
+
+    const int to_square = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+    const int from_square = move.from_col * Shogi::BOARD_ROWS + move.from_row;
+
+    const Cell &victim = board.get_cell({move.to_col, move.to_row});
+    const Cell &first_attacker = board.get_cell({move.from_col, move.from_row});
+
+    int gain[40];
+    int depth = 0;
+    gain[0] = Shogi::PIECE_VALUES[static_cast<int>(victim.type)][victim.is_promoted ? 1 : 0];
+
+    // 次に取り返される駒の価値
+    int occupant_value = Shogi::PIECE_VALUES[static_cast<int>(first_attacker.type)][first_attacker.is_promoted ? 1 : 0];
+
+    Bitboard occupancy = board.bitboard_all_;
+    occupancy.clear(from_square);
+
+    Turn side = (first_attacker.turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+
+    while (depth < 39) {
+        Bitboard attackers = attackers_to(board, to_square, side, occupancy);
+        if (attackers.is_empty()) {
+            break;
+        }
+
+        int cheapest_square = -1;
+        int cheapest_value = 99999999;
+        Bitboard iter = attackers;
+        while (!iter.is_empty()) {
+            int sq = iter.lsb();
+            iter.clear(sq);
+            const Cell &cell = board.get_cell({sq / Shogi::BOARD_ROWS, sq % Shogi::BOARD_ROWS});
+            int value = Shogi::PIECE_VALUES[static_cast<int>(cell.type)][cell.is_promoted ? 1 : 0];
+            if (value < cheapest_value) {
+                cheapest_value = value;
+                cheapest_square = sq;
+            }
+        }
+
+        // 玉は相手の利きが残るマスへ取り返し不可
+        const Cell &cheapest_cell =
+            board.get_cell({cheapest_square / Shogi::BOARD_ROWS, cheapest_square % Shogi::BOARD_ROWS});
+        if (cheapest_cell.type == PieceType::KING) {
+            Turn opponent = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+            if (!attackers_to(board, to_square, opponent, occupancy).is_empty()) {
+                break;
+            }
+        }
+
+        ++depth;
+        gain[depth] = occupant_value - gain[depth - 1];
+
+        // 一般的なSEE実装の早期打ち切りは取った駒の背後の飛び駒を見落とすため不採用
+        occupant_value = cheapest_value;
+        occupancy.clear(cheapest_square);
+        side = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+    }
+
+    // Negamax畳み込み
+    for (int i = depth; i >= 1; --i) {
+        gain[i - 1] = -std::max(-gain[i - 1], gain[i]);
+    }
+    return gain[0];
 }

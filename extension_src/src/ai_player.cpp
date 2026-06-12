@@ -32,6 +32,12 @@ constexpr uint64_t MATE_CHECK_NODES = 5000;
 constexpr int LMR_MOVE_THRESHOLD = 4;
 constexpr int LMR_DEEP_MOVE_THRESHOLD = 12;
 
+// Delta Pruningのマージン
+constexpr int DELTA_MARGIN = 540;
+
+// 静止探索を打ち切る深さ
+constexpr int QS_PLY_LIMIT = 16;
+
 // 詰みの評価値はルートからの手数を含むため、置換表にはその局面からの手数に変換して格納して取得時に戻す
 int score_to_tt(int score, int ply) {
     if (score > MATE_BOUND) {
@@ -560,10 +566,17 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
     dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
 }
 
-int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, int ply, uint64_t &node_count) {
+int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, int ply, uint64_t &node_count,
+                                int qs_ply) {
     ++node_count;
 
     int stand_pat = board.get_score();
+
+    // 取り合い連鎖が長すぎる場合は打ち切り
+    if (qs_ply >= QS_PLY_LIMIT) {
+        return stand_pat;
+    }
+
     bool in_check = MoveGenerator::is_king_in_check(board, turn);
 
     if (turn == Turn::SENTE) {
@@ -590,8 +603,26 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         int max_eval = in_check ? -99999999 : stand_pat;
 
         for (const auto &move : move_list) {
+            if (!in_check) {
+                // Delta Pruning
+                const Cell &victim = board.get_cell({move.to_col, move.to_row});
+                int victim_value = Shogi::PIECE_VALUES[static_cast<int>(victim.type)][victim.is_promoted ? 1 : 0];
+                int promotion_gain = 0;
+                if (move.is_promotion) {
+                    int pt = static_cast<int>(move.piece_type);
+                    promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
+                }
+                if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
+                    continue;
+                }
+                // Static Exchange Evaluation
+                if (MoveGenerator::see(board, move) < 0) {
+                    continue;
+                }
+            }
+
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = quiescence_search(board, alpha, beta, Turn::GOTE, ply + 1, node_count);
+            int eval = quiescence_search(board, alpha, beta, Turn::GOTE, ply + 1, node_count, qs_ply + 1);
             board.undo_move(undo);
 
             max_eval = std::max(max_eval, eval);
@@ -627,8 +658,26 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
         int min_eval = in_check ? 99999999 : stand_pat;
 
         for (const auto &move : move_list) {
+            if (!in_check) {
+                // Delta Pruning
+                const Cell &victim = board.get_cell({move.to_col, move.to_row});
+                int victim_value = Shogi::PIECE_VALUES[static_cast<int>(victim.type)][victim.is_promoted ? 1 : 0];
+                int promotion_gain = 0;
+                if (move.is_promotion) {
+                    int pt = static_cast<int>(move.piece_type);
+                    promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
+                }
+                if (stand_pat - victim_value - promotion_gain - DELTA_MARGIN >= beta) {
+                    continue;
+                }
+                // Static Exchange Evaluation
+                if (MoveGenerator::see(board, move) < 0) {
+                    continue;
+                }
+            }
+
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = quiescence_search(board, alpha, beta, Turn::SENTE, ply + 1, node_count);
+            int eval = quiescence_search(board, alpha, beta, Turn::SENTE, ply + 1, node_count, qs_ply + 1);
             board.undo_move(undo);
 
             min_eval = std::min(min_eval, eval);
