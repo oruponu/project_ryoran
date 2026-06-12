@@ -28,6 +28,10 @@ constexpr uint64_t OWN_MATE_NODES = 30000;
 constexpr int MATE_CHECK_DEPTH = 9;
 constexpr uint64_t MATE_CHECK_NODES = 5000;
 
+// 後方の駒を取らない手は最善である可能性が低いため、先頭の手を除いて探索深さを削減する
+constexpr int LMR_MOVE_THRESHOLD = 4;
+constexpr int LMR_DEEP_MOVE_THRESHOLD = 12;
+
 // 詰みの評価値はルートからの手数を含むため、置換表にはその局面からの手数に変換して格納して取得時に戻す
 int score_to_tt(int score, int ply) {
     if (score > MATE_BOUND) {
@@ -153,6 +157,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
     }
 
     Turn turn_to_move = board.get_turn_to_move();
+    bool in_check = MoveGenerator::is_king_in_check(board, turn_to_move);
 
     Shogi::MoveList move_list;
     MoveGenerator::get_legal_moves(board, move_list);
@@ -163,7 +168,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
     // Null Move Pruning
     constexpr int NULL_MOVE_R = 2;
-    if (can_null && depth >= 3 && !MoveGenerator::is_king_in_check(board, turn_to_move)) {
+    if (can_null && depth >= 3 && !in_check) {
         Turn null_next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
         int static_eval = board.get_score();
 
@@ -197,14 +202,40 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
         return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
     });
 
+    auto is_killer_move = [&](const Move &m) {
+        return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == m) ||
+                                 (killer_valid_[ply][1] && killer_moves_[ply][1] == m));
+    };
+
     Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
     Move best_move = move_list[0];
 
     if (turn == Turn::SENTE) {
         int max_eval = -99999999;
+        int move_index = 0;
         for (const Move &move : move_list) {
+            // Late Move Reductions
+            int reduction = 0;
+            if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
+                !is_killer_move(move)) {
+                reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
+            }
+            ++move_index;
+
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+
+            // 王手をかける手は詰み筋の見逃しを防ぐため削減しない
+            if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
+                reduction = 0;
+            }
+
+            int eval = alpha_beta(board, depth - 1 - reduction, ply + 1, alpha, beta, next_side, end_time, timeout,
+                                  node_count);
+
+            if (!timeout && reduction > 0 && eval > alpha) {
+                eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+            }
+
             board.undo_move(undo);
 
             if (timeout) {
@@ -238,9 +269,30 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
         return max_eval;
     } else {
         int min_eval = 99999999;
+        int move_index = 0;
         for (const Move &move : move_list) {
+            // Late Move Reductions
+            int reduction = 0;
+            if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
+                !is_killer_move(move)) {
+                reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
+            }
+            ++move_index;
+
             Shogi::UndoInfo undo = board.apply_move(move);
-            int eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+
+            // 王手をかける手は詰み筋の見逃しを防ぐため削減しない
+            if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
+                reduction = 0;
+            }
+
+            int eval = alpha_beta(board, depth - 1 - reduction, ply + 1, alpha, beta, next_side, end_time, timeout,
+                                  node_count);
+
+            if (!timeout && reduction > 0 && eval < beta) {
+                eval = alpha_beta(board, depth - 1, ply + 1, alpha, beta, next_side, end_time, timeout, node_count);
+            }
+
             board.undo_move(undo);
 
             if (timeout) {
@@ -661,7 +713,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
     uint64_t start_time = Time::get_singleton()->get_ticks_usec();
     uint64_t strict_limit_time = start_time + TIME_LIMIT_USEC;
 
-    int max_depth_limit = 10;
+    int max_depth_limit = 12;
 
     Move global_best_move = move_list[0];
     int global_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
