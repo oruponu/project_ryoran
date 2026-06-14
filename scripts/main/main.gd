@@ -271,6 +271,7 @@ func _play_ai_turn() -> void:
 	_update_button_states()
 
 	_shogi_engine.update_state(self)
+	_shogi_engine.set_game_history(repetition_tracker.history_hashes(), repetition_tracker.history_in_checks())
 
 	_ai_thread = Thread.new()
 	_ai_thread.start(_calculate_next_move)
@@ -278,6 +279,7 @@ func _play_ai_turn() -> void:
 
 func _start_background_analysis() -> void:
 	_eval_engine.update_state(self)
+	_eval_engine.set_game_history(repetition_tracker.history_hashes(), repetition_tracker.history_in_checks())
 	_eval_thread = Thread.new()
 	_eval_thread.start(_run_background_analysis)
 

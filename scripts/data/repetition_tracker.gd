@@ -52,3 +52,14 @@ func classify_sennichite() -> int:
 			return DRAW
 		p -= 2
 	return DRAW
+
+
+func history_hashes() -> PackedInt64Array:
+	return PackedInt64Array(_hashes.slice(0, _hashes.size() - 1))
+
+
+func history_in_checks() -> PackedByteArray:
+	var result := PackedByteArray()
+	for i in _in_checks.size() - 1:
+		result.append(1 if _in_checks[i] else 0)
+	return result
