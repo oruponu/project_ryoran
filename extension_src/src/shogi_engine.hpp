@@ -51,6 +51,7 @@ class ShogiEngine : public RefCounted {
     [[nodiscard]] bool is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row);
     [[nodiscard]] bool is_dead_end(Node2D *main_node, Object *piece_obj, int to_row);
     [[nodiscard]] bool is_king_in_check(Node2D *main_node, bool is_enemy);
+    [[nodiscard]] int64_t get_position_hash(Node2D *main_node, bool is_enemy);
 
     void update_state(Node2D *main_node);
     [[nodiscard]] Dictionary search_best_move();

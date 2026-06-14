@@ -39,6 +39,7 @@ void ShogiEngine::_bind_methods() {
                          &ShogiEngine::is_king_safe_after_move);
     ClassDB::bind_method(D_METHOD("is_dead_end", "main_node", "piece_obj", "to_row"), &ShogiEngine::is_dead_end);
     ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
+    ClassDB::bind_method(D_METHOD("get_position_hash", "main_node", "is_enemy"), &ShogiEngine::get_position_hash);
 
     ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
     ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
@@ -192,6 +193,13 @@ bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
     Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 
     return MoveGenerator::is_king_in_check(board, turn);
+}
+
+int64_t ShogiEngine::get_position_hash(Node2D *main_node, bool is_enemy) {
+    // 千日手判定用の局面のハッシュ値
+    Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
+    BoardState board(main_node, turn);
+    return static_cast<int64_t>(board.get_zobrist_hash());
 }
 
 void ShogiEngine::update_state(Node2D *main_node) { current_state_ = BoardState(main_node, turn_to_move_); }
