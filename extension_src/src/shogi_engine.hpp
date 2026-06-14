@@ -4,6 +4,8 @@
 #include "board_state.hpp"
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_int64_array.hpp>
 #include <vector>
 
 using namespace godot;
@@ -53,6 +55,7 @@ class ShogiEngine : public RefCounted {
     [[nodiscard]] bool is_king_in_check(Node2D *main_node, bool is_enemy);
     [[nodiscard]] int64_t get_position_hash(Node2D *main_node, bool is_enemy);
 
+    void set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks);
     void update_state(Node2D *main_node);
     [[nodiscard]] Dictionary search_best_move();
 };

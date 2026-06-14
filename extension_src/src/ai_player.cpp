@@ -61,22 +61,36 @@ int score_from_tt(int score, int ply) {
 
 } // namespace
 
+void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks) {
+    // 境界外参照防止のため短い方に合わせる
+    size_t n = hashes.size() < in_checks.size() ? hashes.size() : in_checks.size();
+    game_history_hashes_.assign(hashes.begin(), hashes.begin() + n);
+    game_history_in_check_.assign(in_checks.begin(), in_checks.begin() + n);
+    history_len_ = static_cast<int>(n);
+    game_history_hash_set_.clear();
+    game_history_hash_set_.insert(game_history_hashes_.begin(), game_history_hashes_.end());
+}
+
 std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash, Shogi::Turn stm) {
-    for (int p = ply - 2; p >= 0; p -= 2) {
-        if (path_hashes_[p] != hash) {
+    int v = history_len_ + ply;
+    for (int p = v - 2; p >= 0; p -= 2) {
+        if (p < history_len_ && game_history_hash_set_.find(hash) == game_history_hash_set_.end()) {
+            break; // 現局面が履歴に無ければ無駄な走査を打ち切る
+        }
+        if (hash_at(p) != hash) {
             continue;
         }
 
         bool stm_perpetual = true; // 手番側が連続王手
-        for (int q = p + 1; q <= ply - 1; q += 2) {
-            if (!path_in_check_[q]) {
+        for (int q = p + 1; q <= v - 1; q += 2) {
+            if (!in_check_at(q)) {
                 stm_perpetual = false;
                 break;
             }
         }
         bool opp_perpetual = true; // 相手が連続王手
-        for (int q = p + 2; q <= ply; q += 2) {
-            if (!path_in_check_[q]) {
+        for (int q = p + 2; q <= v; q += 2) {
+            if (!in_check_at(q)) {
                 opp_perpetual = false;
                 break;
             }

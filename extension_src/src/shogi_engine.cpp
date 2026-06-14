@@ -41,6 +41,7 @@ void ShogiEngine::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
     ClassDB::bind_method(D_METHOD("get_position_hash", "main_node", "is_enemy"), &ShogiEngine::get_position_hash);
 
+    ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
     ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
     ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 }
@@ -200,6 +201,20 @@ int64_t ShogiEngine::get_position_hash(Node2D *main_node, bool is_enemy) {
     Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
     BoardState board(main_node, turn);
     return static_cast<int64_t>(board.get_zobrist_hash());
+}
+
+void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks) {
+    std::vector<uint64_t> h;
+    std::vector<bool> c;
+    h.reserve(hashes.size());
+    c.reserve(in_checks.size());
+    for (int i = 0; i < hashes.size(); ++i) {
+        h.push_back(static_cast<uint64_t>(hashes[i]));
+    }
+    for (int i = 0; i < in_checks.size(); ++i) {
+        c.push_back(in_checks[i] != 0);
+    }
+    ai_player_.set_game_history(h, c);
 }
 
 void ShogiEngine::update_state(Node2D *main_node) { current_state_ = BoardState(main_node, turn_to_move_); }

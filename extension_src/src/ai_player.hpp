@@ -3,6 +3,8 @@
 #include "board_state.hpp"
 #include <godot_cpp/variant/dictionary.hpp>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 enum class TTFlag : uint8_t { EXACT, LOWER_BOUND, UPPER_BOUND };
 
@@ -45,9 +47,19 @@ class AIPlayer {
     // 千日手（経路反復）：経路上の局面ハッシュと王手状態
     uint64_t path_hashes_[MAX_PLY + 1] = {};
     bool path_in_check_[MAX_PLY + 1] = {};
+    std::vector<uint64_t> game_history_hashes_;
+    std::vector<bool> game_history_in_check_;
+    std::unordered_set<uint64_t> game_history_hash_set_;
+    int history_len_ = 0;
 
     [[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply);
     [[nodiscard]] std::optional<int> detect_path_repetition(int ply, uint64_t hash, Shogi::Turn stm);
+    [[nodiscard]] uint64_t hash_at(int v) const {
+        return v >= history_len_ ? path_hashes_[v - history_len_] : game_history_hashes_[v];
+    }
+    [[nodiscard]] bool in_check_at(int v) const {
+        return v >= history_len_ ? path_in_check_[v - history_len_] : game_history_in_check_[v];
+    }
     void update_killer(int ply, const Shogi::Move &move);
     void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);
     [[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Shogi::Turn turn,
@@ -69,4 +81,5 @@ class AIPlayer {
     ~AIPlayer() {}
 
     [[nodiscard]] godot::Dictionary search_best_move(BoardState board);
+    void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
 };
