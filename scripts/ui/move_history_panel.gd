@@ -22,6 +22,11 @@ func add_sennichite(current_turn: int) -> void:
 	_append_entry_row(current_turn, "千日手")
 
 
+func add_perpetual_check(current_turn: int, winner_is_sente: bool) -> void:
+	var marker := "▲" if winner_is_sente else "△"
+	_append_entry_row(current_turn, "%s反則勝ち" % marker)
+
+
 func add_move(current_turn: int, record: MoveRecord, prev_record: MoveRecord) -> void:
 	var move_text = _format_move_notation(current_turn, record, prev_record)
 	_append_entry_row(current_turn, move_text)
