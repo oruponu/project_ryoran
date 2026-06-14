@@ -61,6 +61,39 @@ int score_from_tt(int score, int ply) {
 
 } // namespace
 
+std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash, Shogi::Turn stm) {
+    for (int p = ply - 2; p >= 0; p -= 2) {
+        if (path_hashes_[p] != hash) {
+            continue;
+        }
+
+        bool stm_perpetual = true; // 手番側が連続王手
+        for (int q = p + 1; q <= ply - 1; q += 2) {
+            if (!path_in_check_[q]) {
+                stm_perpetual = false;
+                break;
+            }
+        }
+        bool opp_perpetual = true; // 相手が連続王手
+        for (int q = p + 2; q <= ply; q += 2) {
+            if (!path_in_check_[q]) {
+                opp_perpetual = false;
+                break;
+            }
+        }
+
+        int mate = MATE_SCORE - ply;
+        if (stm_perpetual) {
+            return (stm == Turn::SENTE) ? -mate : mate; // 連続王手の千日手は王手側の負け
+        }
+        if (opp_perpetual) {
+            return (stm == Turn::SENTE) ? mate : -mate;
+        }
+        return 0;
+    }
+    return std::nullopt;
+}
+
 int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply) {
     int score = 0;
 
@@ -133,6 +166,18 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
     }
 
     uint64_t hash = board.get_zobrist_hash();
+    Turn turn_to_move = board.get_turn_to_move();
+    bool in_check = MoveGenerator::is_king_in_check(board, turn_to_move);
+
+    // 千日手（経路反復）：TTより前に判定
+    if (ply < MAX_PLY) {
+        path_in_check_[ply] = in_check;
+        if (auto rep = detect_path_repetition(ply, hash, turn_to_move); rep.has_value()) {
+            return rep.value();
+        }
+        path_hashes_[ply] = hash;
+    }
+
     int original_alpha = alpha;
     int original_beta = beta;
     Move tt_best_move{};
@@ -162,8 +207,6 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
         return quiescence_search(board, alpha, beta, turn, ply, node_count);
     }
 
-    Turn turn_to_move = board.get_turn_to_move();
-    bool in_check = MoveGenerator::is_king_in_check(board, turn_to_move);
     // 王手延長：王手を受けた側は深さを減らさず読む
     const int extension = (in_check && ply < MAX_PLY) ? 1 : 0;
 
@@ -570,14 +613,24 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
                                 int qs_ply) {
     ++node_count;
 
+    bool in_check = MoveGenerator::is_king_in_check(board, turn);
+
+    // 千日手（経路反復）：Stand-Patより前に判定
+    if (ply < MAX_PLY) {
+        uint64_t hash = board.get_zobrist_hash();
+        path_in_check_[ply] = in_check;
+        if (auto rep = detect_path_repetition(ply, hash, turn); rep.has_value()) {
+            return rep.value();
+        }
+        path_hashes_[ply] = hash;
+    }
+
     int stand_pat = board.get_score();
 
     // 取り合い連鎖が長すぎる場合は打ち切り
     if (qs_ply >= QS_PLY_LIMIT) {
         return stand_pat;
     }
-
-    bool in_check = MoveGenerator::is_king_in_check(board, turn);
 
     if (turn == Turn::SENTE) {
         if (!in_check) {
@@ -781,6 +834,10 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     // ルート局面は反復深化を通じて不変であり、候補手ごとの詰み判定結果は再利用できる
     std::unordered_map<uint64_t, bool> root_mate_cache;
+
+    // 千日手（経路反復）：ルート局面を経路の起点に登録
+    path_hashes_[0] = board.get_zobrist_hash();
+    path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_side);
 
     for (int depth = 1; depth <= max_depth_limit; ++depth) {
         if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
