@@ -396,6 +396,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth, uint64_t max_nodes) {
     dfpn_table_.clear();
+    dfpn_path_.clear();
     uint64_t node_count = 0;
 
     int pn = 1;
@@ -446,6 +447,16 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
                            int depth, uint64_t &node_count, const uint64_t max_nodes) {
     ++node_count;
     uint64_t hash = board.get_zobrist_hash();
+
+    // 経路上に再出現した局面（連続王手の千日手など）は強制詰みではないため不詰み扱いで返す
+    for (uint64_t ancestor : dfpn_path_) {
+        if (ancestor == hash) {
+            pn = INFINITY_PN;
+            dn = 0;
+            // GHIを避けるため置換表には保存しない
+            return;
+        }
+    }
 
     if (dfpn_table_.count(hash)) {
         const auto &entry = dfpn_table_[hash];
@@ -528,6 +539,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
         }
     }
 
+    dfpn_path_.push_back(hash);
     while (true) {
         int min_pn = INFINITY_PN;
         int min_dn = INFINITY_PN;
@@ -619,6 +631,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 
         board.undo_move(undo);
     }
+    dfpn_path_.pop_back();
 
     dfpn_table_[hash] = {hash, (uint32_t)pn, (uint32_t)dn};
 }

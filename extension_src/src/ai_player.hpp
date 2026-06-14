@@ -41,6 +41,7 @@ class AIPlayer {
 
     std::unordered_map<uint64_t, TTEntry> transposition_table_;
     std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
+    std::vector<uint64_t> dfpn_path_;
     Shogi::Move killer_moves_[MAX_PLY][2]; // 探索の深さごとに2スロット
     bool killer_valid_[MAX_PLY][2] = {};
     int history_[2][Shogi::PIECE_TYPE_COUNT][Shogi::BOARD_SIZE] = {};
