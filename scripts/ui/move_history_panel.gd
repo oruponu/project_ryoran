@@ -18,6 +18,10 @@ func add_resignation(current_turn: int) -> void:
 	_append_entry_row(current_turn, move_text)
 
 
+func add_sennichite(current_turn: int) -> void:
+	_append_entry_row(current_turn, "千日手")
+
+
 func add_move(current_turn: int, record: MoveRecord, prev_record: MoveRecord) -> void:
 	var move_text = _format_move_notation(current_turn, record, prev_record)
 	_append_entry_row(current_turn, move_text)

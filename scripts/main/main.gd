@@ -20,6 +20,7 @@ var current_turn: int = 0
 var holding_piece: Piece = null
 var current_legal_coords: Array[Vector2i] = []
 var move_history: Array[MoveRecord] = []
+var repetition_tracker := RepetitionTracker.new()
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
@@ -144,6 +145,7 @@ func _reset_game() -> void:
 	_update_turn_display()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board(self)
+	repetition_tracker.reset(_current_position_key())
 	move_history_panel.clear()
 	move_history_panel.add_game_start(current_turn)
 	check_label.cancel_animation()
@@ -226,6 +228,11 @@ func _finish_turn(piece: Piece) -> void:
 	var record: MoveRecord = move_history.back()
 	var prev_record: MoveRecord = move_history[-2] if move_history.size() >= 2 else null
 	move_history_panel.add_move(current_turn, record, prev_record)
+
+	var rep_count := repetition_tracker.record(_current_position_key())
+	if rep_count >= GameConfig.SENNICHITE_COUNT:
+		await _finish_game_draw()
+		return
 
 	var target_is_enemy := current_turn % 2 != 0
 	if _shogi_engine.is_king_in_check(self, target_is_enemy):
@@ -335,6 +342,17 @@ func _finish_game(is_player_win: bool) -> void:
 	_update_button_states()
 
 
+func _finish_game_draw() -> void:
+	current_turn += 1
+	_update_turn_display()
+	move_history_panel.add_sennichite(current_turn)
+	check_label.cancel_animation()
+	await show_draw_result(current_turn - 1)
+	is_game_active = false
+
+	_update_button_states()
+
+
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var prev_row: int = piece.current_row
 
@@ -433,6 +451,7 @@ func _undo_last_move() -> void:
 		move_history_panel.remove_last_move()
 
 	var last_move: MoveRecord = move_history.pop_back()
+	repetition_tracker.undo()
 	var piece := last_move.piece
 
 	if last_move.from_col == -1 and last_move.from_row == -1:
@@ -524,6 +543,11 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 	return true
 
 
+func _current_position_key() -> int:
+	var is_enemy := current_turn % 2 != 0
+	return _shogi_engine.get_position_hash(self, is_enemy)
+
+
 func get_piece(col: int, row: int) -> Piece:
 	return board_grid[col][row]
 
@@ -570,4 +594,9 @@ func request_promotion_decision() -> bool:
 func show_game_result(move_count: int, is_player_win: bool) -> void:
 	var side_text := "先手" if is_player_win else "後手"
 	var message := "まで、%d手で%sの勝ち。" % [move_count, side_text]
+	await common_dialog.ask_user(message, "OK", "")
+
+
+func show_draw_result(move_count: int) -> void:
+	var message := "まで、%d手で千日手。引き分け。" % move_count
 	await common_dialog.ask_user(message, "OK", "")
