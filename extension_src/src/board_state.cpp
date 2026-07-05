@@ -371,6 +371,25 @@ int BoardState::get_hand_count(Turn turn, PieceType piece_type) const {
 	return hand_[side_idx][type_idx];
 }
 
+void BoardState::set_hand_count(Turn turn, PieceType piece_type, int count) {
+	int side_idx = static_cast<int>(turn);
+	int type_idx = static_cast<int>(piece_type);
+	if (side_idx < 0 || side_idx >= 2 || type_idx < 0 || type_idx >= Shogi::PIECE_TYPE_COUNT || count < 0) {
+		return;
+	}
+
+	int old_count = hand_[side_idx][type_idx];
+	if (old_count == count) {
+		return;
+	}
+
+	int idx_old = std::clamp(old_count, 0, 19);
+	int idx_new = std::clamp(count, 0, 19);
+	zobrist_hash_ ^= g_zobrist_hand[side_idx][type_idx][idx_old];
+	zobrist_hash_ ^= g_zobrist_hand[side_idx][type_idx][idx_new];
+	hand_[side_idx][type_idx] = count;
+}
+
 Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 	Shogi::UndoInfo undo;
 	undo.move = move;

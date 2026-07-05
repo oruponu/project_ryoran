@@ -116,6 +116,7 @@ public:
 	void set_cell(Shogi::Coord coord, Shogi::PieceType type, Shogi::Turn turn, bool is_promoted);
 	void clear_cell(Shogi::Coord coord);
 	[[nodiscard]] int get_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type) const;
+	void set_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type, int count);
 	[[nodiscard]] Shogi::UndoInfo apply_move(const Shogi::Move &move);
 	void undo_move(const Shogi::UndoInfo &undo_info);
 

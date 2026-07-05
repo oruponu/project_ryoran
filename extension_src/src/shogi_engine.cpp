@@ -100,9 +100,10 @@ bool ShogiEngine::is_legal_drop(Node2D *main_node, Object *piece_obj, int target
 		return false;
 	}
 
-	BoardState board(main_node, turn_to_move_);
 	int piece_type = piece_obj->get("piece_type");
 	bool is_enemy = piece_obj->get("is_enemy");
+
+	BoardState board(main_node, is_enemy ? Turn::GOTE : Turn::SENTE);
 
 	return MoveGenerator::is_legal_drop(board, static_cast<PieceType>(piece_type), is_enemy, { target_col, target_row });
 }
@@ -136,9 +137,10 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
 		return result;
 	}
 
-	BoardState board(main_node, turn_to_move_);
 	int piece_type = piece_obj->get("piece_type");
 	bool is_enemy = piece_obj->get("is_enemy");
+
+	BoardState board(main_node, is_enemy ? Turn::GOTE : Turn::SENTE);
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {

@@ -12,6 +12,7 @@ private:
 	[[nodiscard]] static bool is_valid_drop(const BoardState &board, Shogi::PieceType piece_type, bool is_enemy,
 			Shogi::Coord to);
 	[[nodiscard]] static bool is_nifu(const BoardState &board, Shogi::PieceType piece_type, Shogi::Turn turn, int col);
+	[[nodiscard]] static bool is_uchifuzume(BoardState &board, Shogi::Turn turn, Shogi::Coord to);
 
 public:
 	[[nodiscard]] static bool is_legal_move(BoardState &board, Shogi::Coord from, Shogi::Coord to);

@@ -293,7 +293,15 @@ bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool 
 
 	board.remove_piece_from_bitboard(to_idx, turn, piece_type, false);
 
-	return !in_check;
+	if (in_check) {
+		return false;
+	}
+
+	if (piece_type == PieceType::PAWN && is_uchifuzume(board, turn, to)) {
+		return false;
+	}
+
+	return true;
 }
 
 bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_enemy, int to_row) {
@@ -315,6 +323,39 @@ bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn 
 	}
 
 	return (board.pawn_columns_[static_cast<int>(turn)] & (1 << col)) != 0;
+}
+
+bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
+	const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	auto king_position = board.get_king_position(enemy_turn);
+	if (!king_position.has_value()) {
+		return false;
+	}
+
+	const int to_index = to.col * Shogi::BOARD_ROWS + to.row;
+	const int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+	if (!AttackTable::get_pawn_attacks(to_index, turn).is_set(king_square)) {
+		return false;
+	}
+
+	const bool need_null_move = (board.get_turn_to_move() != turn);
+	uint64_t null_move_hash = 0;
+	if (need_null_move) {
+		null_move_hash = board.make_null_move();
+	}
+
+	Shogi::Move drop_move(0, 0, to.col, to.row, PieceType::PAWN, false, true, false);
+	Shogi::UndoInfo undo = board.apply_move(drop_move);
+	Shogi::MoveList responses;
+	get_legal_moves(board, responses);
+	const bool is_mate = responses.is_empty();
+	board.undo_move(undo);
+
+	if (need_null_move) {
+		board.undo_null_move(null_move_hash);
+	}
+
+	return is_mate;
 }
 
 bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
@@ -570,6 +611,9 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 						continue;
 					}
 					if (type == PieceType::PAWN && is_nifu(board, type, current_turn, to.col)) {
+						continue;
+					}
+					if (type == PieceType::PAWN && is_uchifuzume(board, current_turn, to)) {
 						continue;
 					}
 
