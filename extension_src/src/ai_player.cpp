@@ -819,9 +819,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
     if (move_list.is_empty()) {
         // 投了
-        Dictionary result;
-        result["win_rate"] = 0.0;
-        return result;
+        return Dictionary();
     }
 
     transposition_table_.reserve(TT_SIZE);

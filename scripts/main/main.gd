@@ -295,7 +295,7 @@ func _on_background_analysis_completed(move: Dictionary) -> void:
 		if _eval_thread.is_alive():
 			_eval_thread.wait_to_finish()
 		_eval_thread = null
-	win_rate_bar.update_bar(move.win_rate)
+	win_rate_bar.update_bar(move.get("win_rate", 0.0))
 
 
 func _calculate_next_move() -> void:
