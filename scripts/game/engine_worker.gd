@@ -17,6 +17,7 @@ var _ai_thread: Thread
 var _eval_engine: ShogiEngine = ShogiEngine.new()
 var _eval_thread: Thread
 var _analysis_pending: bool = false
+var _analysis_suspended: bool = false
 var _generation: int = 0
 
 
@@ -60,7 +61,7 @@ func request_search() -> bool:
 
 
 func request_analysis() -> void:
-	if _eval_thread != null:
+	if _analysis_suspended or _eval_thread != null:
 		_analysis_pending = true
 		return
 
@@ -77,6 +78,16 @@ func request_analysis() -> void:
 
 func reset() -> void:
 	_generation += 1
+	_analysis_pending = false
+	_analysis_suspended = false
+
+
+func suspend_analysis() -> void:
+	_analysis_suspended = true
+
+
+func resume_analysis() -> void:
+	_analysis_suspended = false
 	_analysis_pending = false
 
 
@@ -103,7 +114,7 @@ func _on_analysis_finished(move: Dictionary, generation: int) -> void:
 	_eval_thread = null
 
 	# 最新局面の解析だけを通知
-	if generation == _generation and not _analysis_pending:
+	if generation == _generation and not _analysis_pending and not _analysis_suspended:
 		analysis_completed.emit(move.get("win_rate", 0.0))
 
 	if _analysis_pending:
