@@ -25,9 +25,6 @@ var repetition_tracker := RepetitionTracker.new()
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
-var _eval_engine: ShogiEngine = ShogiEngine.new()
-var _eval_thread: Thread
-var last_analyzed_turn: int = 0
 
 
 # Called when the node enters the scene tree for the first time.
@@ -38,43 +35,11 @@ func _ready() -> void:
 
 	engine_worker.setup(self, repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
+	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
 	_shogi_engine.is_enemy_side = true
 
 	_reset_game()
-
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(_delta: float) -> void:
-	if not is_game_active:
-		return
-
-	if is_ai_thinking:
-		return
-
-	if _eval_thread != null:
-		if _eval_thread.is_alive():
-			return
-		else:
-			if _eval_thread.is_started():
-				_eval_thread.wait_to_finish()
-			_eval_thread = null
-
-	if current_turn == last_analyzed_turn:
-		return
-
-	last_analyzed_turn = current_turn
-
-	if current_turn <= 0:
-		win_rate_bar.reset_bar(false)
-	else:
-		_start_background_analysis()
-
-
-func _exit_tree() -> void:
-	if _eval_thread != null and _eval_thread.is_started():
-		_eval_thread.wait_to_finish()
-		_eval_thread = null
 
 
 func _on_new_game_button_pressed() -> void:
@@ -142,6 +107,7 @@ func _reset_game() -> void:
 
 	_update_button_states()
 	_update_turn_display()
+	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board(self)
 	var initial_in_check := _shogi_engine.is_king_in_check(self, current_turn % 2 != 0)
@@ -256,6 +222,7 @@ func _finish_turn(piece: Piece) -> void:
 			else:
 				_undo_last_move()
 				_undo_last_move()
+				return
 		else:
 			check_label.play_animation()
 			audio_stream_player.play_check()
@@ -263,6 +230,8 @@ func _finish_turn(piece: Piece) -> void:
 	var next_is_enemy := current_turn % 2 != 0
 	if is_game_active and next_is_enemy == EngineWorker.AI_IS_ENEMY:
 		_play_ai_turn()
+	else:
+		engine_worker.request_analysis()
 
 
 func _play_ai_turn() -> void:
@@ -274,25 +243,8 @@ func _play_ai_turn() -> void:
 		_update_button_states()
 
 
-func _start_background_analysis() -> void:
-	_eval_engine.update_state(self)
-	_eval_engine.set_game_history(repetition_tracker.history_hashes(), repetition_tracker.history_in_checks())
-	_eval_thread = Thread.new()
-	_eval_thread.start(_run_background_analysis)
-
-
-func _run_background_analysis() -> void:
-	_eval_engine.is_enemy_side = false
-	var move: Dictionary = _eval_engine.search_best_move()
-	call_deferred("_on_background_analysis_completed", move)
-
-
-func _on_background_analysis_completed(move: Dictionary) -> void:
-	if _eval_thread != null:
-		if _eval_thread.is_alive():
-			_eval_thread.wait_to_finish()
-		_eval_thread = null
-	win_rate_bar.update_bar(move.get("win_rate", 0.0))
+func _on_analysis_completed(win_rate: float) -> void:
+	win_rate_bar.update_bar(win_rate)
 
 
 func _on_search_completed(move: Dictionary) -> void:
@@ -440,8 +392,11 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 		piece.is_held = false
 
 		var should_promote := false
+		var analysis_suspended := false
 		match mode:
 			PromotionMode.Type.ASK_USER:
+				engine_worker.suspend_analysis()
+				analysis_suspended = true
 				should_promote = await request_promotion_decision()
 			PromotionMode.Type.FORCE_PROMOTE:
 				should_promote = true
@@ -451,6 +406,9 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 		if should_promote:
 			piece.set_promoted(true)
 			move_record.is_promotion = true
+
+		if analysis_suspended:
+			engine_worker.resume_analysis()
 
 
 func _undo_last_move() -> void:
@@ -516,6 +474,12 @@ func _undo_last_move() -> void:
 	_update_button_states()
 	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
+
+	if current_turn <= 0:
+		engine_worker.reset()
+		win_rate_bar.reset_bar(false)
+	else:
+		engine_worker.request_analysis()
 
 
 func _update_last_move_highlight() -> void:
