@@ -13,6 +13,7 @@ extends Node2D
 @onready var win_rate_bar: WinRateBar = $WinRateBar
 @onready var common_dialog: CommonDialog = $CommonDialog
 @onready var audio_stream_player: GameAudioPlayer = $AudioStreamPlayer
+@onready var engine_worker: EngineWorker = $EngineWorker
 
 
 var board_grid: Array = []
@@ -24,7 +25,6 @@ var repetition_tracker := RepetitionTracker.new()
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
-var _ai_thread: Thread
 var _eval_engine: ShogiEngine = ShogiEngine.new()
 var _eval_thread: Thread
 var last_analyzed_turn: int = 0
@@ -35,6 +35,9 @@ func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
+
+	engine_worker.setup(self, repetition_tracker)
+	engine_worker.search_completed.connect(_on_search_completed)
 
 	_shogi_engine.is_enemy_side = true
 
@@ -69,10 +72,6 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
-	if _ai_thread != null and _ai_thread.is_started():
-		_ai_thread.wait_to_finish()
-		_ai_thread = null
-
 	if _eval_thread != null and _eval_thread.is_started():
 		_eval_thread.wait_to_finish()
 		_eval_thread = null
@@ -246,7 +245,7 @@ func _finish_turn(piece: Piece) -> void:
 
 	if in_check:
 		if _is_checkmate(stm_is_enemy):
-			if _shogi_engine != null and stm_is_enemy == _shogi_engine.is_enemy_side:
+			if stm_is_enemy == EngineWorker.AI_IS_ENEMY:
 				await _finish_game(stm_is_enemy)
 				return
 
@@ -262,7 +261,7 @@ func _finish_turn(piece: Piece) -> void:
 			audio_stream_player.play_check()
 
 	var next_is_enemy := current_turn % 2 != 0
-	if is_game_active and next_is_enemy == _shogi_engine.is_enemy_side:
+	if is_game_active and next_is_enemy == EngineWorker.AI_IS_ENEMY:
 		_play_ai_turn()
 
 
@@ -270,11 +269,9 @@ func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
 
-	_shogi_engine.update_state(self)
-	_shogi_engine.set_game_history(repetition_tracker.history_hashes(), repetition_tracker.history_in_checks())
-
-	_ai_thread = Thread.new()
-	_ai_thread.start(_calculate_next_move)
+	if not engine_worker.request_search():
+		is_ai_thinking = false
+		_update_button_states()
 
 
 func _start_background_analysis() -> void:
@@ -298,24 +295,16 @@ func _on_background_analysis_completed(move: Dictionary) -> void:
 	win_rate_bar.update_bar(move.get("win_rate", 0.0))
 
 
-func _calculate_next_move() -> void:
-	var move: Dictionary = _shogi_engine.search_best_move()
-	call_deferred("_apply_next_move", move)
-
-
-func _apply_next_move(move: Dictionary) -> void:
-	_ai_thread.wait_to_finish()
-	_ai_thread = null
-
+func _on_search_completed(move: Dictionary) -> void:
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(!_shogi_engine.is_enemy_side)
+		await _finish_game(!EngineWorker.AI_IS_ENEMY)
 		is_ai_thinking = false
 		return
 
 	var piece: Piece = null
 	if move.is_drop:
-		var is_enemy: bool = _shogi_engine.is_enemy_side
+		var is_enemy: bool = EngineWorker.AI_IS_ENEMY
 		var stand: PieceStand = enemy_piece_stand if is_enemy else player_piece_stand
 		for child in stand.get_children():
 			if child is Piece:
