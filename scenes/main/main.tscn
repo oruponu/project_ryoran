@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://v4mqg4kxgku2" path="res://scenes/ui/move_history_panel.tscn" id="5_272bh"]
 [ext_resource type="PackedScene" uid="uid://be222qmjtk0ub" path="res://scenes/ui/win_rate_bar.tscn" id="7_b1x3f"]
 [ext_resource type="Script" uid="uid://ds7fxclfo6jh0" path="res://scripts/audio/audio_stream_player.gd" id="8_yyfjg"]
+[ext_resource type="Script" uid="uid://cud10ascx1e23" path="res://scripts/game/engine_worker.gd" id="10_a8run"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_1bvp3"]
 font_size = 24
@@ -106,3 +107,7 @@ visible = false
 
 [node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=265979005]
 script = ExtResource("8_yyfjg")
+
+[node name="EngineWorker" type="Node" parent="." unique_id=1206723961]
+script = ExtResource("10_a8run")
+metadata/_custom_type_script = "uid://cud10ascx1e23"
