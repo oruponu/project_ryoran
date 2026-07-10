@@ -16,12 +16,12 @@ extends Node2D
 @onready var engine_worker: EngineWorker = $EngineWorker
 
 
-var board_grid: Array = []
-var current_turn: int = 0
+var game_state := GameState.new()
+var board_grid: Array:
+	get:
+		return game_state.board_grid
 var holding_piece: Piece = null
 var current_legal_coords: Array[Vector2i] = []
-var move_history: Array[MoveRecord] = []
-var repetition_tracker := RepetitionTracker.new()
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
@@ -33,7 +33,7 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
 
-	engine_worker.setup(self, repetition_tracker)
+	engine_worker.setup(self, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
@@ -52,7 +52,7 @@ func _on_new_game_button_pressed() -> void:
 
 func _on_undo_button_pressed() -> void:
 	# 後手が投了しているときのみ一手前に戻す
-	if not is_game_active and current_turn % 2 == 0:
+	if not is_game_active and not game_state.is_gote_turn():
 		_undo_last_move()
 	else:
 		_undo_last_move()
@@ -64,7 +64,7 @@ func _on_resign_button_pressed() -> void:
 	if not result:
 		return
 
-	var is_player_win := current_turn % 2 != 0
+	var is_player_win := game_state.is_gote_turn()
 	await _finish_game(is_player_win)
 
 
@@ -82,16 +82,14 @@ func _update_button_states() -> void:
 		return
 
 	new_game_button.disabled = false
-	undo_button.disabled = move_history.is_empty()
-	resign_button.disabled = move_history.is_empty()
+	undo_button.disabled = game_state.move_history.is_empty()
+	resign_button.disabled = game_state.move_history.is_empty()
 
 
 func _reset_game() -> void:
-	board_grid.clear()
-	current_turn = 0
+	game_state.reset()
 	holding_piece = null
 	current_legal_coords.clear()
-	move_history.clear()
 	is_game_active = true
 	is_ai_thinking = false
 
@@ -99,21 +97,15 @@ func _reset_game() -> void:
 	player_piece_stand.clear_pieces()
 	enemy_piece_stand.clear_pieces()
 
-	for x in range(GameConfig.BOARD_COLS):
-		var column: Array = []
-		for y in range(GameConfig.BOARD_ROWS):
-			column.append(null)
-		board_grid.append(column)
-
 	_update_button_states()
 	_update_turn_display()
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board(self)
-	var initial_in_check := _shogi_engine.is_king_in_check(self, current_turn % 2 != 0)
-	repetition_tracker.reset(_current_position_hash(), initial_in_check)
+	var initial_in_check := _shogi_engine.is_king_in_check(self, game_state.is_gote_turn())
+	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
-	move_history_panel.add_game_start(current_turn)
+	move_history_panel.add_game_start(game_state.current_turn)
 	check_label.cancel_animation()
 
 
@@ -128,7 +120,7 @@ func handle_piece_input(piece: Piece) -> void:
 
 
 func _pick_up(piece: Piece) -> void:
-	var is_enemy_turn := current_turn % 2 != 0
+	var is_enemy_turn := game_state.is_gote_turn()
 	if piece.is_enemy != is_enemy_turn:
 		return
 
@@ -149,12 +141,11 @@ func _pick_up(piece: Piece) -> void:
 
 
 func _attempt_place(piece: Piece) -> void:
-	var local_pos := board.to_local(piece.global_position)
-	var col := floori(local_pos.x / GameConfig.GRID_SIZE)
-	var row := floori(local_pos.y / GameConfig.GRID_SIZE)
+	var target_pos := GameConfig.position_to_cell(board.to_local(piece.global_position))
+	var col := target_pos.x
+	var row := target_pos.y
 
 	# 合法手でないならキャンセル
-	var target_pos := Vector2i(col, row)
 	if not target_pos in current_legal_coords:
 		_cancel_move(piece)
 		return
@@ -172,7 +163,7 @@ func _attempt_place(piece: Piece) -> void:
 
 		await _move_piece(piece, col, row, move_record, mode)
 
-	move_history.append(move_record)
+	game_state.move_history.append(move_record)
 
 	holding_piece = null
 	_finish_turn(piece)
@@ -186,21 +177,21 @@ func _finish_turn(piece: Piece) -> void:
 
 	holding_piece = null
 
-	current_turn += 1
+	game_state.current_turn += 1
 	_update_button_states()
 	_update_last_move_highlight()
 	_update_turn_display()
 
-	var record: MoveRecord = move_history.back()
-	var prev_record: MoveRecord = move_history[-2] if move_history.size() >= 2 else null
-	move_history_panel.add_move(current_turn, record, prev_record)
+	var record: MoveRecord = game_state.move_history.back()
+	var prev_record: MoveRecord = game_state.move_history[-2] if game_state.move_history.size() >= 2 else null
+	move_history_panel.add_move(game_state.current_turn, record, prev_record)
 
-	var stm_is_enemy := current_turn % 2 != 0
+	var stm_is_enemy := game_state.is_gote_turn()
 	var in_check := _shogi_engine.is_king_in_check(self, stm_is_enemy)
 
-	var rep_count := repetition_tracker.record(_current_position_hash(), in_check)
+	var rep_count := game_state.repetition_tracker.record(_current_position_hash(), in_check)
 	if rep_count >= GameConfig.SENNICHITE_COUNT:
-		match repetition_tracker.classify_sennichite():
+		match game_state.repetition_tracker.classify_sennichite():
 			RepetitionTracker.STM_PERPETUAL:
 				await _finish_game_perpetual_check(stm_is_enemy)
 			RepetitionTracker.OPP_PERPETUAL:
@@ -227,7 +218,7 @@ func _finish_turn(piece: Piece) -> void:
 			check_label.play_animation()
 			audio_stream_player.play_check()
 
-	var next_is_enemy := current_turn % 2 != 0
+	var next_is_enemy := game_state.is_gote_turn()
 	if is_game_active and next_is_enemy == EngineWorker.AI_IS_ENEMY:
 		_play_ai_turn()
 	else:
@@ -265,7 +256,7 @@ func _on_search_completed(move: Dictionary) -> void:
 					piece = candidate
 					break
 	else:
-		piece = get_piece(move.from_col, move.from_row)
+		piece = game_state.get_piece(move.from_col, move.from_row)
 
 	var col: int = move.to_col
 	var row: int = move.to_row
@@ -277,40 +268,40 @@ func _on_search_completed(move: Dictionary) -> void:
 		var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
 		await _move_piece(piece, col, row, move_record, mode)
 
-	move_history.append(move_record)
+	game_state.move_history.append(move_record)
 
 	is_ai_thinking = false
 	_finish_turn(piece)
 
 
 func _finish_game(is_player_win: bool) -> void:
-	current_turn += 1
+	game_state.current_turn += 1
 	_update_turn_display()
-	move_history_panel.add_resignation(current_turn)
+	move_history_panel.add_resignation(game_state.current_turn)
 	check_label.cancel_animation()
-	await show_game_result(current_turn - 1, is_player_win)
+	await show_game_result(game_state.current_turn - 1, is_player_win)
 	is_game_active = false
 
 	_update_button_states()
 
 
 func _finish_game_draw() -> void:
-	current_turn += 1
+	game_state.current_turn += 1
 	_update_turn_display()
-	move_history_panel.add_sennichite(current_turn)
+	move_history_panel.add_sennichite(game_state.current_turn)
 	check_label.cancel_animation()
-	await show_draw_result(current_turn - 1)
+	await show_draw_result(game_state.current_turn - 1)
 	is_game_active = false
 
 	_update_button_states()
 
 
 func _finish_game_perpetual_check(is_player_win: bool) -> void:
-	current_turn += 1
+	game_state.current_turn += 1
 	_update_turn_display()
-	move_history_panel.add_perpetual_check(current_turn, is_player_win)
+	move_history_panel.add_perpetual_check(game_state.current_turn, is_player_win)
 	check_label.cancel_animation()
-	await show_perpetual_check_result(current_turn - 1, is_player_win)
+	await show_perpetual_check_result(game_state.current_turn - 1, is_player_win)
 	is_game_active = false
 
 	_update_button_states()
@@ -319,7 +310,7 @@ func _finish_game_perpetual_check(is_player_win: bool) -> void:
 func _move_piece(piece: Piece, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var prev_row: int = piece.current_row
 
-	var target_piece := get_piece(col, row)
+	var target_piece := game_state.get_piece(col, row)
 	if target_piece != null:
 		move_record.captured_promoted = target_piece.is_promoted
 		capture_piece(target_piece)
@@ -365,15 +356,13 @@ func _cancel_move(piece: Piece) -> void:
 
 
 func _update_piece_data(piece: Piece, col: int, row: int) -> void:
-	update_board_state(piece.current_col, piece.current_row, col, row, piece)
+	game_state.update_board_state(piece.current_col, piece.current_row, col, row, piece)
 	piece.current_col = col
 	piece.current_row = row
 
 
 func _update_piece_position(piece: Piece, col: int, row: int) -> void:
-	var new_x := (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-	var new_y := (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-	piece.position = Vector2(new_x, new_y)
+	piece.position = GameConfig.cell_to_position(col, row)
 
 
 func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
@@ -412,20 +401,20 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 
 
 func _undo_last_move() -> void:
-	if move_history.is_empty():
+	if game_state.move_history.is_empty():
 		return
 
 	if not is_game_active:
-		current_turn -= 1
+		game_state.current_turn -= 1
 		move_history_panel.remove_last_move()
 
-	var last_move: MoveRecord = move_history.pop_back()
-	repetition_tracker.undo()
+	var last_move: MoveRecord = game_state.move_history.pop_back()
+	game_state.repetition_tracker.undo()
 	var piece := last_move.piece
 
 	if last_move.from_col == -1 and last_move.from_row == -1:
 		# 持ち駒から打った
-		board_grid[last_move.to_col][last_move.to_row] = null
+		game_state.remove_piece(last_move.to_col, last_move.to_row)
 
 		piece.current_col = -1
 		piece.current_row = -1
@@ -436,7 +425,7 @@ func _undo_last_move() -> void:
 			player_piece_stand.add_piece(piece, true)
 	else:
 		# 盤上の移動
-		update_board_state(piece.current_col, piece.current_row, last_move.from_col, last_move.from_row, piece)
+		game_state.update_board_state(piece.current_col, piece.current_row, last_move.from_col, last_move.from_row, piece)
 		piece.current_col = last_move.from_col
 		piece.current_row = last_move.from_row
 
@@ -460,14 +449,14 @@ func _undo_last_move() -> void:
 
 		captured.current_col = last_move.to_col
 		captured.current_row = last_move.to_row
-		board_grid[captured.current_col][captured.current_row] = captured
+		game_state.update_board_state(-1, -1, captured.current_col, captured.current_row, captured)
 
 		_update_piece_position(captured, captured.current_col, captured.current_row)
 
 		if source_stand is PieceStand:
 			source_stand.update_layout(true)
 
-	current_turn -= 1
+	game_state.current_turn -= 1
 	is_game_active = true
 	_update_last_move_highlight()
 	_update_turn_display()
@@ -475,7 +464,7 @@ func _undo_last_move() -> void:
 	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
 
-	if current_turn <= 0:
+	if game_state.current_turn <= 0:
 		engine_worker.reset()
 		win_rate_bar.reset_bar(false)
 	else:
@@ -483,22 +472,22 @@ func _undo_last_move() -> void:
 
 
 func _update_last_move_highlight() -> void:
-	if move_history.is_empty():
+	if game_state.move_history.is_empty():
 		board.clear_last_move_highlight()
 	else:
-		var last_record: MoveRecord = move_history.back()
+		var last_record: MoveRecord = game_state.move_history.back()
 		board.update_last_move_highlight(last_record.to_col, last_record.to_row)
 
 
 func _update_turn_display() -> void:
-	var current_side := "後手番" if current_turn % 2 != 0 else "先手番"
+	var current_side := "後手番" if game_state.is_gote_turn() else "先手番"
 	turn_label.text = current_side
 
 
 func _is_checkmate(target_is_enemy: bool) -> bool:
 	for col in range(GameConfig.BOARD_COLS):
 		for row in range(GameConfig.BOARD_ROWS):
-			var piece := get_piece(col, row)
+			var piece := game_state.get_piece(col, row)
 
 			if piece != null and piece.is_enemy == target_is_enemy:
 				var moves := piece.get_legal_moves()
@@ -519,28 +508,16 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 
 
 func _current_position_hash() -> int:
-	var is_enemy := current_turn % 2 != 0
-	return _shogi_engine.get_position_hash(self, is_enemy)
-
-
-func get_piece(col: int, row: int) -> Piece:
-	return board_grid[col][row]
-
-
-func is_cell_empty(col: int, row: int) -> bool:
-	return board_grid[col][row] == null
+	return _shogi_engine.get_position_hash(self, game_state.is_gote_turn())
 
 
 func update_board_state(old_col: int, old_row: int, new_col: int, new_row: int, piece_obj: Piece) -> void:
-	if old_col != -1 and old_row != -1:
-		board_grid[old_col][old_row] = null
-
-	board_grid[new_col][new_row] = piece_obj
+	game_state.update_board_state(old_col, old_row, new_col, new_row, piece_obj)
 
 
 func capture_piece(piece: Piece) -> void:
 	if piece.current_col != -1 and piece.current_row != -1:
-		board_grid[piece.current_col][piece.current_row] = null
+		game_state.remove_piece(piece.current_col, piece.current_row)
 
 	if piece.is_enemy:
 		player_piece_stand.add_piece(piece)
