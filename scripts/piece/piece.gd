@@ -3,6 +3,9 @@ class_name Piece
 extends Area2D
 
 
+signal clicked(piece: Piece)
+
+
 enum Type {
 	KING,
 	ROOK,
@@ -50,18 +53,15 @@ const PIECE_DATA = {
 }
 
 
-@onready var label = $Label
+@onready var label: Label = $Label
 
 
-var piece_type = Type.PAWN
-var is_enemy = false
-var is_promoted = false
-var is_held = false
-var current_col = -1
-var current_row = -1
-var main: Node
-
-static var _shogi_engine: ShogiEngine = ShogiEngine.new()
+var piece_type: Type = Type.PAWN
+var is_enemy: bool = false
+var is_promoted: bool = false
+var is_held: bool = false
+var current_col: int = -1
+var current_row: int = -1
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -73,24 +73,12 @@ func _process(_delta: float) -> void:
 func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		if event.is_pressed():
-			main.handle_piece_input(self)
+			clicked.emit(self)
 			viewport.set_input_as_handled()
 
 
-func is_legal_move(target_col: int, target_row: int) -> bool:
-	return _shogi_engine.is_legal_move(main, self, target_col, target_row)
-
-
-func is_legal_drop(target_col: int, target_row: int) -> bool:
-	return _shogi_engine.is_legal_drop(main, self, target_col, target_row)
-
-
-func get_legal_moves() -> Array[Vector2i]:
-	return _shogi_engine.get_legal_moves(main, self)
-
-
-func get_legal_drops() -> Array[Vector2i]:
-	return _shogi_engine.get_legal_drops(main, self)
+func is_in_hand() -> bool:
+	return current_col == -1 and current_row == -1
 
 
 func set_promoted(_is_promoted: bool) -> void:
@@ -98,20 +86,15 @@ func set_promoted(_is_promoted: bool) -> void:
 	_update_display()
 
 
-func init_pos(col: int, row: int, type: Type, _is_enemy: bool, _main: Node) -> void:
+func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
 	current_col = col
 	current_row = row
 	piece_type = type
 	is_enemy = _is_enemy
-	main = _main
 
 	_update_display()
 
-	var new_x = (col * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-	var new_y = (row * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-	position = Vector2(new_x, new_y)
-
-	main.update_board_state(-1, -1, col, row, self)
+	position = GameConfig.cell_to_position(col, row)
 
 
 func refresh_display() -> void:
@@ -123,8 +106,8 @@ func _update_display() -> void:
 		label.text = "？"
 		return
 
-	var data = PIECE_DATA[piece_type]
-	var disp_text = data.get("default", "？")
+	var data: Dictionary = PIECE_DATA[piece_type]
+	var disp_text: String = data.get("default", "？")
 	if is_promoted and data.has("promoted"):
 		disp_text = data["promoted"]
 	elif is_enemy and data.has("enemy"):
