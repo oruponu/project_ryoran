@@ -20,8 +20,7 @@ var game_state := GameState.new()
 var board_grid: Array:
 	get:
 		return game_state.board_grid
-var holding_piece: Piece = null
-var current_legal_coords: Array[Vector2i] = []
+var input_controller: InputController
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
@@ -41,12 +40,15 @@ func _ready() -> void:
 
 	_shogi_engine.is_enemy_side = true
 
+	input_controller = InputController.new(game_state, board, _shogi_engine, self)
+	input_controller.move_submitted.connect(_on_move_submitted)
+
 	_reset_game()
 
 
 func _on_piece_spawned(piece: Piece) -> void:
 	game_state.register_piece(piece)
-	piece.clicked.connect(handle_piece_input)
+	piece.clicked.connect(_on_piece_clicked)
 
 
 func _on_new_game_button_pressed() -> void:
@@ -95,8 +97,7 @@ func _update_button_states() -> void:
 
 func _reset_game() -> void:
 	game_state.reset()
-	holding_piece = null
-	current_legal_coords.clear()
+	input_controller.reset()
 	is_game_active = true
 	is_ai_thinking = false
 
@@ -116,47 +117,14 @@ func _reset_game() -> void:
 	check_label.cancel_animation()
 
 
-func handle_piece_input(piece: Piece) -> void:
+func _on_piece_clicked(piece: Piece) -> void:
 	if not is_game_active or is_ai_thinking:
 		return
 
-	if holding_piece == null:
-		_pick_up(piece)
-	else:
-		_attempt_place(holding_piece)
+	input_controller.handle_click(piece)
 
 
-func _pick_up(piece: Piece) -> void:
-	var is_enemy_turn := game_state.is_gote_turn()
-	if piece.is_enemy != is_enemy_turn:
-		return
-
-	holding_piece = piece
-	piece.is_held = true
-	piece.z_index = 10
-
-	current_legal_coords = []
-	if piece.is_in_hand():
-		var stand := piece.get_parent()
-		if stand is PieceStand:
-			stand.update_layout()
-		current_legal_coords = _shogi_engine.get_legal_drops(self, piece)
-	else:
-		current_legal_coords = _shogi_engine.get_legal_moves(self, piece)
-
-	board.show_guides(current_legal_coords)
-
-
-func _attempt_place(piece: Piece) -> void:
-	var target_pos := GameConfig.position_to_cell(board.to_local(piece.global_position))
-	var col := target_pos.x
-	var row := target_pos.y
-
-	# 合法手でないならキャンセル
-	if not target_pos in current_legal_coords:
-		_cancel_move(piece)
-		return
-
+func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 	var move_record := MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
 
 	if piece.is_in_hand():
@@ -172,17 +140,11 @@ func _attempt_place(piece: Piece) -> void:
 
 	game_state.move_history.append(move_record)
 
-	holding_piece = null
 	_finish_turn(piece)
 
 
 func _finish_turn(piece: Piece) -> void:
-	piece.is_held = false
-	piece.z_index = 0
-
-	board.clear_guides()
-
-	holding_piece = null
+	input_controller.release_holding(piece)
 
 	game_state.current_turn += 1
 	_update_button_states()
@@ -344,22 +306,6 @@ func _drop_piece(piece: Piece, col: int, row: int) -> void:
 
 	if source_stand is PieceStand:
 		source_stand.update_layout()
-
-
-func _cancel_move(piece: Piece) -> void:
-	piece.is_held = false
-	piece.z_index = 0
-
-	board.clear_guides()
-
-	holding_piece = null
-
-	if piece.is_in_hand():
-		var stand := piece.get_parent()
-		if stand is PieceStand:
-			stand.update_layout()
-	else:
-		_update_piece_position(piece, piece.current_col, piece.current_row)
 
 
 func _update_piece_data(piece: Piece, col: int, row: int) -> void:
