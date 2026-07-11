@@ -2,10 +2,10 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <string>
 
 using namespace godot;
 using Shogi::Coord;
@@ -25,25 +25,15 @@ ShogiEngine::ShogiEngine() {
 }
 
 void ShogiEngine::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("set_is_enemy_side", "is_enemy_side"), &ShogiEngine::set_is_enemy_side);
-	ClassDB::bind_method(D_METHOD("get_is_enemy_side"), &ShogiEngine::get_is_enemy_side);
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "is_enemy_side"), "set_is_enemy_side", "get_is_enemy_side");
-
-	ClassDB::bind_method(D_METHOD("is_legal_move", "main_node", "piece_obj", "target_col", "target_row"),
-			&ShogiEngine::is_legal_move);
-	ClassDB::bind_method(D_METHOD("is_legal_drop", "main_node", "piece_obj", "target_col", "target_row"),
-			&ShogiEngine::is_legal_drop);
-	ClassDB::bind_method(D_METHOD("get_legal_moves", "main_node", "piece_obj"), &ShogiEngine::get_legal_moves);
-	ClassDB::bind_method(D_METHOD("get_legal_drops", "main_node", "piece_obj"), &ShogiEngine::get_legal_drops);
-	ClassDB::bind_method(D_METHOD("is_king_safe_after_move", "main_node", "piece_obj", "target_col", "target_row"),
-			&ShogiEngine::is_king_safe_after_move);
-	ClassDB::bind_method(D_METHOD("is_dead_end", "main_node", "piece_obj", "to_row"), &ShogiEngine::is_dead_end);
-	ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
-	ClassDB::bind_method(D_METHOD("get_position_hash", "main_node", "is_enemy"), &ShogiEngine::get_position_hash);
-	ClassDB::bind_method(D_METHOD("get_position_hash_sfen", "sfen"), &ShogiEngine::get_position_hash_sfen);
+	ClassDB::bind_method(D_METHOD("get_legal_moves", "sfen", "col", "row"), &ShogiEngine::get_legal_moves);
+	ClassDB::bind_method(D_METHOD("get_legal_drops", "sfen", "piece_type"), &ShogiEngine::get_legal_drops);
+	ClassDB::bind_method(D_METHOD("is_king_in_check", "sfen", "is_enemy"), &ShogiEngine::is_king_in_check);
+	ClassDB::bind_method(D_METHOD("has_any_legal_move", "sfen"), &ShogiEngine::has_any_legal_move);
+	ClassDB::bind_method(D_METHOD("get_position_hash", "sfen"), &ShogiEngine::get_position_hash);
+	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_enemy", "to_row"), &ShogiEngine::is_dead_end);
 
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
-	ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
+	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 }
 
@@ -84,47 +74,22 @@ void ShogiEngine::load_book_from_file(const String &path) {
 	UtilityFunctions::print("Book loaded. Total positions: ", total_hashes);
 }
 
-bool ShogiEngine::is_legal_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row) {
-	if (!piece_obj) {
-		return false;
-	}
-
-	BoardState board(main_node, turn_to_move_);
-	int current_col = piece_obj->get("current_col");
-	int current_row = piece_obj->get("current_row");
-
-	return MoveGenerator::is_legal_move(board, { current_col, current_row }, { target_col, target_row });
-}
-
-bool ShogiEngine::is_legal_drop(Node2D *main_node, Object *piece_obj, int target_col, int target_row) {
-	if (!piece_obj) {
-		return false;
-	}
-
-	int piece_type = piece_obj->get("piece_type");
-	bool is_enemy = piece_obj->get("is_enemy");
-
-	BoardState board(main_node, is_enemy ? Turn::GOTE : Turn::SENTE);
-
-	return MoveGenerator::is_legal_drop(board, static_cast<PieceType>(piece_type), is_enemy, { target_col, target_row });
-}
-
-TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *piece_obj) {
+TypedArray<Vector2i> ShogiEngine::get_legal_moves(const String &sfen, int col, int row) {
 	TypedArray<Vector2i> result;
-	if (!piece_obj) {
+
+	Coord from{ col, row };
+	if (!from.is_valid()) {
+		UtilityFunctions::push_error("get_legal_moves: invalid coord (", col, ", ", row, ")");
 		return result;
 	}
 
-	BoardState board(main_node, turn_to_move_);
-	int current_col = piece_obj->get("current_col");
-	int current_row = piece_obj->get("current_row");
-	Coord from{ current_col, current_row };
+	BoardState board(std::string(sfen.utf8().get_data()));
 
-	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			Coord to{ col, row };
+	for (int to_col = 0; to_col < Shogi::BOARD_COLS; ++to_col) {
+		for (int to_row = 0; to_row < Shogi::BOARD_ROWS; ++to_row) {
+			Coord to{ to_col, to_row };
 			if (MoveGenerator::is_legal_move(board, from, to)) {
-				result.append(Vector2i(col, row));
+				result.append(Vector2i(to_col, to_row));
 			}
 		}
 	}
@@ -132,16 +97,16 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(Node2D *main_node, Object *pie
 	return result;
 }
 
-TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *piece_obj) {
+TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_type) {
 	TypedArray<Vector2i> result;
-	if (!piece_obj) {
+
+	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
+		UtilityFunctions::push_error("get_legal_drops: invalid piece_type (", piece_type, ")");
 		return result;
 	}
 
-	int piece_type = piece_obj->get("piece_type");
-	bool is_enemy = piece_obj->get("is_enemy");
-
-	BoardState board(main_node, is_enemy ? Turn::GOTE : Turn::SENTE);
+	BoardState board(std::string(sfen.utf8().get_data()));
+	bool is_enemy = (board.get_turn_to_move() == Turn::GOTE);
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
@@ -155,60 +120,39 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(Node2D *main_node, Object *pie
 	return result;
 }
 
-bool ShogiEngine::is_king_safe_after_move(Node2D *main_node, Object *piece_obj, int target_col, int target_row) {
-	if (!piece_obj) {
-		return false;
-	}
-
-	BoardState board(main_node, turn_to_move_);
-	int piece_type = piece_obj->get("piece_type");
-	int current_col = piece_obj->get("current_col");
-	int current_row = piece_obj->get("current_row");
-	bool is_enemy = piece_obj->get("is_enemy");
-	bool is_promoted = piece_obj->get("is_promoted");
-
-	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
-	Coord from{ current_col, current_row };
-	Coord to{ target_col, target_row };
-
-	if (from.is_valid()) {
-		board.clear_cell(from);
-	}
-
-	board.set_cell(to, static_cast<PieceType>(piece_type), turn, is_promoted);
-
-	return !MoveGenerator::is_king_in_check(board, turn);
-}
-
-bool ShogiEngine::is_dead_end(Node2D *main_node, Object *piece_obj, int to_row) {
-	if (!piece_obj) {
-		return false;
-	}
-
-	int piece_type = piece_obj->get("piece_type");
-	bool is_enemy = piece_obj->get("is_enemy");
-
-	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_enemy, to_row);
-}
-
-bool ShogiEngine::is_king_in_check(Node2D *main_node, bool is_enemy) {
-	BoardState board(main_node, turn_to_move_);
+bool ShogiEngine::is_king_in_check(const String &sfen, bool is_enemy) {
+	BoardState board(std::string(sfen.utf8().get_data()));
 
 	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 
 	return MoveGenerator::is_king_in_check(board, turn);
 }
 
-int64_t ShogiEngine::get_position_hash(Node2D *main_node, bool is_enemy) {
-	// 千日手判定用の局面のハッシュ値
-	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
-	BoardState board(main_node, turn);
+bool ShogiEngine::has_any_legal_move(const String &sfen) {
+	BoardState board(std::string(sfen.utf8().get_data()));
+
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list);
+
+	return !move_list.is_empty();
+}
+
+int64_t ShogiEngine::get_position_hash(const String &sfen) {
+	BoardState board(std::string(sfen.utf8().get_data()));
 	return static_cast<int64_t>(board.get_zobrist_hash());
 }
 
-int64_t ShogiEngine::get_position_hash_sfen(const String &sfen) {
-	BoardState board(std::string(sfen.utf8().get_data()));
-	return static_cast<int64_t>(board.get_zobrist_hash());
+bool ShogiEngine::is_dead_end(int piece_type, bool is_enemy, int to_row) {
+	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
+		UtilityFunctions::push_error("is_dead_end: invalid piece_type (", piece_type, ")");
+		return false;
+	}
+
+	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_enemy, to_row);
+}
+
+void ShogiEngine::update_state_from_sfen(const String &sfen) {
+	current_state_ = BoardState(std::string(sfen.utf8().get_data()));
 }
 
 void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks) {
@@ -223,10 +167,6 @@ void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedB
 		c.push_back(in_checks[i] != 0);
 	}
 	ai_player_.set_game_history(h, c);
-}
-
-void ShogiEngine::update_state(Node2D *main_node) {
-	current_state_ = BoardState(main_node, turn_to_move_);
 }
 
 Dictionary ShogiEngine::search_best_move() {

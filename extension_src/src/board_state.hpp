@@ -4,7 +4,7 @@
 #include "bitboard.hpp"
 #include "evaluator.hpp"
 #include "shogi_utils.hpp"
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/variant/string.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -82,7 +82,6 @@ private:
 public:
 	BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
 	explicit BoardState(const std::string &sfen);
-	explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
 	[[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }
 	[[nodiscard]] int get_score() const { return score_ + Evaluator::calculate_spatial_score(*this); }

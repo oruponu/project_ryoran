@@ -3,7 +3,6 @@
 #include <array>
 #include <cctype>
 #include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <string>
 #include <vector>
@@ -68,78 +67,6 @@ BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(
 	pawn_columns_[static_cast<int>(Turn::GOTE)] = 0;
 
 	zobrist_hash_ = calculate_zobrist_hash();
-
-	build_bitboard();
-}
-
-BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_move) {
-	if (main_node == nullptr) {
-		return;
-	}
-
-	// 盤上の駒を読み込み
-	Array board_grid = main_node->get("board_grid");
-
-	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-		if (col >= board_grid.size()) {
-			break;
-		}
-
-		Array row_array = board_grid[col];
-
-		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			if (row >= row_array.size()) {
-				break;
-			}
-
-			Variant cell_data = row_array[row];
-			Object *piece = Object::cast_to<Object>(cell_data);
-
-			int index = col * Shogi::BOARD_ROWS + row;
-
-			if (piece != nullptr) {
-				int piece_type = piece->get("piece_type");
-				bool is_enemy = piece->get("is_enemy");
-				bool is_promoted = piece->get("is_promoted");
-
-				board_[index] =
-						Cell(static_cast<PieceType>(piece_type), is_enemy ? Turn::GOTE : Turn::SENTE, is_promoted);
-			} else {
-				board_[index] = Cell();
-			}
-		}
-	}
-
-	update_king_position_cache();
-	update_pawn_columns_cache();
-
-	// 持ち駒を読み込み
-	Node *stands[2];
-	stands[static_cast<int>(Turn::SENTE)] = Object::cast_to<Node>(main_node->get("player_piece_stand"));
-	stands[static_cast<int>(Turn::GOTE)] = Object::cast_to<Node>(main_node->get("enemy_piece_stand"));
-
-	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
-		if (stands[static_cast<int>(turn)] == nullptr) {
-			continue;
-		}
-
-		Array children = stands[static_cast<int>(turn)]->get_children();
-		for (int i = 0; i < children.size(); ++i) {
-			Object *piece = Object::cast_to<Object>(children[i]);
-			if (piece != nullptr) {
-				Variant v_type = piece->get("piece_type");
-				if (v_type.get_type() == Variant::INT) {
-					int piece_type = v_type;
-					if (piece_type >= 0 && piece_type < Shogi::PIECE_TYPE_COUNT) {
-						hand_[static_cast<int>(turn)][piece_type]++;
-					}
-				}
-			}
-		}
-	}
-
-	zobrist_hash_ = calculate_zobrist_hash();
-	score_ = Evaluator::calculate_score(*this);
 
 	build_bitboard();
 }
