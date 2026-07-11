@@ -317,6 +317,18 @@ bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_enemy, int to_row)
 	}
 }
 
+bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row) {
+	if (is_promoted || piece_type == PieceType::KING || piece_type == PieceType::GOLD) {
+		return false;
+	}
+
+	const int zone_min = is_enemy ? 6 : 0;
+	const int zone_max = is_enemy ? 8 : 2;
+	const bool from_in_zone = (zone_min <= from_row && from_row <= zone_max);
+	const bool to_in_zone = (zone_min <= to_row && to_row <= zone_max);
+	return from_in_zone || to_in_zone;
+}
+
 bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn turn, int col) {
 	if (piece_type != PieceType::PAWN) {
 		return false;
@@ -436,9 +448,6 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 	const Bitboard my_pieces_bitboard = board.bitboard_side_[static_cast<int>(current_turn)];
 	const Bitboard opponent_pieces_bitboard = board.bitboard_side_[static_cast<int>(opponent_turn)];
 	const Bitboard occupancy = board.bitboard_all_;
-	const int promotion_row_min = (current_turn == Turn::SENTE) ? 0 : 6;
-	const int promotion_row_max = (current_turn == Turn::SENTE) ? 2 : 8;
-	auto is_promotion_rank = [&](int row) { return (row >= promotion_row_min && row <= promotion_row_max); };
 	PinMasks pin_masks = calculate_pin_masks(board, board.turn_to_move_);
 
 	Bitboard checkers = get_checkers(board, current_turn);
@@ -559,25 +568,15 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 					}
 				}
 
-				bool can_promote = false;
-				bool must_promote = false;
-
 				// 成り判定
-				if (!is_promoted && type != PieceType::KING && type != PieceType::GOLD) {
-					if (is_promotion_rank(from.row) || is_promotion_rank(to.row)) {
-						can_promote = true;
-					}
-				}
-
-				if (!is_promoted && is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
-					must_promote = true;
-				}
+				bool promotable = can_promote(type, is_promoted, current_turn == Turn::GOTE, from.row, to.row);
+				bool must_promote = !is_promoted && is_dead_end(type, current_turn == Turn::GOTE, to.row);
 
 				if (!must_promote) {
 					move_list.push(Shogi::Move(from.col, from.row, to.col, to.row, type, false, false, is_capture));
 				}
 
-				if (can_promote) {
+				if (promotable) {
 					move_list.push(Shogi::Move(from.col, from.row, to.col, to.row, type, true, false, is_capture));
 				}
 			}

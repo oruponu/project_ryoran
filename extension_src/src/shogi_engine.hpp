@@ -37,6 +37,7 @@ public:
 	[[nodiscard]] bool has_any_legal_move(const String &sfen);
 	[[nodiscard]] int64_t get_position_hash(const String &sfen);
 	[[nodiscard]] bool is_dead_end(int piece_type, bool is_enemy, int to_row);
+	[[nodiscard]] bool can_promote(int piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row);
 
 	void set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks);
 	void update_state_from_sfen(const String &sfen);
