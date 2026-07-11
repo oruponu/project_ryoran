@@ -17,9 +17,6 @@ extends Node2D
 
 
 var game_state := GameState.new()
-var board_grid: Array:
-	get:
-		return game_state.board_grid
 var sfen_serializer: SfenSerializer
 var input_controller: InputController
 var move_executor: MoveExecutor
@@ -36,15 +33,13 @@ func _ready() -> void:
 
 	sfen_serializer = SfenSerializer.new(game_state, player_piece_stand, enemy_piece_stand)
 
-	engine_worker.setup(self, game_state.repetition_tracker)
+	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
 	board.piece_spawned.connect(_on_piece_spawned)
 
-	_shogi_engine.is_enemy_side = true
-
-	input_controller = InputController.new(game_state, board, _shogi_engine, self)
+	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
 
 	move_executor = MoveExecutor.new(
@@ -124,7 +119,7 @@ func _reset_game() -> void:
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board()
-	var initial_in_check := _shogi_engine.is_king_in_check(self, game_state.is_gote_turn())
+	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.current_turn)
@@ -145,7 +140,7 @@ func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 		move_executor.execute_drop(piece, col, row)
 	else:
 		var mode: PromotionMode.Type
-		if _shogi_engine.is_dead_end(self, piece, row):
+		if _shogi_engine.is_dead_end(piece.piece_type, piece.is_enemy, row):
 			mode = PromotionMode.Type.FORCE_PROMOTE
 		else:
 			mode = PromotionMode.Type.ASK_USER
@@ -170,9 +165,10 @@ func _finish_turn(piece: Piece) -> void:
 	move_history_panel.add_move(game_state.current_turn, record, prev_record)
 
 	var stm_is_enemy := game_state.is_gote_turn()
-	var in_check := _shogi_engine.is_king_in_check(self, stm_is_enemy)
+	var sfen := sfen_serializer.to_sfen()
+	var in_check := _shogi_engine.is_king_in_check(sfen, stm_is_enemy)
 
-	var rep_count := game_state.repetition_tracker.record(_current_position_hash(), in_check)
+	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
 	if rep_count >= GameConfig.SENNICHITE_COUNT:
 		match game_state.repetition_tracker.classify_sennichite():
 			RepetitionTracker.STM_PERPETUAL:
@@ -184,7 +180,7 @@ func _finish_turn(piece: Piece) -> void:
 		return
 
 	if in_check:
-		if _is_checkmate(stm_is_enemy):
+		if not _shogi_engine.has_any_legal_move(sfen):
 			if stm_is_enemy == EngineWorker.AI_IS_ENEMY:
 				await _finish_game(stm_is_enemy)
 				return
@@ -331,31 +327,8 @@ func _update_turn_display() -> void:
 	turn_label.text = current_side
 
 
-func _is_checkmate(target_is_enemy: bool) -> bool:
-	for col in range(GameConfig.BOARD_COLS):
-		for row in range(GameConfig.BOARD_ROWS):
-			var piece := game_state.get_piece(col, row)
-
-			if piece != null and piece.is_enemy == target_is_enemy:
-				var moves := _shogi_engine.get_legal_moves(self, piece)
-				for move in moves:
-					if _shogi_engine.is_king_safe_after_move(self, piece, move.x, move.y):
-						return false
-
-	var target_stand: PieceStand = enemy_piece_stand if target_is_enemy else player_piece_stand
-	for child in target_stand.get_children():
-		if child is Piece:
-			var piece := child as Piece
-			var drops := _shogi_engine.get_legal_drops(self, piece)
-			for drop in drops:
-				if _shogi_engine.is_king_safe_after_move(self, piece, drop.x, drop.y):
-					return false
-
-	return true
-
-
 func _current_position_hash() -> int:
-	return _shogi_engine.get_position_hash(self, game_state.is_gote_turn())
+	return _shogi_engine.get_position_hash(sfen_serializer.to_sfen())
 
 
 func request_new_game_decision() -> bool:

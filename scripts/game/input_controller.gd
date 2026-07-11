@@ -12,14 +12,14 @@ var current_legal_coords: Array[Vector2i] = []
 var _game_state: GameState
 var _board: Board
 var _shogi_engine: ShogiEngine
-var _facade: Node2D
+var _serializer: SfenSerializer
 
 
-func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, facade: Node2D) -> void:
+func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, serializer: SfenSerializer) -> void:
 	_game_state = game_state
 	_board = board
 	_shogi_engine = shogi_engine
-	_facade = facade
+	_serializer = serializer
 
 
 func handle_click(piece: Piece) -> void:
@@ -52,13 +52,14 @@ func _pick_up(piece: Piece) -> void:
 	piece.z_index = 10
 
 	current_legal_coords = []
+	var sfen := _serializer.to_sfen()
 	if piece.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
 			stand.update_layout()
-		current_legal_coords = _shogi_engine.get_legal_drops(_facade, piece)
+		current_legal_coords = _shogi_engine.get_legal_drops(sfen, piece.piece_type)
 	else:
-		current_legal_coords = _shogi_engine.get_legal_moves(_facade, piece)
+		current_legal_coords = _shogi_engine.get_legal_moves(sfen, piece.current_col, piece.current_row)
 
 	_board.show_guides(current_legal_coords)
 

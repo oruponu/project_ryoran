@@ -10,7 +10,7 @@ signal search_completed(move: Dictionary)
 signal analysis_completed(win_rate: float)
 
 
-var _main_node: Node2D
+var _serializer: SfenSerializer
 var _tracker: RepetitionTracker
 var _ai_engine: ShogiEngine = ShogiEngine.new()
 var _ai_thread: Thread
@@ -19,11 +19,6 @@ var _eval_thread: Thread
 var _analysis_pending: bool = false
 var _analysis_suspended: bool = false
 var _generation: int = 0
-
-
-func _ready() -> void:
-	_ai_engine.is_enemy_side = AI_IS_ENEMY
-	_eval_engine.is_enemy_side = false
 
 
 func _exit_tree() -> void:
@@ -36,8 +31,8 @@ func _exit_tree() -> void:
 		_eval_thread = null
 
 
-func setup(main_node: Node2D, tracker: RepetitionTracker) -> void:
-	_main_node = main_node
+func setup(serializer: SfenSerializer, tracker: RepetitionTracker) -> void:
+	_serializer = serializer
 	_tracker = tracker
 
 
@@ -46,7 +41,7 @@ func request_search() -> bool:
 		push_error("AI探索スレッドを起動できません（既に実行中です）")
 		return false
 
-	_ai_engine.update_state(_main_node)
+	_ai_engine.update_state_from_sfen(_serializer.to_sfen())
 	_ai_engine.set_game_history(_tracker.history_hashes(), _tracker.history_in_checks())
 
 	var generation := _generation
@@ -65,7 +60,7 @@ func request_analysis() -> void:
 		_analysis_pending = true
 		return
 
-	_eval_engine.update_state(_main_node)
+	_eval_engine.update_state_from_sfen(_serializer.to_sfen())
 	_eval_engine.set_game_history(_tracker.history_hashes(), _tracker.history_in_checks())
 
 	var generation := _generation
