@@ -6,6 +6,7 @@
 #include "shogi_utils.hpp"
 #include <godot_cpp/classes/node.hpp>
 #include <optional>
+#include <string>
 #include <vector>
 
 using namespace godot;
@@ -76,8 +77,11 @@ private:
 	void update_king_position_cache();
 	void update_pawn_columns_cache();
 
+	bool parse_sfen(const std::string &sfen);
+
 public:
 	BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
+	explicit BoardState(const std::string &sfen);
 	explicit BoardState(Node *main_node, Shogi::Turn turn_to_move);
 
 	[[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }

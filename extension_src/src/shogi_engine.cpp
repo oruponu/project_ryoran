@@ -40,6 +40,7 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_dead_end", "main_node", "piece_obj", "to_row"), &ShogiEngine::is_dead_end);
 	ClassDB::bind_method(D_METHOD("is_king_in_check", "main_node", "is_enemy"), &ShogiEngine::is_king_in_check);
 	ClassDB::bind_method(D_METHOD("get_position_hash", "main_node", "is_enemy"), &ShogiEngine::get_position_hash);
+	ClassDB::bind_method(D_METHOD("get_position_hash_sfen", "sfen"), &ShogiEngine::get_position_hash_sfen);
 
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
 	ClassDB::bind_method(D_METHOD("update_state", "main_node"), &ShogiEngine::update_state);
@@ -202,6 +203,11 @@ int64_t ShogiEngine::get_position_hash(Node2D *main_node, bool is_enemy) {
 	// 千日手判定用の局面のハッシュ値
 	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 	BoardState board(main_node, turn);
+	return static_cast<int64_t>(board.get_zobrist_hash());
+}
+
+int64_t ShogiEngine::get_position_hash_sfen(const String &sfen) {
+	BoardState board(std::string(sfen.utf8().get_data()));
 	return static_cast<int64_t>(board.get_zobrist_hash());
 }
 

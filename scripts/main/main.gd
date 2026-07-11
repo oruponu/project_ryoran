@@ -20,6 +20,7 @@ var game_state := GameState.new()
 var board_grid: Array:
 	get:
 		return game_state.board_grid
+var sfen_serializer: SfenSerializer
 var input_controller: InputController
 var move_executor: MoveExecutor
 var is_game_active: bool = false
@@ -32,6 +33,8 @@ func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
+
+	sfen_serializer = SfenSerializer.new(game_state, player_piece_stand, enemy_piece_stand)
 
 	engine_worker.setup(self, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
