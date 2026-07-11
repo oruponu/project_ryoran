@@ -9,6 +9,7 @@ var _player_piece_stand: PieceStand
 var _enemy_piece_stand: PieceStand
 var _audio_stream_player: GameAudioPlayer
 var _engine_worker: EngineWorker
+var _shogi_engine: ShogiEngine
 var _promotion_decider: Callable
 
 
@@ -19,6 +20,7 @@ func _init(
 	enemy_piece_stand: PieceStand,
 	audio_stream_player: GameAudioPlayer,
 	engine_worker: EngineWorker,
+	shogi_engine: ShogiEngine,
 	promotion_decider: Callable
 ) -> void:
 	_game_state = game_state
@@ -27,6 +29,7 @@ func _init(
 	_enemy_piece_stand = enemy_piece_stand
 	_audio_stream_player = audio_stream_player
 	_engine_worker = engine_worker
+	_shogi_engine = shogi_engine
 	_promotion_decider = promotion_decider
 
 
@@ -131,35 +134,26 @@ func _update_piece_position(piece: Piece, col: int, row: int) -> void:
 
 
 func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
-	if piece.is_promoted or piece.piece_type == Piece.Type.KING or piece.piece_type == Piece.Type.GOLD:
+	if not _shogi_engine.can_promote(piece.piece_type, piece.is_promoted, piece.is_enemy, prev_row, current_row):
 		return
 
-	var is_in_zone := false
-	if !piece.is_enemy:
-		if current_row <= 2 or prev_row <= 2:
-			is_in_zone = true
-	else:
-		if current_row >= 6 or prev_row >= 6:
-			is_in_zone = true
+	piece.is_held = false
 
-	if is_in_zone:
-		piece.is_held = false
+	var should_promote := false
+	var analysis_suspended := false
+	match mode:
+		PromotionMode.Type.ASK_USER:
+			_engine_worker.suspend_analysis()
+			analysis_suspended = true
+			should_promote = await _promotion_decider.call()
+		PromotionMode.Type.FORCE_PROMOTE:
+			should_promote = true
+		PromotionMode.Type.FORCE_STAY:
+			should_promote = false
 
-		var should_promote := false
-		var analysis_suspended := false
-		match mode:
-			PromotionMode.Type.ASK_USER:
-				_engine_worker.suspend_analysis()
-				analysis_suspended = true
-				should_promote = await _promotion_decider.call()
-			PromotionMode.Type.FORCE_PROMOTE:
-				should_promote = true
-			PromotionMode.Type.FORCE_STAY:
-				should_promote = false
+	if should_promote:
+		piece.set_promoted(true)
+		move_record.is_promotion = true
 
-		if should_promote:
-			piece.set_promoted(true)
-			move_record.is_promotion = true
-
-		if analysis_suspended:
-			_engine_worker.resume_analysis()
+	if analysis_suspended:
+		_engine_worker.resume_analysis()

@@ -49,6 +49,7 @@ func _ready() -> void:
 		enemy_piece_stand,
 		audio_stream_player,
 		engine_worker,
+		_shogi_engine,
 		request_promotion_decision
 	)
 
