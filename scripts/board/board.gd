@@ -6,6 +6,9 @@ extends Node2D
 @export var piece_scene: PackedScene
 
 
+signal piece_spawned(piece: Piece)
+
+
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const TEXT_COLOR = Color(0.0, 0.0, 0.0)
@@ -67,15 +70,15 @@ func _draw_coordinates() -> void:
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
 
-func setup_starting_board(main: Node) -> void:
+func setup_starting_board() -> void:
 	for x in range(9):
-		spawn_piece(x, 6, Piece.Type.PAWN, false, main)
-		spawn_piece(8 - x, 2, Piece.Type.PAWN, true, main)
+		spawn_piece(x, 6, Piece.Type.PAWN, false)
+		spawn_piece(8 - x, 2, Piece.Type.PAWN, true)
 
-	spawn_piece(1, 7, Piece.Type.BISHOP, false, main)
-	spawn_piece(7, 7, Piece.Type.ROOK, false, main)
-	spawn_piece(7, 1, Piece.Type.BISHOP, true, main)
-	spawn_piece(1, 1, Piece.Type.ROOK, true, main)
+	spawn_piece(1, 7, Piece.Type.BISHOP, false)
+	spawn_piece(7, 7, Piece.Type.ROOK, false)
+	spawn_piece(7, 1, Piece.Type.BISHOP, true)
+	spawn_piece(1, 1, Piece.Type.ROOK, true)
 
 	var bottom_row_types = [
 		Piece.Type.LANCE, Piece.Type.KNIGHT, Piece.Type.SILVER, Piece.Type.GOLD,
@@ -84,18 +87,19 @@ func setup_starting_board(main: Node) -> void:
 	]
 	for x in range(9):
 		var type = bottom_row_types[x]
-		spawn_piece(x, 8, type, false, main)
-		spawn_piece(8 - x, 0, type, true, main)
+		spawn_piece(x, 8, type, false)
+		spawn_piece(8 - x, 0, type, true)
 
 
-func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool, main: Node) -> void:
+func spawn_piece(x: int, y: int, type: Piece.Type, is_enemy: bool) -> void:
 	if piece_scene == null:
 		push_error("Piece Scene が設定されていません")
 		return
 
-	var piece = piece_scene.instantiate()
+	var piece: Piece = piece_scene.instantiate()
 	add_child(piece)
-	piece.init_pos(x, y, type, is_enemy, main)
+	piece.init_pos(x, y, type, is_enemy)
+	piece_spawned.emit(piece)
 
 
 func clear_pieces() -> void:

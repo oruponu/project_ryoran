@@ -37,9 +37,16 @@ func _ready() -> void:
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
+	board.piece_spawned.connect(_on_piece_spawned)
+
 	_shogi_engine.is_enemy_side = true
 
 	_reset_game()
+
+
+func _on_piece_spawned(piece: Piece) -> void:
+	game_state.register_piece(piece)
+	piece.clicked.connect(handle_piece_input)
 
 
 func _on_new_game_button_pressed() -> void:
@@ -101,7 +108,7 @@ func _reset_game() -> void:
 	_update_turn_display()
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
-	board.setup_starting_board(self)
+	board.setup_starting_board()
 	var initial_in_check := _shogi_engine.is_king_in_check(self, game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
@@ -129,13 +136,13 @@ func _pick_up(piece: Piece) -> void:
 	piece.z_index = 10
 
 	current_legal_coords = []
-	if piece.current_col == -1 and piece.current_row == -1:
+	if piece.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
 			stand.update_layout()
-		current_legal_coords = piece.get_legal_drops()
+		current_legal_coords = _shogi_engine.get_legal_drops(self, piece)
 	else:
-		current_legal_coords = piece.get_legal_moves()
+		current_legal_coords = _shogi_engine.get_legal_moves(self, piece)
 
 	board.show_guides(current_legal_coords)
 
@@ -152,7 +159,7 @@ func _attempt_place(piece: Piece) -> void:
 
 	var move_record := MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
 
-	if piece.current_col == -1 and piece.current_row == -1:
+	if piece.is_in_hand():
 		_drop_piece(piece, col, row)
 	else:
 		var mode: PromotionMode.Type
@@ -262,7 +269,7 @@ func _on_search_completed(move: Dictionary) -> void:
 	var row: int = move.to_row
 	var move_record := MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
 
-	if piece.current_col == -1 and piece.current_row == -1:
+	if piece.is_in_hand():
 		_drop_piece(piece, col, row)
 	else:
 		var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
@@ -347,7 +354,7 @@ func _cancel_move(piece: Piece) -> void:
 
 	holding_piece = null
 
-	if piece.current_col == -1 and piece.current_row == -1:
+	if piece.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
 			stand.update_layout()
@@ -490,7 +497,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 			var piece := game_state.get_piece(col, row)
 
 			if piece != null and piece.is_enemy == target_is_enemy:
-				var moves := piece.get_legal_moves()
+				var moves := _shogi_engine.get_legal_moves(self, piece)
 				for move in moves:
 					if _shogi_engine.is_king_safe_after_move(self, piece, move.x, move.y):
 						return false
@@ -499,7 +506,7 @@ func _is_checkmate(target_is_enemy: bool) -> bool:
 	for child in target_stand.get_children():
 		if child is Piece:
 			var piece := child as Piece
-			var drops := piece.get_legal_drops()
+			var drops := _shogi_engine.get_legal_drops(self, piece)
 			for drop in drops:
 				if _shogi_engine.is_king_safe_after_move(self, piece, drop.x, drop.y):
 					return false
@@ -511,12 +518,8 @@ func _current_position_hash() -> int:
 	return _shogi_engine.get_position_hash(self, game_state.is_gote_turn())
 
 
-func update_board_state(old_col: int, old_row: int, new_col: int, new_row: int, piece_obj: Piece) -> void:
-	game_state.update_board_state(old_col, old_row, new_col, new_row, piece_obj)
-
-
 func capture_piece(piece: Piece) -> void:
-	if piece.current_col != -1 and piece.current_row != -1:
+	if not piece.is_in_hand():
 		game_state.remove_piece(piece.current_col, piece.current_row)
 
 	if piece.is_enemy:
