@@ -1,9 +1,12 @@
 #include "board_state.hpp"
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <string>
+#include <vector>
 
 using namespace godot;
 using Shogi::Coord;
@@ -17,6 +20,29 @@ uint64_t g_zobrist_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi
 uint64_t g_zobrist_hand[2][Shogi::PIECE_TYPE_COUNT][20];
 uint64_t g_zobrist_turn_enemy;
 bool g_zobrist_initialized = false;
+
+std::optional<Shogi::PieceType> piece_type_from_char(char c) {
+	switch (std::toupper(static_cast<unsigned char>(c))) {
+		case 'K':
+			return Shogi::PieceType::KING;
+		case 'R':
+			return Shogi::PieceType::ROOK;
+		case 'B':
+			return Shogi::PieceType::BISHOP;
+		case 'G':
+			return Shogi::PieceType::GOLD;
+		case 'S':
+			return Shogi::PieceType::SILVER;
+		case 'N':
+			return Shogi::PieceType::KNIGHT;
+		case 'L':
+			return Shogi::PieceType::LANCE;
+		case 'P':
+			return Shogi::PieceType::PAWN;
+		default:
+			return std::nullopt;
+	}
+}
 
 } // namespace
 
@@ -116,6 +142,152 @@ BoardState::BoardState(Node *main_node, Turn turn_to_move) : BoardState(turn_to_
 	score_ = Evaluator::calculate_score(*this);
 
 	build_bitboard();
+}
+
+BoardState::BoardState(const std::string &sfen) : BoardState(Turn::SENTE) {
+	if (!parse_sfen(sfen)) {
+		UtilityFunctions::push_error(("Invalid SFEN: " + sfen).c_str());
+
+		// パースに失敗したときは空の盤面に戻す
+		for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
+			board_[i] = Cell();
+		}
+		for (int side = 0; side < 2; ++side) {
+			for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
+				hand_[side][piece_type] = 0;
+			}
+		}
+		turn_to_move_ = Turn::SENTE;
+	}
+
+	update_king_position_cache();
+	update_pawn_columns_cache();
+	zobrist_hash_ = calculate_zobrist_hash();
+	score_ = Evaluator::calculate_score(*this);
+
+	build_bitboard();
+}
+
+bool BoardState::parse_sfen(const std::string &sfen) {
+	std::vector<std::string> fields;
+	std::string current;
+	for (char c : sfen) {
+		if (c == ' ') {
+			if (!current.empty()) {
+				fields.push_back(current);
+				current.clear();
+			}
+		} else {
+			current += c;
+		}
+	}
+	if (!current.empty()) {
+		fields.push_back(current);
+	}
+
+	if (fields.size() != 4) {
+		return false;
+	}
+
+	// 盤面
+	int col = 0;
+	int row = 0;
+	bool promoted = false;
+	for (char c : fields[0]) {
+		if (c == '/') {
+			if (col != Shogi::BOARD_COLS || promoted) {
+				return false;
+			}
+			++row;
+			col = 0;
+			if (row >= Shogi::BOARD_ROWS) {
+				return false;
+			}
+		} else if (c >= '1' && c <= '9') {
+			if (promoted) {
+				return false;
+			}
+			col += c - '0';
+			if (col > Shogi::BOARD_COLS) {
+				return false;
+			}
+		} else if (c == '+') {
+			if (promoted) {
+				return false;
+			}
+			promoted = true;
+		} else {
+			auto type = piece_type_from_char(c);
+			if (!type.has_value() || col >= Shogi::BOARD_COLS) {
+				return false;
+			}
+			if (promoted && (*type == PieceType::KING || *type == PieceType::GOLD)) {
+				return false;
+			}
+			Turn turn = std::isupper(static_cast<unsigned char>(c)) ? Turn::SENTE : Turn::GOTE;
+			board_[col * Shogi::BOARD_ROWS + row] = Cell(*type, turn, promoted);
+			promoted = false;
+			++col;
+		}
+	}
+	if (row != Shogi::BOARD_ROWS - 1 || col != Shogi::BOARD_COLS || promoted) {
+		return false;
+	}
+
+	// 手番
+	if (fields[1] == "b") {
+		turn_to_move_ = Turn::SENTE;
+	} else if (fields[1] == "w") {
+		turn_to_move_ = Turn::GOTE;
+	} else {
+		return false;
+	}
+
+	// 持ち駒
+	if (fields[2] != "-") {
+		int count = 0;
+		bool has_digits = false;
+		for (char c : fields[2]) {
+			if (c >= '0' && c <= '9') {
+				count = count * 10 + (c - '0');
+				has_digits = true;
+				if (count > 18) {
+					return false;
+				}
+			} else {
+				auto type = piece_type_from_char(c);
+				if (!type.has_value() || *type == PieceType::KING) {
+					return false;
+				}
+				if (has_digits && count == 0) {
+					return false;
+				}
+				Turn turn = std::isupper(static_cast<unsigned char>(c)) ? Turn::SENTE : Turn::GOTE;
+				int &slot = hand_[static_cast<int>(turn)][static_cast<int>(*type)];
+				slot += has_digits ? count : 1;
+				if (slot > 18) {
+					return false;
+				}
+				count = 0;
+				has_digits = false;
+			}
+		}
+		if (has_digits) {
+			return false;
+		}
+	}
+
+	// 手数
+	if (fields[3].empty() || fields[3][0] == '0') {
+		return false;
+	}
+	for (char c : fields[3]) {
+		if (c < '0' || c > '9') {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void BoardState::load_zobrist_params(const String &path) {
