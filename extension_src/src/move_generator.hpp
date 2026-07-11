@@ -19,6 +19,7 @@ public:
 	[[nodiscard]] static bool is_legal_drop(BoardState &board, Shogi::PieceType piece_type, bool is_enemy,
 			Shogi::Coord to);
 	[[nodiscard]] static bool is_dead_end(Shogi::PieceType piece_type, bool is_enemy, int to_row);
+	[[nodiscard]] static bool can_promote(Shogi::PieceType piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row);
 	[[nodiscard]] static bool is_king_in_check(const BoardState &board, Shogi::Turn turn);
 	[[nodiscard]] static int see(const BoardState &board, const Shogi::Move &move);
 	static void get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures = false);

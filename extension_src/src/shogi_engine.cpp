@@ -31,6 +31,7 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_any_legal_move", "sfen"), &ShogiEngine::has_any_legal_move);
 	ClassDB::bind_method(D_METHOD("get_position_hash", "sfen"), &ShogiEngine::get_position_hash);
 	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_enemy", "to_row"), &ShogiEngine::is_dead_end);
+	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_enemy", "from_row", "to_row"), &ShogiEngine::can_promote);
 
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
 	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
@@ -149,6 +150,15 @@ bool ShogiEngine::is_dead_end(int piece_type, bool is_enemy, int to_row) {
 	}
 
 	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_enemy, to_row);
+}
+
+bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row) {
+	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
+		UtilityFunctions::push_error("can_promote: invalid piece_type (", piece_type, ")");
+		return false;
+	}
+
+	return MoveGenerator::can_promote(static_cast<PieceType>(piece_type), is_promoted, is_enemy, from_row, to_row);
 }
 
 void ShogiEngine::update_state_from_sfen(const String &sfen) {
