@@ -6,8 +6,6 @@ extends Node2D
 @export var is_enemy: bool = false
 
 
-const BOARD_COLOR = Color(0.85, 0.7, 0.4)
-const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const DISPLAY_ORDER = [
 	PieceState.Type.PAWN,
 	PieceState.Type.LANCE,
@@ -29,8 +27,8 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var rect = Rect2(0, 0, GameConfig.GRID_SIZE + 20, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
-	draw_rect(rect, BOARD_COLOR)
-	draw_rect(rect, LINE_COLOR, false, 2.0)
+	draw_rect(rect, GameConfig.BOARD_COLOR)
+	draw_rect(rect, GameConfig.LINE_COLOR, false, 2.0)
 
 
 func add_piece(piece: Piece, immediate: bool = false) -> void:
