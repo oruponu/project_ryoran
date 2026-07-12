@@ -120,6 +120,7 @@ func _reset_game() -> void:
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.current_turn)
 	check_label.cancel_animation()
+	engine_worker.request_analysis()
 
 
 func _on_piece_clicked(piece: Piece) -> void:
@@ -300,8 +301,8 @@ func _undo_last_move() -> void:
 	if game_state.current_turn <= 0:
 		engine_worker.reset()
 		win_rate_bar.reset_bar(false)
-	else:
-		engine_worker.request_analysis()
+
+	engine_worker.request_analysis()
 
 
 func _update_last_move_highlight() -> void:
