@@ -19,6 +19,7 @@ extends Node2D
 var game_state := GameState.new()
 var sfen_serializer: SfenSerializer
 var state_sfen_serializer: StateSfenSerializer
+var board_view: BoardView
 var input_controller: InputController
 var move_executor: MoveExecutor
 var is_game_active: bool = false
@@ -34,6 +35,7 @@ func _ready() -> void:
 
 	sfen_serializer = SfenSerializer.new(game_state, player_piece_stand, enemy_piece_stand)
 	state_sfen_serializer = StateSfenSerializer.new(game_state)
+	board_view = BoardView.new(game_state, board, player_piece_stand, enemy_piece_stand, board.piece_scene)
 
 	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
@@ -62,6 +64,7 @@ func _on_piece_spawned(piece: Piece) -> void:
 	piece.state = PieceState.new(piece.piece_type, piece.is_enemy, piece.current_col, piece.current_row)
 	game_state.register_piece_state(piece.state)
 	game_state.register_piece(piece)
+	board_view.register(piece.state, piece)
 	piece.clicked.connect(_on_piece_clicked)
 
 
@@ -115,6 +118,7 @@ func _reset_game() -> void:
 	is_game_active = true
 	is_ai_thinking = false
 
+	board_view.clear()
 	board.clear_pieces()
 	player_piece_stand.clear_pieces()
 	enemy_piece_stand.clear_pieces()
