@@ -7,6 +7,7 @@ extends Node2D
 @onready var move_history_panel: MoveHistoryPanel = $MoveHistoryPanel
 @onready var new_game_button: Button = $HBoxContainer/NewGameButton
 @onready var undo_button: Button = $HBoxContainer/UndoButton
+@onready var hint_button: Button = $HBoxContainer/HintButton
 @onready var resign_button: Button = $HBoxContainer/ResignButton
 @onready var turn_label: Label = $CanvasLayer/TurnLabel
 @onready var check_label: CheckLabel = $CanvasLayer/CheckLabel
@@ -23,6 +24,7 @@ var input_controller: InputController
 var move_executor: MoveExecutor
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
+var _hint_move: Dictionary = {}
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
@@ -30,6 +32,7 @@ var _shogi_engine: ShogiEngine = ShogiEngine.new()
 func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)
+	hint_button.pressed.connect(_on_hint_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
 
 	sfen_serializer = SfenSerializer.new(game_state)
@@ -89,17 +92,20 @@ func _update_button_states() -> void:
 	if not is_game_active:
 		new_game_button.disabled = false
 		undo_button.disabled = false
+		hint_button.disabled = true
 		resign_button.disabled = true
 		return
 
 	if is_ai_thinking:
 		new_game_button.disabled = true
 		undo_button.disabled = true
+		hint_button.disabled = true
 		resign_button.disabled = true
 		return
 
 	new_game_button.disabled = false
 	undo_button.disabled = game_state.move_history.is_empty()
+	hint_button.disabled = _hint_move.is_empty()
 	resign_button.disabled = game_state.move_history.is_empty()
 
 
@@ -108,6 +114,7 @@ func _reset_game() -> void:
 	input_controller.reset()
 	is_game_active = true
 	is_ai_thinking = false
+	_clear_hint()
 
 	_update_button_states()
 	_update_turn_display()
@@ -131,6 +138,8 @@ func _on_piece_clicked(piece: Piece) -> void:
 
 
 func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
+	_clear_hint()
+
 	var state := piece.state
 	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
 
@@ -151,6 +160,7 @@ func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 
 
 func _finish_turn(piece: Piece) -> void:
+	_clear_hint()
 	input_controller.release_holding(piece)
 
 	game_state.current_turn += 1
@@ -213,6 +223,8 @@ func _play_ai_turn() -> void:
 
 func _on_analysis_completed(move: Dictionary) -> void:
 	win_rate_bar.update_bar(move.get("win_rate", 0.0))
+	_hint_move = move
+	_update_button_states()
 
 
 func _on_search_completed(move: Dictionary) -> void:
@@ -245,6 +257,7 @@ func _on_search_completed(move: Dictionary) -> void:
 
 
 func _finish_game(is_player_win: bool) -> void:
+	_clear_hint()
 	game_state.current_turn += 1
 	_update_turn_display()
 	move_history_panel.add_resignation(game_state.current_turn)
@@ -281,6 +294,8 @@ func _undo_last_move() -> void:
 	if game_state.move_history.is_empty():
 		return
 
+	_clear_hint()
+
 	if not is_game_active:
 		game_state.current_turn -= 1
 		move_history_panel.remove_last_move()
@@ -311,6 +326,35 @@ func _update_last_move_highlight() -> void:
 	else:
 		var last_record: MoveRecord = game_state.move_history.back()
 		board.update_last_move_highlight(last_record.to_col, last_record.to_row)
+
+
+func _clear_hint() -> void:
+	_hint_move = {}
+	board.clear_hint_arrow()
+	_update_button_states()
+
+
+func _on_hint_button_pressed() -> void:
+	if _hint_move.is_empty():
+		return
+
+	var to_pos := GameConfig.cell_to_position(_hint_move.to_col, _hint_move.to_row)
+	var from_pos: Vector2
+
+	if _hint_move.is_drop:
+		var state := game_state.find_hand_piece(false, _hint_move.piece_type)
+		if state == null:
+			return
+
+		var piece := board_view.node_for(state)
+		if piece == null:
+			return
+
+		from_pos = board.to_local(piece.global_position)
+	else:
+		from_pos = GameConfig.cell_to_position(_hint_move.from_col, _hint_move.from_row)
+
+	board.show_hint_arrow(from_pos, to_pos)
 
 
 func _update_turn_display() -> void:

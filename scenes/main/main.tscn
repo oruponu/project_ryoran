@@ -56,6 +56,11 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "待った"
 
+[node name="HintButton" type="Button" parent="HBoxContainer" unique_id=797740449]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "ヒント"
+
 [node name="ResignButton" type="Button" parent="HBoxContainer" unique_id=1655901752]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
