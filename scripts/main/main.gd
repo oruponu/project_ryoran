@@ -46,10 +46,7 @@ func _ready() -> void:
 
 	move_executor = MoveExecutor.new(
 		game_state,
-		board,
 		board_view,
-		player_piece_stand,
-		enemy_piece_stand,
 		audio_stream_player,
 		engine_worker,
 		_shogi_engine,

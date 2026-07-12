@@ -4,10 +4,7 @@ extends RefCounted
 
 
 var _game_state: GameState
-var _board: Board
 var _board_view: BoardView
-var _player_piece_stand: PieceStand
-var _enemy_piece_stand: PieceStand
 var _audio_stream_player: GameAudioPlayer
 var _engine_worker: EngineWorker
 var _shogi_engine: ShogiEngine
@@ -16,20 +13,14 @@ var _promotion_decider: Callable
 
 func _init(
 	game_state: GameState,
-	board: Board,
 	board_view: BoardView,
-	player_piece_stand: PieceStand,
-	enemy_piece_stand: PieceStand,
 	audio_stream_player: GameAudioPlayer,
 	engine_worker: EngineWorker,
 	shogi_engine: ShogiEngine,
 	promotion_decider: Callable
 ) -> void:
 	_game_state = game_state
-	_board = board
 	_board_view = board_view
-	_player_piece_stand = player_piece_stand
-	_enemy_piece_stand = enemy_piece_stand
 	_audio_stream_player = audio_stream_player
 	_engine_worker = engine_worker
 	_shogi_engine = shogi_engine
@@ -37,116 +28,56 @@ func _init(
 
 
 func execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
-	var piece := _board_view.node_for(state)
 	var prev_row: int = state.current_row
 
 	var target_state := _game_state.get_piece(col, row)
 	if target_state != null:
-		var target_piece := _board_view.node_for(target_state)
 		move_record.captured_promoted = target_state.is_promoted
 		_game_state.capture(target_state)
-		_capture_piece(target_piece)
+		_board_view.capture_piece(target_state)
 		move_record.captured_piece = target_state
 
 	_game_state.move_piece(state, col, row)
-	_update_piece_data(piece, col, row)
-	_update_piece_position(piece, col, row)
+	_board_view.place_piece(state)
 
 	_audio_stream_player.play_place()
 
-	await _handle_promotion(state, piece, prev_row, row, move_record, mode)
+	await _handle_promotion(state, prev_row, row, move_record, mode)
 
 
 func execute_drop(state: PieceState, col: int, row: int) -> void:
-	var piece := _board_view.node_for(state)
-	var source_stand := piece.get_parent()
-
 	_game_state.drop_piece(state, col, row)
-
-	piece.reparent(_board)
-	piece.visible = true
-
-	_update_piece_data(piece, col, row)
-	_update_piece_position(piece, col, row)
+	_board_view.drop_piece(state)
 
 	_audio_stream_player.play_place()
-
-	if source_stand is PieceStand:
-		source_stand.update_layout()
 
 
 func undo(record: MoveRecord) -> void:
 	var state := record.piece
-	var piece := _board_view.node_for(state)
 
 	if record.from_col == -1 and record.from_row == -1:
 		# 持ち駒から打った
 		_game_state.return_to_hand(state)
-
-		piece.current_col = -1
-		piece.current_row = -1
-
-		if piece.is_enemy:
-			_enemy_piece_stand.add_piece(piece, true)
-		else:
-			_player_piece_stand.add_piece(piece, true)
+		_board_view.return_to_stand(state)
 	else:
 		# 盤上の移動
 		_game_state.move_piece(state, record.from_col, record.from_row)
-		piece.current_col = record.from_col
-		piece.current_row = record.from_row
-
-		_update_piece_position(piece, piece.current_col, piece.current_row)
+		_board_view.place_piece(state)
 
 		if record.is_promotion:
 			_game_state.set_promoted(state, false)
-			piece.set_promoted(false)
+			_board_view.refresh_display(state)
 
 	if record.captured_piece != null:
-		var captured_state := record.captured_piece
-		var captured := _board_view.node_for(captured_state)
-		_game_state.uncapture(captured_state, record.to_col, record.to_row, record.captured_promoted)
-
-		var source_stand := captured.get_parent()
-
-		captured.reparent(_board)
-		captured.visible = true
-		captured.is_enemy = !captured.is_enemy
-		captured.rotation_degrees = 180 if captured.is_enemy else 0
-
-		if record.captured_promoted:
-			captured.set_promoted(true)
-
-		captured.current_col = record.to_col
-		captured.current_row = record.to_row
-
-		_update_piece_position(captured, captured.current_col, captured.current_row)
-
-		if source_stand is PieceStand:
-			source_stand.update_layout(true)
+		_game_state.uncapture(record.captured_piece, record.to_col, record.to_row, record.captured_promoted)
+		_board_view.revive_piece(record.captured_piece)
 
 
-func _capture_piece(piece: Piece) -> void:
-	if piece.is_enemy:
-		_player_piece_stand.add_piece(piece)
-	else:
-		_enemy_piece_stand.add_piece(piece)
-
-
-func _update_piece_data(piece: Piece, col: int, row: int) -> void:
-	piece.current_col = col
-	piece.current_row = row
-
-
-func _update_piece_position(piece: Piece, col: int, row: int) -> void:
-	piece.position = GameConfig.cell_to_position(col, row)
-
-
-func _handle_promotion(state: PieceState, piece: Piece, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
+func _handle_promotion(state: PieceState, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	if not _shogi_engine.can_promote(state.piece_type, state.is_promoted, state.is_enemy, prev_row, current_row):
 		return
 
-	piece.is_held = false
+	_board_view.node_for(state).is_held = false
 
 	var should_promote := false
 	var analysis_suspended := false
@@ -162,7 +93,7 @@ func _handle_promotion(state: PieceState, piece: Piece, prev_row: int, current_r
 
 	if should_promote:
 		_game_state.set_promoted(state, true)
-		piece.set_promoted(true)
+		_board_view.refresh_display(state)
 		move_record.is_promotion = true
 
 	if analysis_suspended:
