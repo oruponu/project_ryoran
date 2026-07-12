@@ -34,12 +34,11 @@ func _ready() -> void:
 
 	sfen_serializer = SfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, player_piece_stand, enemy_piece_stand, board.piece_scene)
+	board_view.piece_spawned.connect(_on_piece_spawned)
 
 	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
-
-	board.piece_spawned.connect(_on_piece_spawned)
 
 	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
@@ -57,9 +56,6 @@ func _ready() -> void:
 
 
 func _on_piece_spawned(piece: Piece) -> void:
-	piece.state = PieceState.new(piece.piece_type, piece.is_enemy, piece.current_col, piece.current_row)
-	game_state.register_piece(piece.state)
-	board_view.register(piece.state, piece)
 	piece.clicked.connect(_on_piece_clicked)
 
 
@@ -113,16 +109,12 @@ func _reset_game() -> void:
 	is_game_active = true
 	is_ai_thinking = false
 
-	board_view.clear()
-	board.clear_pieces()
-	player_piece_stand.clear_pieces()
-	enemy_piece_stand.clear_pieces()
-
 	_update_button_states()
 	_update_turn_display()
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
-	board.setup_starting_board()
+	game_state.setup_starting_position()
+	board_view.rebuild()
 	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()

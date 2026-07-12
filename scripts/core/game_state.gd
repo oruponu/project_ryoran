@@ -25,6 +25,27 @@ func reset() -> void:
 		board_grid.append(column)
 
 
+func setup_starting_position() -> void:
+	for x in range(9):
+		register_piece(PieceState.new(PieceState.Type.PAWN, false, x, 6))
+		register_piece(PieceState.new(PieceState.Type.PAWN, true, 8 - x, 2))
+
+	register_piece(PieceState.new(PieceState.Type.BISHOP, false, 1, 7))
+	register_piece(PieceState.new(PieceState.Type.ROOK, false, 7, 7))
+	register_piece(PieceState.new(PieceState.Type.BISHOP, true, 7, 1))
+	register_piece(PieceState.new(PieceState.Type.ROOK, true, 1, 1))
+
+	var bottom_row_types: Array[PieceState.Type] = [
+		PieceState.Type.LANCE, PieceState.Type.KNIGHT, PieceState.Type.SILVER, PieceState.Type.GOLD,
+		PieceState.Type.KING,
+		PieceState.Type.GOLD, PieceState.Type.SILVER, PieceState.Type.KNIGHT, PieceState.Type.LANCE
+	]
+	for x in range(9):
+		var type := bottom_row_types[x]
+		register_piece(PieceState.new(type, false, x, 8))
+		register_piece(PieceState.new(type, true, 8 - x, 0))
+
+
 func is_gote_turn() -> bool:
 	return current_turn % 2 != 0
 

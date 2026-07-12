@@ -3,6 +3,8 @@ class_name BoardView
 extends RefCounted
 
 
+signal piece_spawned(piece: Piece)
+
 var _game_state: GameState
 var _board: Board
 var _player_piece_stand: PieceStand
@@ -41,6 +43,35 @@ func node_for(state: PieceState) -> Piece:
 
 func clear() -> void:
 	_nodes.clear()
+
+
+func spawn_piece_for(state: PieceState) -> void:
+	if _piece_scene == null:
+		push_error("Piece Scene が設定されていません")
+		return
+
+	var piece: Piece = _piece_scene.instantiate()
+	_board.add_child(piece)
+	piece.state = state
+	piece.init_pos(state.current_col, state.current_row, state.piece_type, state.is_enemy)
+	register(state, piece)
+	piece_spawned.emit(piece)
+
+
+func rebuild() -> void:
+	_board.clear_pieces()
+	_player_piece_stand.clear_pieces()
+	_enemy_piece_stand.clear_pieces()
+	clear()
+
+	if not _game_state.player_hand.is_empty() or not _game_state.enemy_hand.is_empty():
+		push_error("BoardView.rebuild: 持ち駒ありの再構築は未対応です")
+
+	for row in range(GameConfig.BOARD_ROWS):
+		for col in range(GameConfig.BOARD_COLS):
+			var state := _game_state.get_piece(col, row)
+			if state != null:
+				spawn_piece_for(state)
 
 
 func place_piece(state: PieceState) -> void:
