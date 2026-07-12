@@ -39,9 +39,11 @@ func execute_move(piece: Piece, col: int, row: int, move_record: MoveRecord, mod
 	var target_piece := _game_state.get_piece(col, row)
 	if target_piece != null:
 		move_record.captured_promoted = target_piece.is_promoted
+		_game_state.capture(target_piece.state)
 		_capture_piece(target_piece)
 		move_record.captured_piece = target_piece
 
+	_game_state.move_piece(piece.state, col, row)
 	_update_piece_data(piece, col, row)
 	_update_piece_position(piece, col, row)
 
@@ -52,6 +54,7 @@ func execute_move(piece: Piece, col: int, row: int, move_record: MoveRecord, mod
 
 func execute_drop(piece: Piece, col: int, row: int) -> void:
 	var source_stand := piece.get_parent()
+	_game_state.drop_piece(piece.state, col, row)
 
 	piece.reparent(_board)
 	piece.visible = true
@@ -70,6 +73,7 @@ func undo(record: MoveRecord) -> void:
 
 	if record.from_col == -1 and record.from_row == -1:
 		# 持ち駒から打った
+		_game_state.return_to_hand(piece.state)
 		_game_state.remove_piece(record.to_col, record.to_row)
 
 		piece.current_col = -1
@@ -81,6 +85,7 @@ func undo(record: MoveRecord) -> void:
 			_player_piece_stand.add_piece(piece, true)
 	else:
 		# 盤上の移動
+		_game_state.move_piece(piece.state, record.from_col, record.from_row)
 		_game_state.update_board_state(piece.current_col, piece.current_row, record.from_col, record.from_row, piece)
 		piece.current_col = record.from_col
 		piece.current_row = record.from_row
@@ -88,11 +93,13 @@ func undo(record: MoveRecord) -> void:
 		_update_piece_position(piece, piece.current_col, piece.current_row)
 
 		if record.is_promotion:
+			_game_state.set_promoted(piece.state, false)
 			piece.set_promoted(false)
 
 	if record.captured_piece != null:
 		var captured := record.captured_piece
 
+		_game_state.uncapture(captured.state, record.to_col, record.to_row, record.captured_promoted)
 		var source_stand := captured.get_parent()
 
 		captured.reparent(_board)
@@ -152,6 +159,7 @@ func _handle_promotion(piece: Piece, prev_row: int, current_row: int, move_recor
 			should_promote = false
 
 	if should_promote:
+		_game_state.set_promoted(piece.state, true)
 		piece.set_promoted(true)
 		move_record.is_promotion = true
 
