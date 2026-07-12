@@ -19,6 +19,7 @@ var _eval_thread: Thread
 var _analysis_pending: bool = false
 var _analysis_suspended: bool = false
 var _generation: int = 0
+var _search_started_msec: int = 0
 
 
 func _exit_tree() -> void:
@@ -52,6 +53,7 @@ func request_search() -> bool:
 		push_error("AI探索スレッドを起動できません（%s）" % error_string(err))
 		return false
 
+	_search_started_msec = Time.get_ticks_msec()
 	return true
 
 
@@ -95,8 +97,17 @@ func _on_search_finished(move: Dictionary, generation: int) -> void:
 	_ai_thread.wait_to_finish()
 	_ai_thread = null
 
-	if generation == _generation:
-		search_completed.emit(move)
+	if generation != _generation:
+		return
+
+	var elapsed_sec := (Time.get_ticks_msec() - _search_started_msec) / 1000.0
+	var remaining_sec := GameConfig.MIN_AI_RESPONSE_TIME_SEC - elapsed_sec
+	if remaining_sec > 0.0:
+		await get_tree().create_timer(remaining_sec).timeout
+		if generation != _generation:
+			return
+
+	search_completed.emit(move)
 
 
 func _run_analysis(generation: int) -> void:
