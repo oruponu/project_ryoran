@@ -64,7 +64,7 @@ func to_sfen() -> String:
 func _hand_sfen(stand: PieceStand, is_enemy: bool) -> String:
 	var counts: Dictionary = {}
 	for child in stand.get_children():
-		if child is Piece:
+		if child is Piece and not child.is_queued_for_deletion():
 			var piece := child as Piece
 			counts[piece.piece_type] = counts.get(piece.piece_type, 0) + 1
 
