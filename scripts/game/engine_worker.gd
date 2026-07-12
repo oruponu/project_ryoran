@@ -10,7 +10,7 @@ signal search_completed(move: Dictionary)
 signal analysis_completed(win_rate: float)
 
 
-var _serializer: SfenSerializer
+var _serializer: StateSfenSerializer
 var _tracker: RepetitionTracker
 var _ai_engine: ShogiEngine = ShogiEngine.new()
 var _ai_thread: Thread
@@ -31,7 +31,7 @@ func _exit_tree() -> void:
 		_eval_thread = null
 
 
-func setup(serializer: SfenSerializer, tracker: RepetitionTracker) -> void:
+func setup(serializer: StateSfenSerializer, tracker: RepetitionTracker) -> void:
 	_serializer = serializer
 	_tracker = tracker
 

@@ -37,13 +37,13 @@ func _ready() -> void:
 	state_sfen_serializer = StateSfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, player_piece_stand, enemy_piece_stand, board.piece_scene)
 
-	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
+	engine_worker.setup(state_sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
 	board.piece_spawned.connect(_on_piece_spawned)
 
-	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
+	input_controller = InputController.new(game_state, board, _shogi_engine, state_sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
 
 	move_executor = MoveExecutor.new(
@@ -129,7 +129,7 @@ func _reset_game() -> void:
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board()
 	_assert_sfen_parity("reset")
-	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
+	var initial_in_check := _shogi_engine.is_king_in_check(state_sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.current_turn)
@@ -176,7 +176,7 @@ func _finish_turn(piece: Piece) -> void:
 
 	var stm_is_enemy := game_state.is_gote_turn()
 	_assert_sfen_parity("finish_turn")
-	var sfen := sfen_serializer.to_sfen()
+	var sfen := state_sfen_serializer.to_sfen()
 	var in_check := _shogi_engine.is_king_in_check(sfen, stm_is_enemy)
 
 	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
@@ -340,7 +340,7 @@ func _update_turn_display() -> void:
 
 
 func _current_position_hash() -> int:
-	return _shogi_engine.get_position_hash(sfen_serializer.to_sfen())
+	return _shogi_engine.get_position_hash(state_sfen_serializer.to_sfen())
 
 
 func _assert_sfen_parity(context: String) -> void:
