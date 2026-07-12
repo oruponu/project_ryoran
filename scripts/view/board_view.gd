@@ -11,7 +11,7 @@ var _player_piece_stand: PieceStand
 var _enemy_piece_stand: PieceStand
 var _piece_scene: PackedScene
 
-var _nodes: Dictionary = {}
+var _nodes: Dictionary[PieceState, Piece] = {}
 
 
 func _init(
