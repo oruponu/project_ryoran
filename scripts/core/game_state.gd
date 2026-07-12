@@ -26,9 +26,10 @@ func reset() -> void:
 
 
 func setup_starting_position() -> void:
-	for x in range(9):
+	for x in range(GameConfig.BOARD_COLS):
+		var mirrored_x := GameConfig.BOARD_COLS - 1 - x
 		register_piece(PieceState.new(PieceState.Type.PAWN, false, x, 6))
-		register_piece(PieceState.new(PieceState.Type.PAWN, true, 8 - x, 2))
+		register_piece(PieceState.new(PieceState.Type.PAWN, true, mirrored_x, 2))
 
 	register_piece(PieceState.new(PieceState.Type.BISHOP, false, 1, 7))
 	register_piece(PieceState.new(PieceState.Type.ROOK, false, 7, 7))
@@ -40,10 +41,11 @@ func setup_starting_position() -> void:
 		PieceState.Type.KING,
 		PieceState.Type.GOLD, PieceState.Type.SILVER, PieceState.Type.KNIGHT, PieceState.Type.LANCE
 	]
-	for x in range(9):
+	for x in range(GameConfig.BOARD_COLS):
+		var mirrored_x := GameConfig.BOARD_COLS - 1 - x
 		var type := bottom_row_types[x]
 		register_piece(PieceState.new(type, false, x, 8))
-		register_piece(PieceState.new(type, true, 8 - x, 0))
+		register_piece(PieceState.new(type, true, mirrored_x, 0))
 
 
 func is_gote_turn() -> bool:
