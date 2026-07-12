@@ -93,12 +93,12 @@ func _format_move_notation(current_turn: int, record: MoveRecord, prev_record: M
 func _get_piece_name(piece: Piece, is_promotion: bool) -> String:
 	var use_promoted_name = piece.is_promoted and not is_promotion
 	match piece.piece_type:
-		Piece.Type.PAWN: return "と" if use_promoted_name else "歩"
-		Piece.Type.LANCE: return "成香" if use_promoted_name else "香"
-		Piece.Type.KNIGHT: return "成桂" if use_promoted_name else "桂"
-		Piece.Type.SILVER: return "成銀" if use_promoted_name else "銀"
-		Piece.Type.GOLD: return "金"
-		Piece.Type.BISHOP: return "馬" if use_promoted_name else "角"
-		Piece.Type.ROOK: return "龍" if use_promoted_name else "飛"
-		Piece.Type.KING: return "玉"
+		PieceState.Type.PAWN: return "と" if use_promoted_name else "歩"
+		PieceState.Type.LANCE: return "成香" if use_promoted_name else "香"
+		PieceState.Type.KNIGHT: return "成桂" if use_promoted_name else "桂"
+		PieceState.Type.SILVER: return "成銀" if use_promoted_name else "銀"
+		PieceState.Type.GOLD: return "金"
+		PieceState.Type.BISHOP: return "馬" if use_promoted_name else "角"
+		PieceState.Type.ROOK: return "龍" if use_promoted_name else "飛"
+		PieceState.Type.KING: return "玉"
 	return "？"

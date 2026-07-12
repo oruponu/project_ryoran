@@ -4,14 +4,14 @@ extends RefCounted
 
 
 const PIECE_CHARS: Array[String] = ["k", "r", "b", "g", "s", "n", "l", "p"]
-const HAND_ORDER: Array[Piece.Type] = [
-	Piece.Type.ROOK,
-	Piece.Type.BISHOP,
-	Piece.Type.GOLD,
-	Piece.Type.SILVER,
-	Piece.Type.KNIGHT,
-	Piece.Type.LANCE,
-	Piece.Type.PAWN,
+const HAND_ORDER: Array[PieceState.Type] = [
+	PieceState.Type.ROOK,
+	PieceState.Type.BISHOP,
+	PieceState.Type.GOLD,
+	PieceState.Type.SILVER,
+	PieceState.Type.KNIGHT,
+	PieceState.Type.LANCE,
+	PieceState.Type.PAWN,
 ]
 
 
