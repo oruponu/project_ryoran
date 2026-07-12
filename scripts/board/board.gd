@@ -6,9 +6,6 @@ extends Node2D
 @export var piece_scene: PackedScene
 
 
-signal piece_spawned(piece: Piece)
-
-
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const TEXT_COLOR = Color(0.0, 0.0, 0.0)
@@ -68,38 +65,6 @@ func _draw_coordinates() -> void:
 		var cell_center_y = y * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
 		var pos = Vector2(pos_x, cell_center_y)
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
-
-
-func setup_starting_board() -> void:
-	for x in range(9):
-		spawn_piece(x, 6, PieceState.Type.PAWN, false)
-		spawn_piece(8 - x, 2, PieceState.Type.PAWN, true)
-
-	spawn_piece(1, 7, PieceState.Type.BISHOP, false)
-	spawn_piece(7, 7, PieceState.Type.ROOK, false)
-	spawn_piece(7, 1, PieceState.Type.BISHOP, true)
-	spawn_piece(1, 1, PieceState.Type.ROOK, true)
-
-	var bottom_row_types = [
-		PieceState.Type.LANCE, PieceState.Type.KNIGHT, PieceState.Type.SILVER, PieceState.Type.GOLD,
-		PieceState.Type.KING,
-		PieceState.Type.GOLD, PieceState.Type.SILVER, PieceState.Type.KNIGHT, PieceState.Type.LANCE
-	]
-	for x in range(9):
-		var type = bottom_row_types[x]
-		spawn_piece(x, 8, type, false)
-		spawn_piece(8 - x, 0, type, true)
-
-
-func spawn_piece(x: int, y: int, type: PieceState.Type, is_enemy: bool) -> void:
-	if piece_scene == null:
-		push_error("Piece Scene が設定されていません")
-		return
-
-	var piece: Piece = piece_scene.instantiate()
-	add_child(piece)
-	piece.init_pos(x, y, type, is_enemy)
-	piece_spawned.emit(piece)
 
 
 func clear_pieces() -> void:
