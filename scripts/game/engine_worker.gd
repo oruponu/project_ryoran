@@ -7,7 +7,7 @@ const AI_IS_ENEMY := true
 
 
 signal search_completed(move: Dictionary)
-signal analysis_completed(win_rate: float)
+signal analysis_completed(move: Dictionary)
 
 
 var _serializer: SfenSerializer
@@ -62,12 +62,13 @@ func request_analysis() -> void:
 		_analysis_pending = true
 		return
 
-	_eval_engine.update_state_from_sfen(_serializer.to_sfen())
+	var sfen := _serializer.to_sfen()
+	_eval_engine.update_state_from_sfen(sfen)
 	_eval_engine.set_game_history(_tracker.history_hashes(), _tracker.history_in_checks())
 
 	var generation := _generation
 	_eval_thread = Thread.new()
-	var err := _eval_thread.start(_run_analysis.bind(generation))
+	var err := _eval_thread.start(_run_analysis.bind(generation, sfen))
 	if err != OK:
 		_eval_thread = null
 		push_error("評価解析スレッドを起動できません（%s）" % error_string(err))
@@ -110,18 +111,19 @@ func _on_search_finished(move: Dictionary, generation: int) -> void:
 	search_completed.emit(move)
 
 
-func _run_analysis(generation: int) -> void:
+func _run_analysis(generation: int, sfen: String) -> void:
 	var move: Dictionary = _eval_engine.search_best_move()
-	call_deferred("_on_analysis_finished", move, generation)
+	call_deferred("_on_analysis_finished", move, generation, sfen)
 
 
-func _on_analysis_finished(move: Dictionary, generation: int) -> void:
+func _on_analysis_finished(move: Dictionary, generation: int, sfen: String) -> void:
 	_eval_thread.wait_to_finish()
 	_eval_thread = null
 
 	# 最新局面の解析だけを通知
-	if generation == _generation and not _analysis_pending and not _analysis_suspended:
-		analysis_completed.emit(move.get("win_rate", 0.0))
+	var is_current := generation == _generation and sfen == _serializer.to_sfen()
+	if is_current and not _analysis_pending and not _analysis_suspended:
+		analysis_completed.emit(move)
 
 	if _analysis_pending:
 		_analysis_pending = false

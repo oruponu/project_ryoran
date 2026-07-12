@@ -210,8 +210,8 @@ func _play_ai_turn() -> void:
 		_update_button_states()
 
 
-func _on_analysis_completed(win_rate: float) -> void:
-	win_rate_bar.update_bar(win_rate)
+func _on_analysis_completed(move: Dictionary) -> void:
+	win_rate_bar.update_bar(move.get("win_rate", 0.0))
 
 
 func _on_search_completed(move: Dictionary) -> void:
