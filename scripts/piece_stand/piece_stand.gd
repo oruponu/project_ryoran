@@ -38,10 +38,6 @@ func add_piece(piece: Piece, immediate: bool = false) -> void:
 
 	move_child(piece, 0)
 
-	piece.current_col = -1
-	piece.current_row = -1
-	piece.is_enemy = is_enemy
-	piece.is_promoted = false
 	piece.refresh_display()
 
 	update_layout(immediate)
@@ -63,7 +59,7 @@ func update_layout(immediate: bool = false) -> void:
 
 	for child in get_children():
 		if child is Piece and not child.is_held:
-			groups[child.piece_type].append(child)
+			groups[child.state.piece_type].append(child)
 
 	for label in _labels.values():
 		label.visible = false

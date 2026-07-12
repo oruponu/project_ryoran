@@ -53,7 +53,8 @@ func spawn_piece_for(state: PieceState) -> void:
 	var piece: Piece = _piece_scene.instantiate()
 	_board.add_child(piece)
 	piece.state = state
-	piece.init_pos(state.current_col, state.current_row, state.piece_type, state.is_enemy)
+	piece.refresh_display()
+	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 	register(state, piece)
 	piece_spawned.emit(piece)
 
@@ -76,13 +77,11 @@ func rebuild() -> void:
 
 func place_piece(state: PieceState) -> void:
 	var piece := node_for(state)
-	_sync_mirror(piece, state)
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 
 
 func capture_piece(state: PieceState) -> void:
 	var piece := node_for(state)
-	_sync_mirror(piece, state)
 	var stand := _enemy_piece_stand if state.is_enemy else _player_piece_stand
 	stand.add_piece(piece)
 
@@ -94,7 +93,6 @@ func drop_piece(state: PieceState) -> void:
 	piece.reparent(_board)
 	piece.visible = true
 
-	_sync_mirror(piece, state)
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 
 	if source_stand is PieceStand:
@@ -103,7 +101,6 @@ func drop_piece(state: PieceState) -> void:
 
 func return_to_stand(state: PieceState) -> void:
 	var piece := node_for(state)
-	_sync_mirror(piece, state)
 
 	if state.is_enemy:
 		_enemy_piece_stand.add_piece(piece, true)
@@ -117,11 +114,7 @@ func revive_piece(state: PieceState) -> void:
 
 	piece.reparent(_board)
 	piece.visible = true
-	_sync_mirror(piece, state)
-	piece.rotation_degrees = 180 if state.is_enemy else 0
-
-	if state.is_promoted:
-		piece.set_promoted(true)
+	piece.refresh_display()
 
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 
@@ -131,13 +124,4 @@ func revive_piece(state: PieceState) -> void:
 
 func refresh_display(state: PieceState) -> void:
 	var piece := node_for(state)
-	_sync_mirror(piece, state)
 	piece.refresh_display()
-
-
-func _sync_mirror(piece: Piece, state: PieceState) -> void:
-	piece.piece_type = state.piece_type
-	piece.is_enemy = state.is_enemy
-	piece.is_promoted = state.is_promoted
-	piece.current_col = state.current_col
-	piece.current_row = state.current_row
