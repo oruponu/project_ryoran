@@ -44,6 +44,7 @@ const PIECE_DATA = {
 @onready var label: Label = $Label
 
 
+var state: PieceState = null
 var piece_type: PieceState.Type = PieceState.Type.PAWN
 var is_enemy: bool = false
 var is_promoted: bool = false

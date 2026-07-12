@@ -57,6 +57,8 @@ func _ready() -> void:
 
 
 func _on_piece_spawned(piece: Piece) -> void:
+	piece.state = PieceState.new(piece.piece_type, piece.is_enemy, piece.current_col, piece.current_row)
+	game_state.register_piece_state(piece.state)
 	game_state.register_piece(piece)
 	piece.clicked.connect(_on_piece_clicked)
 
