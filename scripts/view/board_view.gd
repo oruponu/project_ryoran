@@ -5,6 +5,7 @@ extends RefCounted
 
 signal piece_spawned(piece: Piece)
 
+
 var _game_state: GameState
 var _board: Board
 var _player_piece_stand: PieceStand
