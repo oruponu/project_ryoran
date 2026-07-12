@@ -18,6 +18,7 @@ extends Node2D
 
 var game_state := GameState.new()
 var sfen_serializer: SfenSerializer
+var state_sfen_serializer: StateSfenSerializer
 var input_controller: InputController
 var move_executor: MoveExecutor
 var is_game_active: bool = false
@@ -32,6 +33,7 @@ func _ready() -> void:
 	resign_button.pressed.connect(_on_resign_button_pressed)
 
 	sfen_serializer = SfenSerializer.new(game_state, player_piece_stand, enemy_piece_stand)
+	state_sfen_serializer = StateSfenSerializer.new(game_state)
 
 	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
@@ -122,6 +124,7 @@ func _reset_game() -> void:
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board()
+	_assert_sfen_parity("reset")
 	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
@@ -168,6 +171,7 @@ func _finish_turn(piece: Piece) -> void:
 	move_history_panel.add_move(game_state.current_turn, record, prev_record)
 
 	var stm_is_enemy := game_state.is_gote_turn()
+	_assert_sfen_parity("finish_turn")
 	var sfen := sfen_serializer.to_sfen()
 	var in_check := _shogi_engine.is_king_in_check(sfen, stm_is_enemy)
 
@@ -301,6 +305,7 @@ func _undo_last_move() -> void:
 	game_state.repetition_tracker.undo()
 
 	move_executor.undo(last_move)
+	_assert_sfen_parity("undo")
 
 	game_state.current_turn -= 1
 	is_game_active = true
@@ -332,6 +337,13 @@ func _update_turn_display() -> void:
 
 func _current_position_hash() -> int:
 	return _shogi_engine.get_position_hash(sfen_serializer.to_sfen())
+
+
+func _assert_sfen_parity(context: String) -> void:
+	var scene_sfen := sfen_serializer.to_sfen()
+	var state_sfen := state_sfen_serializer.to_sfen()
+	if scene_sfen != state_sfen:
+		push_error("SFEN 不一致 (%s)\nscene: %s\nstate: %s" % [context, scene_sfen, state_sfen])
 
 
 func request_new_game_decision() -> bool:
