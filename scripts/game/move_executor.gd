@@ -40,7 +40,7 @@ func execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord
 	var piece := _board_view.node_for(state)
 	var prev_row: int = state.current_row
 
-	var target_state := _game_state.get_piece_state(col, row)
+	var target_state := _game_state.get_piece(col, row)
 	if target_state != null:
 		var target_piece := _board_view.node_for(target_state)
 		move_record.captured_promoted = target_state.is_promoted
@@ -82,7 +82,6 @@ func undo(record: MoveRecord) -> void:
 	if record.from_col == -1 and record.from_row == -1:
 		# 持ち駒から打った
 		_game_state.return_to_hand(state)
-		_game_state.remove_piece(record.to_col, record.to_row)
 
 		piece.current_col = -1
 		piece.current_row = -1
@@ -94,7 +93,6 @@ func undo(record: MoveRecord) -> void:
 	else:
 		# 盤上の移動
 		_game_state.move_piece(state, record.from_col, record.from_row)
-		_game_state.update_board_state(piece.current_col, piece.current_row, record.from_col, record.from_row, piece)
 		piece.current_col = record.from_col
 		piece.current_row = record.from_row
 
@@ -121,7 +119,6 @@ func undo(record: MoveRecord) -> void:
 
 		captured.current_col = record.to_col
 		captured.current_row = record.to_row
-		_game_state.update_board_state(-1, -1, captured.current_col, captured.current_row, captured)
 
 		_update_piece_position(captured, captured.current_col, captured.current_row)
 
@@ -130,9 +127,6 @@ func undo(record: MoveRecord) -> void:
 
 
 func _capture_piece(piece: Piece) -> void:
-	if not piece.is_in_hand():
-		_game_state.remove_piece(piece.current_col, piece.current_row)
-
 	if piece.is_enemy:
 		_player_piece_stand.add_piece(piece)
 	else:
@@ -140,7 +134,6 @@ func _capture_piece(piece: Piece) -> void:
 
 
 func _update_piece_data(piece: Piece, col: int, row: int) -> void:
-	_game_state.update_board_state(piece.current_col, piece.current_row, col, row, piece)
 	piece.current_col = col
 	piece.current_row = row
 
