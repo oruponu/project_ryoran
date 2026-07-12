@@ -16,14 +16,10 @@ const HAND_ORDER: Array[PieceState.Type] = [
 
 
 var _game_state: GameState
-var _player_piece_stand: PieceStand
-var _enemy_piece_stand: PieceStand
 
 
-func _init(game_state: GameState, player_piece_stand: PieceStand, enemy_piece_stand: PieceStand) -> void:
+func _init(game_state: GameState) -> void:
 	_game_state = game_state
-	_player_piece_stand = player_piece_stand
-	_enemy_piece_stand = enemy_piece_stand
 
 
 func to_sfen() -> String:
@@ -32,8 +28,8 @@ func to_sfen() -> String:
 		var rank := ""
 		var empty_run := 0
 		for col in range(GameConfig.BOARD_COLS):
-			var piece := _game_state.get_piece(col, row)
-			if piece == null:
+			var state := _game_state.get_piece(col, row)
+			if state == null:
 				empty_run += 1
 				continue
 
@@ -41,10 +37,10 @@ func to_sfen() -> String:
 				rank += str(empty_run)
 				empty_run = 0
 
-			var piece_char: String = PIECE_CHARS[piece.piece_type]
-			if not piece.is_enemy:
+			var piece_char: String = PIECE_CHARS[state.piece_type]
+			if not state.is_enemy:
 				piece_char = piece_char.to_upper()
-			if piece.is_promoted:
+			if state.is_promoted:
 				piece_char = "+" + piece_char
 			rank += piece_char
 
@@ -54,19 +50,17 @@ func to_sfen() -> String:
 
 	var side := "w" if _game_state.is_gote_turn() else "b"
 
-	var hands := _hand_sfen(_player_piece_stand, false) + _hand_sfen(_enemy_piece_stand, true)
+	var hands := _hand_sfen(_game_state.player_hand, false) + _hand_sfen(_game_state.enemy_hand, true)
 	if hands.is_empty():
 		hands = "-"
 
 	return "%s %s %s %d" % ["/".join(ranks), side, hands, _game_state.current_turn + 1]
 
 
-func _hand_sfen(stand: PieceStand, is_enemy: bool) -> String:
+func _hand_sfen(hand: Array[PieceState], is_enemy: bool) -> String:
 	var counts: Dictionary = {}
-	for child in stand.get_children():
-		if child is Piece and not child.is_queued_for_deletion():
-			var piece := child as Piece
-			counts[piece.piece_type] = counts.get(piece.piece_type, 0) + 1
+	for state in hand:
+		counts[state.piece_type] = counts.get(state.piece_type, 0) + 1
 
 	var result := ""
 	for type in HAND_ORDER:

@@ -18,7 +18,6 @@ extends Node2D
 
 var game_state := GameState.new()
 var sfen_serializer: SfenSerializer
-var state_sfen_serializer: StateSfenSerializer
 var board_view: BoardView
 var input_controller: InputController
 var move_executor: MoveExecutor
@@ -33,17 +32,16 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
 
-	sfen_serializer = SfenSerializer.new(game_state, player_piece_stand, enemy_piece_stand)
-	state_sfen_serializer = StateSfenSerializer.new(game_state)
+	sfen_serializer = SfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, player_piece_stand, enemy_piece_stand, board.piece_scene)
 
-	engine_worker.setup(state_sfen_serializer, game_state.repetition_tracker)
+	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
 	board.piece_spawned.connect(_on_piece_spawned)
 
-	input_controller = InputController.new(game_state, board, _shogi_engine, state_sfen_serializer)
+	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
 
 	move_executor = MoveExecutor.new(
@@ -63,8 +61,7 @@ func _ready() -> void:
 
 func _on_piece_spawned(piece: Piece) -> void:
 	piece.state = PieceState.new(piece.piece_type, piece.is_enemy, piece.current_col, piece.current_row)
-	game_state.register_piece_state(piece.state)
-	game_state.register_piece(piece)
+	game_state.register_piece(piece.state)
 	board_view.register(piece.state, piece)
 	piece.clicked.connect(_on_piece_clicked)
 
@@ -129,8 +126,7 @@ func _reset_game() -> void:
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
 	board.setup_starting_board()
-	_assert_sfen_parity("reset")
-	var initial_in_check := _shogi_engine.is_king_in_check(state_sfen_serializer.to_sfen(), game_state.is_gote_turn())
+	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.current_turn)
@@ -177,8 +173,7 @@ func _finish_turn(piece: Piece) -> void:
 	move_history_panel.add_move(game_state.current_turn, record, prev_record)
 
 	var stm_is_enemy := game_state.is_gote_turn()
-	_assert_sfen_parity("finish_turn")
-	var sfen := state_sfen_serializer.to_sfen()
+	var sfen := sfen_serializer.to_sfen()
 	var in_check := _shogi_engine.is_king_in_check(sfen, stm_is_enemy)
 
 	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
@@ -241,7 +236,7 @@ func _on_search_completed(move: Dictionary) -> void:
 	if move.is_drop:
 		state = game_state.find_hand_piece(EngineWorker.AI_IS_ENEMY, move.piece_type)
 	else:
-		state = game_state.get_piece_state(move.from_col, move.from_row)
+		state = game_state.get_piece(move.from_col, move.from_row)
 
 	var col: int = move.to_col
 	var row: int = move.to_row
@@ -304,7 +299,6 @@ func _undo_last_move() -> void:
 	game_state.repetition_tracker.undo()
 
 	move_executor.undo(last_move)
-	_assert_sfen_parity("undo")
 
 	game_state.current_turn -= 1
 	is_game_active = true
@@ -335,14 +329,7 @@ func _update_turn_display() -> void:
 
 
 func _current_position_hash() -> int:
-	return _shogi_engine.get_position_hash(state_sfen_serializer.to_sfen())
-
-
-func _assert_sfen_parity(context: String) -> void:
-	var scene_sfen := sfen_serializer.to_sfen()
-	var state_sfen := state_sfen_serializer.to_sfen()
-	if scene_sfen != state_sfen:
-		push_error("SFEN 不一致 (%s)\nscene: %s\nstate: %s" % [context, scene_sfen, state_sfen])
+	return _shogi_engine.get_position_hash(sfen_serializer.to_sfen())
 
 
 func request_new_game_decision() -> bool:
