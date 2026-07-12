@@ -49,6 +49,7 @@ func _ready() -> void:
 	move_executor = MoveExecutor.new(
 		game_state,
 		board,
+		board_view,
 		player_piece_stand,
 		enemy_piece_stand,
 		audio_stream_player,
@@ -144,18 +145,19 @@ func _on_piece_clicked(piece: Piece) -> void:
 
 
 func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
-	var move_record := MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
+	var state := piece.state
+	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
 
-	if piece.is_in_hand():
-		move_executor.execute_drop(piece, col, row)
+	if state.is_in_hand():
+		move_executor.execute_drop(state, col, row)
 	else:
 		var mode: PromotionMode.Type
-		if _shogi_engine.is_dead_end(piece.piece_type, piece.is_enemy, row):
+		if _shogi_engine.is_dead_end(state.piece_type, state.is_enemy, row):
 			mode = PromotionMode.Type.FORCE_PROMOTE
 		else:
 			mode = PromotionMode.Type.ASK_USER
 
-		await move_executor.execute_move(piece, col, row, move_record, mode)
+		await move_executor.execute_move(state, col, row, move_record, mode)
 
 	game_state.move_history.append(move_record)
 
@@ -235,33 +237,26 @@ func _on_search_completed(move: Dictionary) -> void:
 		is_ai_thinking = false
 		return
 
-	var piece: Piece = null
+	var state: PieceState = null
 	if move.is_drop:
-		var is_enemy: bool = EngineWorker.AI_IS_ENEMY
-		var stand: PieceStand = enemy_piece_stand if is_enemy else player_piece_stand
-		for child in stand.get_children():
-			if child is Piece:
-				var candidate := child as Piece
-				if candidate.piece_type == move.piece_type:
-					piece = candidate
-					break
+		state = game_state.find_hand_piece(EngineWorker.AI_IS_ENEMY, move.piece_type)
 	else:
-		piece = game_state.get_piece(move.from_col, move.from_row)
+		state = game_state.get_piece_state(move.from_col, move.from_row)
 
 	var col: int = move.to_col
 	var row: int = move.to_row
-	var move_record := MoveRecord.new(piece, piece.current_col, piece.current_row, col, row)
+	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
 
-	if piece.is_in_hand():
-		move_executor.execute_drop(piece, col, row)
+	if state.is_in_hand():
+		move_executor.execute_drop(state, col, row)
 	else:
 		var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
-		await move_executor.execute_move(piece, col, row, move_record, mode)
+		await move_executor.execute_move(state, col, row, move_record, mode)
 
 	game_state.move_history.append(move_record)
 
 	is_ai_thinking = false
-	_finish_turn(piece)
+	_finish_turn(board_view.node_for(state))
 
 
 func _finish_game(is_player_win: bool) -> void:

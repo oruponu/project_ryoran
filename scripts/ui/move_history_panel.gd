@@ -90,7 +90,7 @@ func _format_move_notation(current_turn: int, record: MoveRecord, prev_record: M
 	return "%s%s%s%s" % [marker, coord_str, piece_name, action_str]
 
 
-func _get_piece_name(piece: Piece, is_promotion: bool) -> String:
+func _get_piece_name(piece: PieceState, is_promotion: bool) -> String:
 	var use_promoted_name = piece.is_promoted and not is_promotion
 	match piece.piece_type:
 		PieceState.Type.PAWN: return "と" if use_promoted_name else "歩"
