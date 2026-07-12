@@ -44,7 +44,7 @@ func reset() -> void:
 
 
 func _pick_up(piece: Piece) -> void:
-	if piece.is_enemy != _game_state.is_gote_turn():
+	if piece.state.is_enemy != _game_state.is_gote_turn():
 		return
 
 	holding_piece = piece
@@ -53,13 +53,13 @@ func _pick_up(piece: Piece) -> void:
 
 	current_legal_coords = []
 	var sfen := _serializer.to_sfen()
-	if piece.is_in_hand():
+	if piece.state.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
 			stand.update_layout()
-		current_legal_coords = _shogi_engine.get_legal_drops(sfen, piece.piece_type)
+		current_legal_coords = _shogi_engine.get_legal_drops(sfen, piece.state.piece_type)
 	else:
-		current_legal_coords = _shogi_engine.get_legal_moves(sfen, piece.current_col, piece.current_row)
+		current_legal_coords = _shogi_engine.get_legal_moves(sfen, piece.state.current_col, piece.state.current_row)
 
 	_board.show_guides(current_legal_coords)
 
@@ -83,9 +83,9 @@ func _cancel_move(piece: Piece) -> void:
 
 	holding_piece = null
 
-	if piece.is_in_hand():
+	if piece.state.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
 			stand.update_layout()
 	else:
-		piece.position = GameConfig.cell_to_position(piece.current_col, piece.current_row)
+		piece.position = GameConfig.cell_to_position(piece.state.current_col, piece.state.current_row)
