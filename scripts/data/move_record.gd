@@ -3,18 +3,18 @@ class_name MoveRecord
 extends RefCounted
 
 
-var piece: Piece
+var piece: PieceState
 var from_col: int
 var from_row: int
 var to_col: int
 var to_row: int
-var captured_piece: Piece = null
+var captured_piece: PieceState = null
 var is_promotion: bool = false
 var captured_promoted: bool = false
 
 
 func _init(
-	_piece: Piece,
+	_piece: PieceState,
 	_from_col: int,
 	_from_row: int,
 	_to_col: int,
