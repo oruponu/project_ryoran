@@ -9,13 +9,13 @@ extends Node2D
 const BOARD_COLOR = Color(0.85, 0.7, 0.4)
 const LINE_COLOR = Color(0.0, 0.0, 0.0)
 const DISPLAY_ORDER = [
-	Piece.Type.PAWN,
-	Piece.Type.LANCE,
-	Piece.Type.KNIGHT,
-	Piece.Type.SILVER,
-	Piece.Type.GOLD,
-	Piece.Type.BISHOP,
-	Piece.Type.ROOK,
+	PieceState.Type.PAWN,
+	PieceState.Type.LANCE,
+	PieceState.Type.KNIGHT,
+	PieceState.Type.SILVER,
+	PieceState.Type.GOLD,
+	PieceState.Type.BISHOP,
+	PieceState.Type.ROOK,
 ]
 
 
@@ -132,7 +132,7 @@ func update_layout(immediate: bool = false) -> void:
 		stack_index += 1
 
 
-func _get_label(type: Piece.Type) -> Label:
+func _get_label(type: PieceState.Type) -> Label:
 	if _labels.has(type):
 		return _labels[type]
 

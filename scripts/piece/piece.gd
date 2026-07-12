@@ -6,47 +6,35 @@ extends Area2D
 signal clicked(piece: Piece)
 
 
-enum Type {
-	KING,
-	ROOK,
-	BISHOP,
-	GOLD,
-	SILVER,
-	KNIGHT,
-	LANCE,
-	PAWN
-}
-
-
 const PIECE_DATA = {
-	Type.KING: {
+	PieceState.Type.KING: {
 		"default": "玉",
 		"enemy": "王"
 	},
-	Type.ROOK: {
+	PieceState.Type.ROOK: {
 		"default": "飛",
 		"promoted": "龍"
 	},
-	Type.BISHOP: {
+	PieceState.Type.BISHOP: {
 		"default": "角",
 		"promoted": "馬"
 	},
-	Type.GOLD: {
+	PieceState.Type.GOLD: {
 		"default": "金"
 	},
-	Type.SILVER: {
+	PieceState.Type.SILVER: {
 		"default": "銀",
 		"promoted": "全"
 	},
-	Type.KNIGHT: {
+	PieceState.Type.KNIGHT: {
 		"default": "桂",
 		"promoted": "圭"
 	},
-	Type.LANCE: {
+	PieceState.Type.LANCE: {
 		"default": "香",
 		"promoted": "杏"
 	},
-	Type.PAWN: {
+	PieceState.Type.PAWN: {
 		"default": "歩",
 		"promoted": "と"
 	}
@@ -56,7 +44,7 @@ const PIECE_DATA = {
 @onready var label: Label = $Label
 
 
-var piece_type: Type = Type.PAWN
+var piece_type: PieceState.Type = PieceState.Type.PAWN
 var is_enemy: bool = false
 var is_promoted: bool = false
 var is_held: bool = false
@@ -86,7 +74,7 @@ func set_promoted(_is_promoted: bool) -> void:
 	_update_display()
 
 
-func init_pos(col: int, row: int, type: Type, _is_enemy: bool) -> void:
+func init_pos(col: int, row: int, type: PieceState.Type, _is_enemy: bool) -> void:
 	current_col = col
 	current_row = row
 	piece_type = type
