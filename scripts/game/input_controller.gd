@@ -12,10 +12,10 @@ var current_legal_coords: Array[Vector2i] = []
 var _game_state: GameState
 var _board: Board
 var _shogi_engine: ShogiEngine
-var _serializer: SfenSerializer
+var _serializer: StateSfenSerializer
 
 
-func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, serializer: SfenSerializer) -> void:
+func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, serializer: StateSfenSerializer) -> void:
 	_game_state = game_state
 	_board = board
 	_shogi_engine = shogi_engine
