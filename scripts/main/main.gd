@@ -63,6 +63,8 @@ func _on_piece_spawned(piece: Piece) -> void:
 
 
 func _on_new_game_button_pressed() -> void:
+	input_controller.cancel_holding()
+
 	var result: bool = await request_new_game_decision()
 	if not result:
 		return
@@ -71,6 +73,8 @@ func _on_new_game_button_pressed() -> void:
 
 
 func _on_undo_button_pressed() -> void:
+	input_controller.cancel_holding()
+
 	# 後手が投了しているときのみ一手前に戻す
 	if not is_game_active and not game_state.is_gote_turn():
 		_undo_last_move()
@@ -80,6 +84,8 @@ func _on_undo_button_pressed() -> void:
 
 
 func _on_resign_button_pressed() -> void:
+	input_controller.cancel_holding()
+
 	var result: bool = await request_resign_decision()
 	if not result:
 		return
@@ -338,11 +344,13 @@ func _on_hint_button_pressed() -> void:
 	if _hint_move.is_empty():
 		return
 
+	input_controller.cancel_holding()
+
 	var to_pos := GameConfig.cell_to_position(_hint_move.to_col, _hint_move.to_row)
 	var from_pos: Vector2
 
 	if _hint_move.is_drop:
-		var state := game_state.find_hand_piece(false, _hint_move.piece_type)
+		var state := game_state.find_hand_piece(not EngineWorker.AI_IS_ENEMY, _hint_move.piece_type)
 		if state == null:
 			return
 
