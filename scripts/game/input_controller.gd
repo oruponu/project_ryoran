@@ -38,6 +38,13 @@ func release_holding(piece: Piece) -> void:
 	holding_piece = null
 
 
+func cancel_holding() -> void:
+	if holding_piece == null:
+		return
+
+	_cancel_move(holding_piece, true)
+
+
 func reset() -> void:
 	holding_piece = null
 	current_legal_coords = []
@@ -75,7 +82,7 @@ func _attempt_place(piece: Piece) -> void:
 	move_submitted.emit(piece, target_pos.x, target_pos.y)
 
 
-func _cancel_move(piece: Piece) -> void:
+func _cancel_move(piece: Piece, immediate: bool = false) -> void:
 	piece.is_held = false
 	piece.z_index = 0
 
@@ -86,6 +93,6 @@ func _cancel_move(piece: Piece) -> void:
 	if piece.state.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
-			stand.update_layout()
+			stand.update_layout(immediate)
 	else:
 		piece.position = GameConfig.cell_to_position(piece.state.current_col, piece.state.current_row)
