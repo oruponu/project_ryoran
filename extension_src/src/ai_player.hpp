@@ -1,10 +1,13 @@
 #pragma once
 
 #include "board_state.hpp"
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+[[nodiscard]] godot::Dictionary make_move_dictionary(const Shogi::Move &move, int score, double win_rate);
 
 enum class TTFlag : uint8_t {
 	EXACT,
@@ -84,6 +87,6 @@ public:
 	AIPlayer() {}
 	~AIPlayer() {}
 
-	[[nodiscard]] godot::Dictionary search_best_move(BoardState board);
+	[[nodiscard]] godot::Array search_top_moves(BoardState board, int count);
 	void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
 };

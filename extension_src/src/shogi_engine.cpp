@@ -36,6 +36,7 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
 	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
+	ClassDB::bind_method(D_METHOD("search_top_moves", "count"), &ShogiEngine::search_top_moves);
 }
 
 void ShogiEngine::load_book_from_file(const String &path) {
@@ -180,28 +181,28 @@ void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedB
 }
 
 Dictionary ShogiEngine::search_best_move() {
+	Array moves = search_top_moves(1);
+	if (moves.is_empty()) {
+		return Dictionary();
+	}
+	return moves[0];
+}
+
+Array ShogiEngine::search_top_moves(int count) {
 	// 定跡を参照
 	uint64_t hash = current_state_.get_zobrist_hash();
 	auto it = book_.find(hash);
-	if (it != book_.end()) {
+	if (it != book_.end() && !it->second.empty()) {
 		const std::vector<Move> &book_moves = it->second;
-		if (!book_moves.empty()) {
-			const Move &best_move = book_moves[0];
 
-			UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
+		UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
 
-			Dictionary result;
-			result["from_col"] = best_move.from_col;
-			result["from_row"] = best_move.from_row;
-			result["to_col"] = best_move.to_col;
-			result["to_row"] = best_move.to_row;
-			result["piece_type"] = static_cast<int>(best_move.piece_type);
-			result["is_promotion"] = best_move.is_promotion;
-			result["is_drop"] = best_move.is_drop;
-			result["win_rate"] = 0.5;
-			return result;
+		Array result;
+		for (size_t i = 0; i < book_moves.size() && static_cast<int>(i) < count; ++i) {
+			result.append(make_move_dictionary(book_moves[i], 0, 0.5));
 		}
+		return result;
 	}
 
-	return ai_player_.search_best_move(current_state_);
+	return ai_player_.search_top_moves(current_state_, count);
 }
