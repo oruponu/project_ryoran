@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <godot_cpp/classes/time.hpp>
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <vector>
 
@@ -64,7 +65,26 @@ int score_from_tt(int score, int ply) {
 	return score;
 }
 
+struct RootMove {
+	Shogi::Move move;
+	int score;
+};
+
 } //namespace
+
+Dictionary make_move_dictionary(const Shogi::Move &move, int score, double win_rate) {
+	Dictionary result;
+	result["from_col"] = move.from_col;
+	result["from_row"] = move.from_row;
+	result["to_col"] = move.to_col;
+	result["to_row"] = move.to_row;
+	result["piece_type"] = static_cast<int>(move.piece_type);
+	result["is_promotion"] = move.is_promotion;
+	result["is_drop"] = move.is_drop;
+	result["score"] = score;
+	result["win_rate"] = win_rate;
+	return result;
+}
 
 void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks) {
 	// 境界外参照防止のため短い方に合わせる
@@ -800,23 +820,19 @@ void AIPlayer::clear_tt() {
 	transposition_table_.clear();
 }
 
-Dictionary AIPlayer::search_best_move(BoardState board) {
+Array AIPlayer::search_top_moves(BoardState board, int count) {
+	if (count < 1) {
+		return Array();
+	}
+
 	Turn root_side = board.get_turn_to_move();
 
 	auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES);
 	if (mate_move.has_value()) {
 		UtilityFunctions::print("Checkmate proven.");
 
-		const auto &move = mate_move.value();
-		Dictionary result;
-		result["from_col"] = move.from_col;
-		result["from_row"] = move.from_row;
-		result["to_col"] = move.to_col;
-		result["to_row"] = move.to_row;
-		result["piece_type"] = static_cast<int>(move.piece_type);
-		result["is_promotion"] = move.is_promotion;
-		result["is_drop"] = move.is_drop;
-		result["win_rate"] = 1.0;
+		Array result;
+		result.append(make_move_dictionary(mate_move.value(), MATE_SCORE - 1, 1.0));
 		return result;
 	}
 
@@ -825,7 +841,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
 	if (move_list.is_empty()) {
 		// 投了
-		return Dictionary();
+		return Array();
 	}
 
 	transposition_table_.reserve(TT_SIZE);
@@ -852,8 +868,15 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 
 	int max_depth_limit = 12;
 
-	Move global_best_move = move_list[0];
-	int global_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
+	const int worst_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
+	auto is_better = [root_side](int a, int b) {
+		return (root_side == Turn::SENTE) ? (a > b) : (a < b);
+	};
+
+	std::vector<RootMove> global_top;
+	for (int i = 0; i < static_cast<int>(move_list.size()) && i < count; ++i) {
+		global_top.push_back({ move_list[i], worst_score });
+	}
 
 	// TTから最善手を取得
 	uint64_t root_hash = board.get_zobrist_hash();
@@ -887,10 +910,7 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 			}
 		}
 
-		int alpha = -99999999;
-		int beta = 99999999;
-		Move current_depth_best_move = move_list[0];
-		int current_depth_best_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
+		std::vector<RootMove> depth_top;
 		Turn next_turn_side = (root_side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
 
 		uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
@@ -902,14 +922,24 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 				break;
 			}
 
+			// MultiPV: 暫定リストの最下位より悪い手は候補に残らない
+			int alpha = -99999999;
+			int beta = 99999999;
+			if (static_cast<int>(depth_top.size()) >= count) {
+				if (root_side == Turn::SENTE) {
+					alpha = depth_top.back().score;
+				} else {
+					beta = depth_top.back().score;
+				}
+			}
+
 			Shogi::UndoInfo undo = board.apply_move(move);
 
 			int score = alpha_beta(board, depth - 1, 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
 					total_node_count);
 
-			// 全候補手の詰み検証は合法手の多い終盤で時間がかかりすぎるため、暫定最善を更新する手のみ検証する
-			bool candidate =
-					(root_side == Turn::SENTE) ? (score > current_depth_best_score) : (score < current_depth_best_score);
+			// 全候補手の詰み検証は合法手の多い終盤で時間がかかりすぎるため、暫定上位に入る手のみ検証する
+			bool candidate = static_cast<int>(depth_top.size()) < count || is_better(score, depth_top.back().score);
 			if (!timeout && candidate) {
 				uint64_t child_hash = board.get_zobrist_hash();
 				auto mate_it = root_mate_cache.find(child_hash);
@@ -933,25 +963,13 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 				break;
 			}
 
-			bool update_best = false;
-			if (root_side == Turn::SENTE) {
-				if (score > current_depth_best_score) {
-					current_depth_best_score = score;
-					update_best = true;
+			if (static_cast<int>(depth_top.size()) < count || is_better(score, depth_top.back().score)) {
+				auto pos = std::find_if(depth_top.begin(), depth_top.end(),
+						[&](const RootMove &entry) { return is_better(score, entry.score); });
+				depth_top.insert(pos, { move, score });
+				if (static_cast<int>(depth_top.size()) > count) {
+					depth_top.pop_back();
 				}
-
-				alpha = std::max(alpha, score);
-			} else {
-				if (score < current_depth_best_score) {
-					current_depth_best_score = score;
-					update_best = true;
-				}
-
-				beta = std::min(beta, score);
-			}
-
-			if (update_best) {
-				current_depth_best_move = move;
 			}
 		}
 
@@ -960,19 +978,17 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 			break;
 		}
 
-		global_best_move = current_depth_best_move;
-		global_best_score = current_depth_best_score;
-
-		best_move_prev_iter = global_best_move;
+		global_top = depth_top;
+		best_move_prev_iter = global_top[0].move;
 		has_prev_best = true;
 
-		int display_score = (root_side == Turn::SENTE) ? global_best_score : -global_best_score;
+		int display_score = (root_side == Turn::SENTE) ? global_top[0].score : -global_top[0].score;
 		double win_prob = calculate_win_probability(display_score);
-		UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_best_score,
+		UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_top[0].score,
 				", WinRate: ", String::num(win_prob * 100.0, 1), "%");
 
 		// 詰み筋を見つけたら打ち切り
-		if (global_best_score >= MATE_BOUND || global_best_score <= -MATE_BOUND) {
+		if (global_top[0].score >= MATE_BOUND || global_top[0].score <= -MATE_BOUND) {
 			UtilityFunctions::print("Checkmate found at depth ", depth);
 			break;
 		}
@@ -981,19 +997,18 @@ Dictionary AIPlayer::search_best_move(BoardState board) {
 	UtilityFunctions::print("Total nodes searched: ", total_node_count,
 			", TT size: ", static_cast<int64_t>(transposition_table_.size()));
 
-	const auto &best_move = global_best_move;
-	int final_score = (root_side == Turn::SENTE) ? global_best_score : -global_best_score;
-	float win_rate = calculate_win_probability(final_score);
+	// 手番側が勝ちを読み切った局面では1手だけを返す
+	bool root_win_proven = (root_side == Turn::SENTE) ? (global_top[0].score >= MATE_BOUND)
+													  : (global_top[0].score <= -MATE_BOUND);
+	if (root_win_proven) {
+		global_top.resize(1);
+	}
 
-	Dictionary result;
-	result["from_col"] = best_move.from_col;
-	result["from_row"] = best_move.from_row;
-	result["to_col"] = best_move.to_col;
-	result["to_row"] = best_move.to_row;
-	result["piece_type"] = static_cast<int>(best_move.piece_type);
-	result["is_promotion"] = best_move.is_promotion;
-	result["is_drop"] = best_move.is_drop;
-	result["win_rate"] = win_rate;
+	Array result;
+	for (const RootMove &entry : global_top) {
+		int display_score = (root_side == Turn::SENTE) ? entry.score : -entry.score;
+		result.append(make_move_dictionary(entry.move, display_score, calculate_win_probability(display_score)));
+	}
 
 	return result;
 }

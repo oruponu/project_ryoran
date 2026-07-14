@@ -3,6 +3,7 @@
 #include "ai_player.hpp"
 #include "board_state.hpp"
 #include <godot_cpp/classes/ref_counted.hpp>
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_int64_array.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
@@ -42,4 +43,5 @@ public:
 	void set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks);
 	void update_state_from_sfen(const String &sfen);
 	[[nodiscard]] Dictionary search_best_move();
+	[[nodiscard]] Array search_top_moves(int count);
 };
