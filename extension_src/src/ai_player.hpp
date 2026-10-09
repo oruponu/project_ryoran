@@ -40,6 +40,7 @@ class AIPlayer {
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 	static constexpr size_t TT_SIZE = 1 << 20; // 約100万エントリ
+	uint64_t time_limit_usec_ = TIME_LIMIT_USEC;
 	static constexpr size_t DFPN_TT_SIZE = 1 << 20;
 	static constexpr uint32_t INFINITY_PN = 10000000;
 	static constexpr int MAX_PLY = 128;
@@ -89,4 +90,5 @@ public:
 
 	[[nodiscard]] godot::Array search_top_moves(BoardState board, int count);
 	void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
+	void set_time_limit_usec(uint64_t usec);
 };

@@ -86,6 +86,13 @@ Dictionary make_move_dictionary(const Shogi::Move &move, int score, double win_r
 	return result;
 }
 
+void AIPlayer::set_time_limit_usec(uint64_t usec) {
+	if (usec == 0) {
+		return;
+	}
+	time_limit_usec_ = usec;
+}
+
 void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks) {
 	// 境界外参照防止のため短い方に合わせる
 	size_t n = hashes.size() < in_checks.size() ? hashes.size() : in_checks.size();
@@ -864,7 +871,7 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 	}
 
 	uint64_t start_time = Time::get_singleton()->get_ticks_usec();
-	uint64_t strict_limit_time = start_time + TIME_LIMIT_USEC;
+	uint64_t strict_limit_time = start_time + time_limit_usec_;
 
 	int max_depth_limit = 12;
 
