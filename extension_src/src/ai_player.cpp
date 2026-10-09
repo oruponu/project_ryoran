@@ -1,13 +1,15 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <algorithm>
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
 #include <cstring>
-#include <godot_cpp/classes/time.hpp>
-#include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
+#include <string>
+#include <utility>
 #include <vector>
 
-using namespace godot;
 using Shogi::Coord;
 using Shogi::Move;
 using Shogi::PieceType;
@@ -25,9 +27,6 @@ constexpr std::array HAND_PIECE_TYPES = {
 	PieceType::ROOK,
 };
 
-constexpr int MATE_SCORE = 999999;
-constexpr int MATE_BOUND = MATE_SCORE - 10000;
-
 // 不詰みの証明はノード数上限まで探索しがちなため、思考時間に収まるよう上限を用途別に分ける
 constexpr int OWN_MATE_DEPTH = 21;
 constexpr uint64_t OWN_MATE_NODES = 30000;
@@ -41,25 +40,22 @@ constexpr int LMR_DEEP_MOVE_THRESHOLD = 12;
 // Delta Pruningのマージン
 constexpr int DELTA_MARGIN = 540;
 
-// 静止探索を打ち切る深さ
-constexpr int QS_PLY_LIMIT = 16;
-
 // 詰みの評価値はルートからの手数を含むため、置換表にはその局面からの手数に変換して格納して取得時に戻す
 int score_to_tt(int score, int ply) {
-	if (score > MATE_BOUND) {
+	if (score > AIPlayer::MATE_BOUND) {
 		return score + ply;
 	}
-	if (score < -MATE_BOUND) {
+	if (score < -AIPlayer::MATE_BOUND) {
 		return score - ply;
 	}
 	return score;
 }
 
 int score_from_tt(int score, int ply) {
-	if (score > MATE_BOUND) {
+	if (score > AIPlayer::MATE_BOUND) {
 		return score - ply;
 	}
-	if (score < -MATE_BOUND) {
+	if (score < -AIPlayer::MATE_BOUND) {
 		return score + ply;
 	}
 	return score;
@@ -70,27 +66,43 @@ struct RootMove {
 	int score;
 };
 
-} //namespace
-
-Dictionary make_move_dictionary(const Shogi::Move &move, int score, double win_rate) {
-	Dictionary result;
-	result["from_col"] = move.from_col;
-	result["from_row"] = move.from_row;
-	result["to_col"] = move.to_col;
-	result["to_row"] = move.to_row;
-	result["piece_type"] = static_cast<int>(move.piece_type);
-	result["is_promotion"] = move.is_promotion;
-	result["is_drop"] = move.is_drop;
-	result["score"] = score;
-	result["win_rate"] = win_rate;
-	return result;
+uint64_t now_usec() {
+	using namespace std::chrono;
+	return static_cast<uint64_t>(duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count());
 }
+
+} //namespace
 
 void AIPlayer::set_time_limit_usec(uint64_t usec) {
 	if (usec == 0) {
 		return;
 	}
 	time_limit_usec_ = usec;
+}
+
+void AIPlayer::set_logger(std::function<void(const std::string &)> logger) {
+	logger_ = std::move(logger);
+}
+
+void AIPlayer::log(const std::string &message) const {
+	if (logger_) {
+		logger_(message);
+	}
+}
+
+std::string AIPlayer::format_percent(double value) {
+	char buffer[32];
+	std::snprintf(buffer, sizeof(buffer), "%.1f", value);
+	std::string text(buffer);
+	if (text.find('.') != std::string::npos) {
+		while (text.back() == '0') {
+			text.pop_back();
+		}
+		if (text.back() == '.') {
+			text.pop_back();
+		}
+	}
+	return text;
 }
 
 void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks) {
@@ -206,7 +218,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		bool &timeout, uint64_t &node_count, bool can_null) {
 	++node_count;
 
-	if (Time::get_singleton()->get_ticks_usec() > end_time) {
+	if (now_usec() > end_time) {
 		timeout = true;
 		return 0;
 	}
@@ -827,20 +839,18 @@ void AIPlayer::clear_tt() {
 	transposition_table_.clear();
 }
 
-Array AIPlayer::search_top_moves(BoardState board, int count) {
+std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) {
 	if (count < 1) {
-		return Array();
+		return {};
 	}
 
 	Turn root_side = board.get_turn_to_move();
 
 	auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES);
 	if (mate_move.has_value()) {
-		UtilityFunctions::print("Checkmate proven.");
+		log("Checkmate proven.");
 
-		Array result;
-		result.append(make_move_dictionary(mate_move.value(), MATE_SCORE - 1, 1.0));
-		return result;
+		return { ScoredMove{ mate_move.value(), MATE_SCORE - 1, 1.0 } };
 	}
 
 	Shogi::MoveList move_list;
@@ -848,14 +858,13 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 
 	if (move_list.is_empty()) {
 		// 投了
-		return Array();
+		return {};
 	}
 
 	transposition_table_.reserve(TT_SIZE);
 
 	if (transposition_table_.size() > TT_SIZE) {
-		UtilityFunctions::print("TT size exceeded limit, clearing. Size was: ",
-				static_cast<int64_t>(transposition_table_.size()));
+		log("TT size exceeded limit, clearing. Size was: " + std::to_string(transposition_table_.size()));
 		clear_tt();
 	}
 
@@ -870,7 +879,7 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 		}
 	}
 
-	uint64_t start_time = Time::get_singleton()->get_ticks_usec();
+	uint64_t start_time = now_usec();
 	uint64_t strict_limit_time = start_time + time_limit_usec_;
 
 	int max_depth_limit = 12;
@@ -901,8 +910,8 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 	path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_side);
 
 	for (int depth = 1; depth <= max_depth_limit; ++depth) {
-		if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
-			UtilityFunctions::print("Time limit reached before depth ", depth);
+		if (depth > 1 && now_usec() > strict_limit_time) {
+			log("Time limit reached before depth " + std::to_string(depth));
 			break;
 		}
 
@@ -924,7 +933,7 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 		bool timeout = false;
 
 		for (const auto &move : move_list) {
-			if (depth > 1 && Time::get_singleton()->get_ticks_usec() > strict_limit_time) {
+			if (depth > 1 && now_usec() > strict_limit_time) {
 				timeout = true;
 				break;
 			}
@@ -981,7 +990,7 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 		}
 
 		if (timeout) {
-			UtilityFunctions::print("Time limit reached before depth ", depth);
+			log("Time limit reached before depth " + std::to_string(depth));
 			break;
 		}
 
@@ -991,18 +1000,18 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 
 		int display_score = (root_side == Turn::SENTE) ? global_top[0].score : -global_top[0].score;
 		double win_prob = calculate_win_probability(display_score);
-		UtilityFunctions::print("Depth ", depth, " completed. BestScore: ", global_top[0].score,
-				", WinRate: ", String::num(win_prob * 100.0, 1), "%");
+		log("Depth " + std::to_string(depth) + " completed. BestScore: " + std::to_string(global_top[0].score) +
+				", WinRate: " + format_percent(win_prob * 100.0) + "%");
 
 		// 詰み筋を見つけたら打ち切り
 		if (global_top[0].score >= MATE_BOUND || global_top[0].score <= -MATE_BOUND) {
-			UtilityFunctions::print("Checkmate found at depth ", depth);
+			log("Checkmate found at depth " + std::to_string(depth));
 			break;
 		}
 	}
 
-	UtilityFunctions::print("Total nodes searched: ", total_node_count,
-			", TT size: ", static_cast<int64_t>(transposition_table_.size()));
+	log("Total nodes searched: " + std::to_string(total_node_count) +
+			", TT size: " + std::to_string(transposition_table_.size()));
 
 	// 手番側が勝ちを読み切った局面では1手だけを返す
 	bool root_win_proven = (root_side == Turn::SENTE) ? (global_top[0].score >= MATE_BOUND)
@@ -1011,10 +1020,11 @@ Array AIPlayer::search_top_moves(BoardState board, int count) {
 		global_top.resize(1);
 	}
 
-	Array result;
+	std::vector<ScoredMove> result;
+	result.reserve(global_top.size());
 	for (const RootMove &entry : global_top) {
 		int display_score = (root_side == Turn::SENTE) ? entry.score : -entry.score;
-		result.append(make_move_dictionary(entry.move, display_score, calculate_win_probability(display_score)));
+		result.push_back({ entry.move, display_score, calculate_win_probability(display_score) });
 	}
 
 	return result;

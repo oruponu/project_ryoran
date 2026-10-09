@@ -1,13 +1,12 @@
 #pragma once
 
 #include "board_state.hpp"
-#include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
+#include <functional>
+#include <optional>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-[[nodiscard]] godot::Dictionary make_move_dictionary(const Shogi::Move &move, int score, double win_rate);
 
 enum class TTFlag : uint8_t {
 	EXACT,
@@ -36,7 +35,19 @@ struct ChildNode {
 	int dn;
 };
 
+struct ScoredMove {
+	Shogi::Move move;
+	int score;
+	double win_rate;
+};
+
 class AIPlayer {
+	friend struct AIPlayerTestAccess;
+
+public:
+	static constexpr int MATE_SCORE = 999999;
+	static constexpr int MATE_BOUND = MATE_SCORE - 10000;
+
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 	static constexpr size_t TT_SIZE = 1 << 20; // 約100万エントリ
@@ -45,6 +56,10 @@ private:
 	static constexpr uint32_t INFINITY_PN = 10000000;
 	static constexpr int MAX_PLY = 128;
 	static constexpr int HISTORY_CAP = 700000; // Killer2（800000）を超えさせない上限
+	// 静止探索を打ち切る深さ
+	static constexpr int QS_PLY_LIMIT = 16;
+
+	std::function<void(const std::string &)> logger_;
 
 	std::unordered_map<uint64_t, TTEntry> transposition_table_;
 	std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
@@ -83,12 +98,15 @@ private:
 	[[nodiscard]] TTEntry *probe_tt(uint64_t hash);
 	void store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Shogi::Move &best_move);
 	void clear_tt();
+	void log(const std::string &message) const;
+	[[nodiscard]] static std::string format_percent(double value);
 
 public:
 	AIPlayer() {}
 	~AIPlayer() {}
 
-	[[nodiscard]] godot::Array search_top_moves(BoardState board, int count);
+	[[nodiscard]] std::vector<ScoredMove> search_top_moves(BoardState board, int count);
 	void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
 	void set_time_limit_usec(uint64_t usec);
+	void set_logger(std::function<void(const std::string &)> logger);
 };
