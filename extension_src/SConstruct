@@ -21,5 +21,23 @@ else:
         source=sources,
     )
 
+if env["platform"] == "windows":
+    test_env = env.Clone()
+    test_env.Replace(CPPPATH=["#src"], LIBS=[], LIBPATH=[])
+    test_env.VariantDir("build/test/src", "src", duplicate=0)
+    test_env.VariantDir("build/test/test", "test", duplicate=0)
+    test_sources = [
+        f for f in Glob("build/test/src/*.cpp")
+        if f.name not in ("shogi_engine.cpp", "register_types.cpp")
+    ] + Glob("build/test/test/*.cpp")
+    test_program = test_env.Program("build/test/shogi_tests", test_sources)
+    test_run = test_env.Command(
+        "build/test/run",
+        [test_program, File("../assets/data/zobrist_params.bin")],
+        '"${SOURCES[0].abspath}" "${SOURCES[1].abspath}"',
+    )
+    test_env.AlwaysBuild(test_run)
+    Alias("tests", test_run)
+
 env.NoCache(library)
 Default(library)
