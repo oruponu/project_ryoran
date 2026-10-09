@@ -1,3 +1,4 @@
+#include "attack_table.hpp"
 #include "board_state.hpp"
 #include <algorithm>
 #include <array>

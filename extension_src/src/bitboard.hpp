@@ -1,8 +1,6 @@
 #pragma once
 
-#include "shogi_utils.hpp"
 #include <cstdint>
-#include <string>
 
 #ifdef _MSC_VER
 #include <intrin.h>

@@ -1,5 +1,5 @@
+#include "move_generator.hpp"
 #include "test_support.hpp"
-#include <cstring>
 
 namespace {
 
