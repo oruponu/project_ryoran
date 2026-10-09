@@ -10,6 +10,9 @@ const KANJI_NUMS = ["一", "二", "三", "四", "五", "六", "七", "八", "九
 const ARABIC_NUMS = ["１", "２", "３", "４", "５", "６", "７", "８", "９"]
 const SENNICHITE_COUNT = 4
 const MIN_AI_RESPONSE_TIME_SEC = 0.5
+const HINT_CANDIDATE_COUNT = 3
+const HINT_WIN_RATE_MARGIN = 0.01
+const HINT_ANALYSIS_TIME_MSEC = 2000
 
 
 func cell_to_position(col: int, row: int) -> Vector2:

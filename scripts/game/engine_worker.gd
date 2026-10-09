@@ -7,7 +7,7 @@ const AI_IS_ENEMY := true
 
 
 signal search_completed(move: Dictionary)
-signal analysis_completed(move: Dictionary)
+signal analysis_completed(moves: Array)
 
 
 var _serializer: SfenSerializer
@@ -35,6 +35,7 @@ func _exit_tree() -> void:
 func setup(serializer: SfenSerializer, tracker: RepetitionTracker) -> void:
 	_serializer = serializer
 	_tracker = tracker
+	_eval_engine.set_time_limit_msec(GameConfig.HINT_ANALYSIS_TIME_MSEC)
 
 
 func request_search() -> bool:
@@ -112,18 +113,18 @@ func _on_search_finished(move: Dictionary, generation: int) -> void:
 
 
 func _run_analysis(generation: int, sfen: String) -> void:
-	var move: Dictionary = _eval_engine.search_best_move()
-	call_deferred("_on_analysis_finished", move, generation, sfen)
+	var moves: Array = _eval_engine.search_top_moves(GameConfig.HINT_CANDIDATE_COUNT)
+	call_deferred("_on_analysis_finished", moves, generation, sfen)
 
 
-func _on_analysis_finished(move: Dictionary, generation: int, sfen: String) -> void:
+func _on_analysis_finished(moves: Array, generation: int, sfen: String) -> void:
 	_eval_thread.wait_to_finish()
 	_eval_thread = null
 
 	# 最新局面の解析だけを通知
 	var is_current := generation == _generation and sfen == _serializer.to_sfen()
 	if is_current and not _analysis_pending and not _analysis_suspended:
-		analysis_completed.emit(move)
+		analysis_completed.emit(moves)
 
 	if _analysis_pending:
 		_analysis_pending = false
