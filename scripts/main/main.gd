@@ -24,7 +24,7 @@ var input_controller: InputController
 var move_executor: MoveExecutor
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
-var _hint_move: Dictionary = {}
+var _hint_moves: Array[Dictionary] = []
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
@@ -111,7 +111,7 @@ func _update_button_states() -> void:
 
 	new_game_button.disabled = false
 	undo_button.disabled = game_state.move_history.is_empty()
-	hint_button.disabled = _hint_move.is_empty()
+	hint_button.disabled = _hint_moves.is_empty()
 	resign_button.disabled = game_state.move_history.is_empty()
 
 
@@ -227,9 +227,21 @@ func _play_ai_turn() -> void:
 		_update_button_states()
 
 
-func _on_analysis_completed(move: Dictionary) -> void:
-	win_rate_bar.update_bar(move.get("win_rate", 0.0))
-	_hint_move = move
+func _on_analysis_completed(moves: Array) -> void:
+	if moves.is_empty():
+		win_rate_bar.update_bar(0.0)
+		_hint_moves = []
+		_update_button_states()
+		return
+
+	win_rate_bar.update_bar(moves[0].win_rate)
+
+	var best_win_rate: float = moves[0].win_rate
+	_hint_moves = []
+	for move in moves:
+		if best_win_rate - move.win_rate <= GameConfig.HINT_WIN_RATE_MARGIN:
+			_hint_moves.append(move)
+
 	_update_button_states()
 
 
@@ -335,34 +347,44 @@ func _update_last_move_highlight() -> void:
 
 
 func _clear_hint() -> void:
-	_hint_move = {}
-	board.clear_hint_arrow()
+	_hint_moves = []
+	board.clear_hint_arrows()
 	_update_button_states()
 
 
 func _on_hint_button_pressed() -> void:
-	if _hint_move.is_empty():
+	if _hint_moves.is_empty():
 		return
 
 	input_controller.cancel_holding()
 
-	var to_pos := GameConfig.cell_to_position(_hint_move.to_col, _hint_move.to_row)
-	var from_pos: Vector2
+	var entries: Array[Dictionary] = []
+	for move in _hint_moves:
+		var from_pos: Variant = _hint_from_position(move)
+		if from_pos == null:
+			continue
 
-	if _hint_move.is_drop:
-		var state := game_state.find_hand_piece(not EngineWorker.AI_IS_ENEMY, _hint_move.piece_type)
-		if state == null:
-			return
+		entries.append({
+			"from": from_pos,
+			"to": GameConfig.cell_to_position(move.to_col, move.to_row),
+		})
 
-		var piece := board_view.node_for(state)
-		if piece == null:
-			return
+	board.show_hint_arrows(entries)
 
-		from_pos = board.to_local(piece.global_position)
-	else:
-		from_pos = GameConfig.cell_to_position(_hint_move.from_col, _hint_move.from_row)
 
-	board.show_hint_arrow(from_pos, to_pos)
+func _hint_from_position(move: Dictionary) -> Variant:
+	if not move.is_drop:
+		return GameConfig.cell_to_position(move.from_col, move.from_row)
+
+	var state := game_state.find_hand_piece(game_state.is_gote_turn(), move.piece_type)
+	if state == null:
+		return null
+
+	var piece := board_view.node_for(state)
+	if piece == null:
+		return null
+
+	return board.to_local(piece.global_position)
 
 
 func _update_turn_display() -> void:

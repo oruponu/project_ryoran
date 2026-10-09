@@ -15,7 +15,7 @@ const MARGIN = 22.5
 var active_guides: Array[ColorRect] = []
 var last_move_rect: ColorRect = null
 var last_move_tween: Tween = null
-var hint_arrow: HintArrow = null
+var hint_arrows: Array[HintArrow] = []
 
 
 # Called when the node enters the scene tree for the first time.
@@ -69,7 +69,7 @@ func _draw_coordinates() -> void:
 func clear_pieces() -> void:
 	clear_guides()
 	clear_last_move_highlight()
-	clear_hint_arrow()
+	clear_hint_arrows()
 
 	for child in get_children():
 		if child is Piece:
@@ -126,16 +126,18 @@ func clear_last_move_highlight() -> void:
 		last_move_rect = null
 
 
-func show_hint_arrow(from_pos: Vector2, to_pos: Vector2) -> void:
-	if hint_arrow == null:
-		hint_arrow = HintArrow.new()
-		hint_arrow.z_index = 6
-		add_child(hint_arrow)
+func show_hint_arrows(entries: Array[Dictionary]) -> void:
+	clear_hint_arrows()
 
-	hint_arrow.setup(from_pos, to_pos)
+	for entry in entries:
+		var arrow := HintArrow.new()
+		arrow.z_index = 6
+		add_child(arrow)
+		arrow.setup(entry.from, entry.to)
+		hint_arrows.append(arrow)
 
 
-func clear_hint_arrow() -> void:
-	if hint_arrow != null:
-		hint_arrow.queue_free()
-		hint_arrow = null
+func clear_hint_arrows() -> void:
+	for arrow in hint_arrows:
+		arrow.queue_free()
+	hint_arrows.clear()
