@@ -44,4 +44,5 @@ public:
 	void update_state_from_sfen(const String &sfen);
 	[[nodiscard]] Dictionary search_best_move();
 	[[nodiscard]] Array search_top_moves(int count);
+	void set_time_limit_msec(int msec);
 };

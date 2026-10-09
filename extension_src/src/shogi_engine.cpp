@@ -37,6 +37,7 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 	ClassDB::bind_method(D_METHOD("search_top_moves", "count"), &ShogiEngine::search_top_moves);
+	ClassDB::bind_method(D_METHOD("set_time_limit_msec", "msec"), &ShogiEngine::set_time_limit_msec);
 }
 
 void ShogiEngine::load_book_from_file(const String &path) {
@@ -205,4 +206,11 @@ Array ShogiEngine::search_top_moves(int count) {
 	}
 
 	return ai_player_.search_top_moves(current_state_, count);
+}
+
+void ShogiEngine::set_time_limit_msec(int msec) {
+	if (msec <= 0) {
+		return;
+	}
+	ai_player_.set_time_limit_usec(static_cast<uint64_t>(msec) * 1000);
 }
