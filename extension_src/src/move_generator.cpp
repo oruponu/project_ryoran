@@ -1,3 +1,4 @@
+#include "attack_table.hpp"
 #include "move_generator.hpp"
 #include <algorithm>
 #include <array>

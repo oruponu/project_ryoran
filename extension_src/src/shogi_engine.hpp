@@ -10,7 +10,6 @@
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
-#include <string>
 #include <unordered_map>
 #include <vector>
 

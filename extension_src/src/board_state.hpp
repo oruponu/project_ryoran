@@ -1,6 +1,5 @@
 #pragma once
 
-#include "attack_table.hpp"
 #include "bitboard.hpp"
 #include "evaluator.hpp"
 #include "shogi_utils.hpp"
@@ -8,7 +7,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 
 struct Cell {
 	Shogi::PieceType type;
