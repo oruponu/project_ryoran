@@ -2,12 +2,9 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
-#include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 #include <string>
 #include <vector>
 
-using namespace godot;
 using Shogi::Coord;
 using Shogi::Move;
 using Shogi::PieceType;
@@ -43,6 +40,17 @@ std::optional<Shogi::PieceType> piece_type_from_char(char c) {
 	}
 }
 
+constexpr uint32_t ZOBRIST_MAGIC = 0x5A4F4252; // "ZOBR"
+
+uint32_t read_u32_le(const uint8_t *p) {
+	return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) |
+			(static_cast<uint32_t>(p[3]) << 24);
+}
+
+uint64_t read_u64_le(const uint8_t *p) {
+	return static_cast<uint64_t>(read_u32_le(p)) | (static_cast<uint64_t>(read_u32_le(p + 4)) << 32);
+}
+
 } // namespace
 
 BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(0) {
@@ -71,28 +79,19 @@ BoardState::BoardState(Turn turn_to_move) : turn_to_move_(turn_to_move), score_(
 	build_bitboard();
 }
 
-BoardState::BoardState(const std::string &sfen) : BoardState(Turn::SENTE) {
-	if (!parse_sfen(sfen)) {
-		UtilityFunctions::push_error(("Invalid SFEN: " + sfen).c_str());
-
-		// パースに失敗したときは空の盤面に戻す
-		for (int i = 0; i < Shogi::BOARD_SIZE; ++i) {
-			board_[i] = Cell();
-		}
-		for (int side = 0; side < 2; ++side) {
-			for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-				hand_[side][piece_type] = 0;
-			}
-		}
-		turn_to_move_ = Turn::SENTE;
+std::optional<BoardState> BoardState::from_sfen(const std::string &sfen) {
+	BoardState board(Turn::SENTE);
+	if (!board.parse_sfen(sfen)) {
+		return std::nullopt;
 	}
 
-	update_king_position_cache();
-	update_pawn_columns_cache();
-	zobrist_hash_ = calculate_zobrist_hash();
-	score_ = Evaluator::calculate_score(*this);
+	board.update_king_position_cache();
+	board.update_pawn_columns_cache();
+	board.zobrist_hash_ = board.calculate_zobrist_hash();
+	board.score_ = Evaluator::calculate_score(board);
 
-	build_bitboard();
+	board.build_bitboard();
+	return board;
 }
 
 bool BoardState::parse_sfen(const std::string &sfen) {
@@ -217,21 +216,28 @@ bool BoardState::parse_sfen(const std::string &sfen) {
 	return true;
 }
 
-void BoardState::load_zobrist_params(const String &path) {
+bool BoardState::zobrist_initialized() {
+	return g_zobrist_initialized;
+}
+
+bool BoardState::load_zobrist_params(const uint8_t *data, size_t size) {
 	if (g_zobrist_initialized) {
-		return;
+		return true;
 	}
 
-	if (!FileAccess::file_exists(path)) {
-		UtilityFunctions::print("Zobrist params file not found: " + path);
-		return;
+	constexpr size_t value_count = sizeof(g_zobrist_board) / sizeof(uint64_t) +
+			sizeof(g_zobrist_hand) / sizeof(uint64_t) + 1;
+	if (data == nullptr || size < sizeof(uint32_t) + value_count * sizeof(uint64_t) ||
+			read_u32_le(data) != ZOBRIST_MAGIC) {
+		return false;
 	}
 
-	Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-	if (file->get_32() != 0x5A4F4252) { // "ZOBR"
-		UtilityFunctions::print("Invalid Zobrist params file format.");
-		return;
-	}
+	const uint8_t *cursor = data + sizeof(uint32_t);
+	auto next = [&cursor]() {
+		uint64_t value = read_u64_le(cursor);
+		cursor += sizeof(uint64_t);
+		return value;
+	};
 
 	// 盤上の駒
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
@@ -239,7 +245,7 @@ void BoardState::load_zobrist_params(const String &path) {
 			for (int is_promoted = 0; is_promoted < 2; ++is_promoted) {
 				for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 					for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-						g_zobrist_board[static_cast<int>(turn)][piece_type][is_promoted][col][row] = file->get_64();
+						g_zobrist_board[static_cast<int>(turn)][piece_type][is_promoted][col][row] = next();
 					}
 				}
 			}
@@ -250,15 +256,14 @@ void BoardState::load_zobrist_params(const String &path) {
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
 			for (int n = 0; n < 20; ++n) {
-				g_zobrist_hand[static_cast<int>(turn)][piece_type][n] = file->get_64();
+				g_zobrist_hand[static_cast<int>(turn)][piece_type][n] = next();
 			}
 		}
 	}
 
-	g_zobrist_turn_enemy = file->get_64();
+	g_zobrist_turn_enemy = next();
 	g_zobrist_initialized = true;
-
-	UtilityFunctions::print("Zobrist parameters loaded successfully.");
+	return true;
 }
 
 void BoardState::build_bitboard() {
@@ -670,39 +675,4 @@ uint64_t BoardState::make_null_move() {
 void BoardState::undo_null_move(uint64_t prev_hash) {
 	zobrist_hash_ = prev_hash;
 	turn_to_move_ = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
-}
-
-void BoardState::print_board() const {
-	UtilityFunctions::print("--- Board State ---");
-	for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-		String line = "";
-		for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-			const Cell &cell = get_cell({ col, row });
-			if (cell.is_empty()) {
-				line += ". ";
-			} else {
-				String piece_str = String::num_int64(static_cast<int>(cell.type));
-				if (cell.is_promoted) {
-					piece_str += "+";
-				}
-				if (cell.turn == Turn::GOTE) {
-					piece_str = piece_str.to_upper();
-				}
-				line += piece_str + " ";
-			}
-		}
-		UtilityFunctions::print(line);
-	}
-
-	UtilityFunctions::print("Player Hand:");
-	for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-		UtilityFunctions::print("Type " + String::num_int64(piece_type) + ": " +
-				String::num_int64(hand_[static_cast<int>(Turn::SENTE)][piece_type]));
-	}
-
-	UtilityFunctions::print("Enemy Hand:");
-	for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-		UtilityFunctions::print("Type " + String::num_int64(piece_type) + ": " +
-				String::num_int64(hand_[static_cast<int>(Turn::GOTE)][piece_type]));
-	}
 }

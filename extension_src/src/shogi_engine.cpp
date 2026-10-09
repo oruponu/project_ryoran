@@ -4,7 +4,9 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <optional>
 #include <string>
 
 using namespace godot;
@@ -13,11 +15,60 @@ using Shogi::Move;
 using Shogi::PieceType;
 using Shogi::Turn;
 
+namespace {
+
+Dictionary make_move_dictionary(const Move &move, int score, double win_rate) {
+	Dictionary result;
+	result["from_col"] = move.from_col;
+	result["from_row"] = move.from_row;
+	result["to_col"] = move.to_col;
+	result["to_row"] = move.to_row;
+	result["piece_type"] = static_cast<int>(move.piece_type);
+	result["is_promotion"] = move.is_promotion;
+	result["is_drop"] = move.is_drop;
+	result["score"] = score;
+	result["win_rate"] = win_rate;
+	return result;
+}
+
+BoardState board_from_sfen(const String &sfen) {
+	std::string text(sfen.utf8().get_data());
+	std::optional<BoardState> board = BoardState::from_sfen(text);
+	if (!board.has_value()) {
+		UtilityFunctions::push_error(("Invalid SFEN: " + text).c_str());
+		return BoardState(Turn::SENTE);
+	}
+	return *board;
+}
+
+void load_zobrist_params_from_file(const String &path) {
+	if (BoardState::zobrist_initialized()) {
+		return;
+	}
+
+	if (!FileAccess::file_exists(path)) {
+		UtilityFunctions::print("Zobrist params file not found: " + path);
+		return;
+	}
+
+	PackedByteArray data = FileAccess::get_file_as_bytes(path);
+	if (!BoardState::load_zobrist_params(data.ptr(), static_cast<size_t>(data.size()))) {
+		UtilityFunctions::print("Invalid Zobrist params file format.");
+		return;
+	}
+
+	UtilityFunctions::print("Zobrist parameters loaded successfully.");
+}
+
+} // namespace
+
 ShogiEngine::ShogiEngine() {
+	ai_player_.set_logger([](const std::string &message) { UtilityFunctions::print(message.c_str()); });
+
 	if (!is_initialized_) {
 		std::srand(Time::get_singleton()->get_ticks_usec());
 
-		BoardState::load_zobrist_params("res://assets/data/zobrist_params.bin");
+		load_zobrist_params_from_file("res://assets/data/zobrist_params.bin");
 		load_book_from_file("res://assets/data/book.bin");
 
 		is_initialized_ = true;
@@ -86,7 +137,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_moves(const String &sfen, int col, i
 		return result;
 	}
 
-	BoardState board(std::string(sfen.utf8().get_data()));
+	BoardState board = board_from_sfen(sfen);
 
 	for (int to_col = 0; to_col < Shogi::BOARD_COLS; ++to_col) {
 		for (int to_row = 0; to_row < Shogi::BOARD_ROWS; ++to_row) {
@@ -108,7 +159,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 		return result;
 	}
 
-	BoardState board(std::string(sfen.utf8().get_data()));
+	BoardState board = board_from_sfen(sfen);
 	bool is_enemy = (board.get_turn_to_move() == Turn::GOTE);
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
@@ -124,7 +175,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 }
 
 bool ShogiEngine::is_king_in_check(const String &sfen, bool is_enemy) {
-	BoardState board(std::string(sfen.utf8().get_data()));
+	BoardState board = board_from_sfen(sfen);
 
 	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
 
@@ -132,7 +183,7 @@ bool ShogiEngine::is_king_in_check(const String &sfen, bool is_enemy) {
 }
 
 bool ShogiEngine::has_any_legal_move(const String &sfen) {
-	BoardState board(std::string(sfen.utf8().get_data()));
+	BoardState board = board_from_sfen(sfen);
 
 	Shogi::MoveList move_list;
 	MoveGenerator::get_legal_moves(board, move_list);
@@ -141,7 +192,7 @@ bool ShogiEngine::has_any_legal_move(const String &sfen) {
 }
 
 int64_t ShogiEngine::get_position_hash(const String &sfen) {
-	BoardState board(std::string(sfen.utf8().get_data()));
+	BoardState board = board_from_sfen(sfen);
 	return static_cast<int64_t>(board.get_zobrist_hash());
 }
 
@@ -164,7 +215,7 @@ bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_enemy, i
 }
 
 void ShogiEngine::update_state_from_sfen(const String &sfen) {
-	current_state_ = BoardState(std::string(sfen.utf8().get_data()));
+	current_state_ = board_from_sfen(sfen);
 }
 
 void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks) {
@@ -205,7 +256,11 @@ Array ShogiEngine::search_top_moves(int count) {
 		return result;
 	}
 
-	return ai_player_.search_top_moves(current_state_, count);
+	Array result;
+	for (const ScoredMove &entry : ai_player_.search_top_moves(current_state_, count)) {
+		result.append(make_move_dictionary(entry.move, entry.score, entry.win_rate));
+	}
+	return result;
 }
 
 void ShogiEngine::set_time_limit_msec(int msec) {

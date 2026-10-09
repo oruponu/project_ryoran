@@ -2,8 +2,11 @@
 
 #include "shogi_utils.hpp"
 #include <cstdint>
-#include <godot_cpp/variant/utility_functions.hpp>
 #include <string>
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 struct Bitboard {
 private:
@@ -126,23 +129,5 @@ public:
 #else
 		return __builtin_popcountll(lower_) + __builtin_popcountll(upper_);
 #endif
-	}
-
-	void print() const {
-		using namespace godot;
-		String output = "\n------------------\n";
-		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			String line = "";
-			for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-				int index = col * Shogi::BOARD_ROWS + row;
-				if (is_set(index)) {
-					line += "1 ";
-				} else {
-					line += ". ";
-				}
-			}
-			output += line + "\n";
-		}
-		UtilityFunctions::print(output);
 	}
 };

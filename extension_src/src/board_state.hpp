@@ -4,12 +4,11 @@
 #include "bitboard.hpp"
 #include "evaluator.hpp"
 #include "shogi_utils.hpp"
-#include <godot_cpp/variant/string.hpp>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
-
-using namespace godot;
 
 struct Cell {
 	Shogi::PieceType type;
@@ -81,7 +80,7 @@ private:
 
 public:
 	BoardState(Shogi::Turn turn_to_move = Shogi::Turn::SENTE);
-	explicit BoardState(const std::string &sfen);
+	[[nodiscard]] static std::optional<BoardState> from_sfen(const std::string &sfen);
 
 	[[nodiscard]] Shogi::Turn get_turn_to_move() const { return turn_to_move_; }
 	[[nodiscard]] int get_score() const { return score_ + Evaluator::calculate_spatial_score(*this); }
@@ -108,7 +107,8 @@ public:
 		return true;
 	}
 
-	static void load_zobrist_params(const String &path);
+	static bool load_zobrist_params(const uint8_t *data, size_t size);
+	[[nodiscard]] static bool zobrist_initialized();
 
 	[[nodiscard]] uint64_t get_zobrist_hash() const;
 
@@ -126,7 +126,4 @@ public:
 	// Null Move Pruning用
 	uint64_t make_null_move();
 	void undo_null_move(uint64_t prev_hash);
-
-	// 盤面の出力（デバッグ用）
-	void print_board() const;
 };

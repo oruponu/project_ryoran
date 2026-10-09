@@ -2,6 +2,7 @@
 
 #include "shogi_utils.hpp"
 #include <cstdint>
+#include <cstdlib>
 
 class BoardState;
 struct Cell;
