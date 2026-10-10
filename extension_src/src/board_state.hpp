@@ -25,8 +25,6 @@ struct Cell {
 
 		return type == other.type && turn == other.turn && is_promoted == other.is_promoted;
 	}
-
-	[[nodiscard]] bool operator!=(const Cell &other) const { return !(*this == other); }
 };
 
 struct PinMasks {
