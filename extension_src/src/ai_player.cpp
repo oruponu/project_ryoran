@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -592,7 +593,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		int second_best_pn = INFINITY_PN;
 		int second_best_dn = INFINITY_PN;
 
-		for (int i = 0; i < children.size(); ++i) {
+		for (int i = 0; i < std::ssize(children); ++i) {
 			const auto &child = children[i];
 			if (is_attacker) {
 				sum_dn += child.dn;
@@ -937,7 +938,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			// MultiPV: 暫定リストの最下位より悪い手は候補に残らない
 			int alpha = -99999999;
 			int beta = 99999999;
-			if (static_cast<int>(depth_top.size()) >= count) {
+			if (std::ssize(depth_top) >= count) {
 				if (root_side == Turn::SENTE) {
 					alpha = depth_top.back().score;
 				} else {
@@ -951,7 +952,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 					total_node_count);
 
 			// 全候補手の詰み検証は合法手の多い終盤で時間がかかりすぎるため、暫定上位に入る手のみ検証する
-			bool candidate = static_cast<int>(depth_top.size()) < count || is_better(score, depth_top.back().score);
+			bool candidate = std::ssize(depth_top) < count || is_better(score, depth_top.back().score);
 			if (!timeout && candidate) {
 				uint64_t child_hash = board.get_zobrist_hash();
 				auto mate_it = root_mate_cache.find(child_hash);
@@ -975,10 +976,10 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 				break;
 			}
 
-			if (static_cast<int>(depth_top.size()) < count || is_better(score, depth_top.back().score)) {
+			if (std::ssize(depth_top) < count || is_better(score, depth_top.back().score)) {
 				auto pos = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return is_better(score, entry.score); });
 				depth_top.insert(pos, { move, score });
-				if (static_cast<int>(depth_top.size()) > count) {
+				if (std::ssize(depth_top) > count) {
 					depth_top.pop_back();
 				}
 			}
