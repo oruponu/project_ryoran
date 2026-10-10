@@ -93,7 +93,7 @@ std::string AIPlayer::format_percent(double value) {
 	char buffer[32];
 	std::snprintf(buffer, sizeof(buffer), "%.1f", value);
 	std::string text(buffer);
-	if (text.find('.') != std::string::npos) {
+	if (text.contains('.')) {
 		while (text.back() == '0') {
 			text.pop_back();
 		}
@@ -117,7 +117,7 @@ void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::
 std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash, Shogi::Turn stm) {
 	int v = history_len_ + ply;
 	for (int p = v - 2; p >= 0; p -= 2) {
-		if (p < history_len_ && game_history_hash_set_.find(hash) == game_history_hash_set_.end()) {
+		if (p < history_len_ && !game_history_hash_set_.contains(hash)) {
 			break; // 現局面が履歴に無ければ無駄な走査を打ち切る
 		}
 		if (hash_at(p) != hash) {
@@ -454,7 +454,7 @@ std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth,
 			uint64_t hash = board.get_zobrist_hash();
 
 			int child_pn = 1;
-			if (dfpn_table_.count(hash)) {
+			if (dfpn_table_.contains(hash)) {
 				child_pn = dfpn_table_[hash].pn;
 			}
 
@@ -500,7 +500,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		}
 	}
 
-	if (dfpn_table_.count(hash)) {
+	if (dfpn_table_.contains(hash)) {
 		const auto &entry = dfpn_table_[hash];
 		if (entry.pn == 0 || entry.dn == 0 || entry.pn >= INFINITY_PN || entry.dn >= INFINITY_PN) {
 			pn = entry.pn;
@@ -556,7 +556,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		int child_pn = 1;
 		int child_dn = 1;
 
-		if (dfpn_table_.count(child_hash)) {
+		if (dfpn_table_.contains(child_hash)) {
 			child_pn = dfpn_table_[child_hash].pn;
 			child_dn = dfpn_table_[child_hash].dn;
 		}
