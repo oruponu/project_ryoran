@@ -1,8 +1,10 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
-#include <cstdio>
+#include <format>
 #include <fstream>
 #include <iterator>
+#include <print>
+#include <string>
 #include <utility>
 
 namespace {
@@ -13,38 +15,37 @@ const char *PIECE_NAMES[] = { "K", "R", "B", "G", "S", "N", "L", "P" };
 
 void dump_board(const BoardState &board) {
 	for (int r = 0; r < 9; ++r) {
-		char line[128];
-		int pos = 0;
+		std::string line;
 		for (int f = 9; f >= 1; --f) {
 			const Cell &c = board.get_cell({ f - 1, r });
 			if (c.is_empty()) {
-				pos += std::sprintf(line + pos, " . ");
+				line += " . ";
 			} else {
 				char ch = PIECE_NAMES[std::to_underlying(c.type)][0];
 				if (c.turn == Turn::GOTE) {
 					ch = static_cast<char>(ch - 'A' + 'a');
 				}
-				pos += std::sprintf(line + pos, "%c%c ", ch, c.is_promoted ? '+' : ' ');
+				line += std::format("{}{} ", ch, c.is_promoted ? '+' : ' ');
 			}
 		}
-		std::printf("%s  | rank %d\n", line, r + 1);
+		std::println("{}  | rank {}", line, r + 1);
 	}
 	for (Turn t : { Turn::SENTE, Turn::GOTE }) {
-		std::printf("%s hand: ", t == Turn::SENTE ? "SENTE" : "GOTE ");
+		std::print("{} hand: ", t == Turn::SENTE ? "SENTE" : "GOTE ");
 		for (int p = 0; p < Shogi::PIECE_TYPE_COUNT; ++p) {
 			int n = board.get_hand_count(t, static_cast<PieceType>(p));
 			if (n > 0) {
-				std::printf("%s x%d  ", PIECE_NAMES[p], n);
+				std::print("{} x{}  ", PIECE_NAMES[p], n);
 			}
 		}
-		std::printf("\n");
+		std::print("\n");
 	}
 }
 
 } // namespace
 
 void check(bool condition, const char *name) {
-	std::printf("%s: %s\n", condition ? "PASS" : "FAIL", name);
+	std::println("{}: {}", condition ? "PASS" : "FAIL", name);
 	if (!condition) {
 		++g_failures;
 	}
@@ -188,7 +189,7 @@ bool replay(BoardState &board, int num_moves, const KMove *kifu) {
 			}
 		}
 		if (found == nullptr) {
-			std::printf("FAIL: move %d not found in legal moves (file=%d rank=%d -> file=%d rank=%d)\n", i + 1, km.ff,
+			std::println("FAIL: move {} not found in legal moves (file={} rank={} -> file={} rank={})", i + 1, km.ff,
 					km.fr, km.tf, km.tr);
 			dump_board(board);
 			return false;
