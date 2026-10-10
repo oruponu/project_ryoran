@@ -11,42 +11,42 @@ private:
 	uint64_t upper_;
 
 public:
-	Bitboard() : lower_(0), upper_(0) {}
+	constexpr Bitboard() : lower_(0), upper_(0) {}
 	constexpr Bitboard(uint64_t lower, uint64_t upper) : lower_(lower), upper_(upper) {}
 
-	Bitboard &operator&=(const Bitboard &rhs) {
+	constexpr Bitboard &operator&=(const Bitboard &rhs) {
 		lower_ &= rhs.lower_;
 		upper_ &= rhs.upper_;
 		return *this;
 	}
 
-	Bitboard &operator|=(const Bitboard &rhs) {
+	constexpr Bitboard &operator|=(const Bitboard &rhs) {
 		lower_ |= rhs.lower_;
 		upper_ |= rhs.upper_;
 		return *this;
 	}
 
-	Bitboard &operator^=(const Bitboard &rhs) {
+	constexpr Bitboard &operator^=(const Bitboard &rhs) {
 		lower_ ^= rhs.lower_;
 		upper_ ^= rhs.upper_;
 		return *this;
 	}
 
-	Bitboard operator&(const Bitboard &rhs) const { return Bitboard(lower_ & rhs.lower_, upper_ & rhs.upper_); }
+	constexpr Bitboard operator&(const Bitboard &rhs) const { return Bitboard(lower_ & rhs.lower_, upper_ & rhs.upper_); }
 
-	Bitboard operator|(const Bitboard &rhs) const { return Bitboard(lower_ | rhs.lower_, upper_ | rhs.upper_); }
+	constexpr Bitboard operator|(const Bitboard &rhs) const { return Bitboard(lower_ | rhs.lower_, upper_ | rhs.upper_); }
 
-	Bitboard operator^(const Bitboard &rhs) const { return Bitboard(lower_ ^ rhs.lower_, upper_ ^ rhs.upper_); }
+	constexpr Bitboard operator^(const Bitboard &rhs) const { return Bitboard(lower_ ^ rhs.lower_, upper_ ^ rhs.upper_); }
 
-	Bitboard operator~() const {
+	constexpr Bitboard operator~() const {
 		// ビットを反転したあとに盤面の範囲外のビットをマスク
 		constexpr uint64_t upper_mask = (1ULL << 17) - 1;
 		return Bitboard(~lower_, ~upper_ & upper_mask);
 	}
 
-	bool operator==(const Bitboard &rhs) const = default;
+	constexpr bool operator==(const Bitboard &rhs) const = default;
 
-	int lsb() const {
+	constexpr int lsb() const {
 		if (lower_ != 0) {
 			return std::countr_zero(lower_);
 		}
@@ -56,7 +56,7 @@ public:
 		return -1;
 	}
 
-	int msb() const {
+	constexpr int msb() const {
 		if (upper_ != 0) {
 			return 127 - std::countl_zero(upper_);
 		}
@@ -66,13 +66,13 @@ public:
 		return -1;
 	}
 
-	int pop_lsb() {
+	constexpr int pop_lsb() {
 		int index = lsb();
 		clear(index);
 		return index;
 	}
 
-	void set(int index) {
+	constexpr void set(int index) {
 		if (index < 64) {
 			lower_ |= (1ULL << index);
 		} else {
@@ -80,7 +80,7 @@ public:
 		}
 	}
 
-	void clear(int index) {
+	constexpr void clear(int index) {
 		if (index < 64) {
 			lower_ &= ~(1ULL << index);
 		} else {
@@ -88,7 +88,7 @@ public:
 		}
 	}
 
-	bool is_set(int index) const {
+	constexpr bool is_set(int index) const {
 		if (index < 64) {
 			return (lower_ & (1ULL << index)) != 0;
 		} else {
@@ -96,9 +96,9 @@ public:
 		}
 	}
 
-	bool is_empty() const { return lower_ == 0 && upper_ == 0; }
+	constexpr bool is_empty() const { return lower_ == 0 && upper_ == 0; }
 
-	int count() const {
+	constexpr int count() const {
 		return std::popcount(lower_) + std::popcount(upper_);
 	}
 };
