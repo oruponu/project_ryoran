@@ -61,8 +61,7 @@ struct Coord {
 
 	[[nodiscard]] bool is_valid() const { return col >= 0 && col < BOARD_COLS && row >= 0 && row < BOARD_ROWS; }
 
-	[[nodiscard]] bool operator==(const Coord &other) const { return col == other.col && row == other.row; }
-	[[nodiscard]] bool operator!=(const Coord &other) const { return !(*this == other); }
+	[[nodiscard]] bool operator==(const Coord &other) const = default;
 };
 
 struct Move {
@@ -79,13 +78,7 @@ struct Move {
 
 	Move(int fc, int fr, int tc, int tr, PieceType pt, bool promo, bool drop, bool capture) : from_col(static_cast<uint8_t>(fc)), from_row(static_cast<uint8_t>(fr)), to_col(static_cast<uint8_t>(tc)), to_row(static_cast<uint8_t>(tr)), piece_type(pt), is_promotion(promo), is_drop(drop), is_capture(capture) {}
 
-	[[nodiscard]] bool operator==(const Move &other) const {
-		return from_col == other.from_col && from_row == other.from_row && to_col == other.to_col &&
-				to_row == other.to_row && piece_type == other.piece_type && is_promotion == other.is_promotion &&
-				is_drop == other.is_drop && is_capture == other.is_capture;
-	}
-
-	[[nodiscard]] bool operator!=(const Move &other) const { return !(*this == other); }
+	[[nodiscard]] bool operator==(const Move &other) const = default;
 };
 
 struct MoveList {

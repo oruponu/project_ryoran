@@ -44,9 +44,7 @@ public:
 		return Bitboard(~lower_, ~upper_ & upper_mask);
 	}
 
-	bool operator==(const Bitboard &rhs) const { return lower_ == rhs.lower_ && upper_ == rhs.upper_; }
-
-	bool operator!=(const Bitboard &rhs) const { return !(*this == rhs); }
+	bool operator==(const Bitboard &rhs) const = default;
 
 	int lsb() const {
 		if (lower_ != 0) {
