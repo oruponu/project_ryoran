@@ -451,8 +451,8 @@ std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth,
 			uint64_t hash = board.get_zobrist_hash();
 
 			int child_pn = 1;
-			if (dfpn_table_.contains(hash)) {
-				child_pn = dfpn_table_[hash].pn;
+			if (auto it = dfpn_table_.find(hash); it != dfpn_table_.end()) {
+				child_pn = it->second.pn;
 			}
 
 			board.undo_move(undo);
@@ -497,8 +497,8 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		}
 	}
 
-	if (dfpn_table_.contains(hash)) {
-		const auto &entry = dfpn_table_[hash];
+	if (auto it = dfpn_table_.find(hash); it != dfpn_table_.end()) {
+		const auto &entry = it->second;
 		if (entry.pn == 0 || entry.dn == 0 || entry.pn >= INFINITY_PN || entry.dn >= INFINITY_PN) {
 			pn = entry.pn;
 			dn = entry.dn;
@@ -553,9 +553,9 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		int child_pn = 1;
 		int child_dn = 1;
 
-		if (dfpn_table_.contains(child_hash)) {
-			child_pn = dfpn_table_[child_hash].pn;
-			child_dn = dfpn_table_[child_hash].dn;
+		if (auto it = dfpn_table_.find(child_hash); it != dfpn_table_.end()) {
+			child_pn = it->second.pn;
+			child_dn = it->second.dn;
 		}
 
 		children.push_back({ .move = move, .hash = child_hash, .pn = child_pn, .dn = child_dn });
