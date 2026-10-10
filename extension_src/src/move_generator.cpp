@@ -123,9 +123,7 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 
 		if (between.count() == 1) {
 			int pinned_square = between.lsb();
-			Bitboard pinned;
-			pinned.set(pinned_square);
-			if (!(pinned & board.bitboard_side_[my_index]).is_empty()) {
+			if (board.bitboard_side_[my_index].is_set(pinned_square)) {
 				pin_masks.pinned.set(pinned_square);
 				pin_masks.valid_ray_masks[pinned_square] = path;
 			}
@@ -452,14 +450,12 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 			int from_index = pieces.lsb();
 			pieces.clear(from_index);
 
-			Bitboard from_bitboard;
-			from_bitboard.set(from_index);
-			bool is_promoted = !(promoted_pieces & from_bitboard).is_empty();
+			bool is_promoted = promoted_pieces.is_set(from_index);
 
 			Coord from = Coord::from_index(from_index);
 			Bitboard attacks = AttackTable::get_attacks(type, is_promoted, from_index, current_turn, occupancy) & ~my_pieces_bitboard;
 			if (type != PieceType::KING) {
-				if (!(pin_masks.pinned & from_bitboard).is_empty()) {
+				if (pin_masks.pinned.is_set(from_index)) {
 					attacks &= pin_masks.valid_ray_masks[from_index];
 				}
 
@@ -472,9 +468,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 
 				Coord to = Coord::from_index(to_index);
 
-				Bitboard to_bitboard;
-				to_bitboard.set(to_index);
-				bool is_capture = !(opponent_pieces_bitboard & to_bitboard).is_empty();
+				bool is_capture = opponent_pieces_bitboard.is_set(to_index);
 
 				if (only_captures && !is_capture) {
 					continue;
