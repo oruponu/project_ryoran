@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 env = Environment(tools=["default"], PLATFORM="", compiledb_file="build/compile_commands.json")
-env = SConscript("godot-cpp/SConstruct", {"env": env})
+env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": [File("build_options.py").abspath]})
 
-env["CXXFLAGS"] = [f for f in env["CXXFLAGS"] if not str(f).startswith(("/std:", "-std="))]
-env.Append(CXXFLAGS=["/std:c++23preview"] if env.get("is_msvc", False) else ["-std=c++23"])
+env["CXXFLAGS"] = [f for f in env["CXXFLAGS"] if not str(f).startswith("-std=")]
+env.Append(CXXFLAGS=["-std=c++23"])
 
 lib_name = "shogi_engine"
 
