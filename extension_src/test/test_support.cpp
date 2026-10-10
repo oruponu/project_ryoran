@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
+#include <utility>
 
 namespace {
 
@@ -19,7 +20,7 @@ void dump_board(const BoardState &board) {
 			if (c.is_empty()) {
 				pos += std::sprintf(line + pos, " . ");
 			} else {
-				char ch = PIECE_NAMES[static_cast<int>(c.type)][0];
+				char ch = PIECE_NAMES[std::to_underlying(c.type)][0];
 				if (c.turn == Turn::GOTE) {
 					ch = static_cast<char>(ch - 'A' + 'a');
 				}

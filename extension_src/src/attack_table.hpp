@@ -2,6 +2,7 @@
 
 #include "bitboard.hpp"
 #include "shogi_utils.hpp"
+#include <utility>
 
 class AttackTable {
 private:
@@ -21,19 +22,19 @@ public:
 	static Bitboard get_ray(int square, int direction) { return rays_[direction][square]; }
 
 	static const Bitboard &get_pawn_attacks(int square, Shogi::Turn turn) {
-		return attacks_pawn_[static_cast<int>(turn)][square];
+		return attacks_pawn_[std::to_underlying(turn)][square];
 	}
 
 	static const Bitboard &get_knight_attacks(int square, Shogi::Turn turn) {
-		return attacks_knight_[static_cast<int>(turn)][square];
+		return attacks_knight_[std::to_underlying(turn)][square];
 	}
 
 	static const Bitboard &get_silver_attacks(int square, Shogi::Turn turn) {
-		return attacks_silver_[static_cast<int>(turn)][square];
+		return attacks_silver_[std::to_underlying(turn)][square];
 	}
 
 	static const Bitboard &get_gold_attacks(int square, Shogi::Turn turn) {
-		return attacks_gold_[static_cast<int>(turn)][square];
+		return attacks_gold_[std::to_underlying(turn)][square];
 	}
 
 	static const Bitboard &get_king_attacks(int square) { return attacks_king_[square]; }
