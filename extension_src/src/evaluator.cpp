@@ -283,8 +283,7 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 			Shogi::PieceType type = static_cast<Shogi::PieceType>(piece_type);
 			Bitboard pieces = board.bitboard_piece_[side][piece_type];
 			while (!pieces.is_empty()) {
-				int from_index = pieces.lsb();
-				pieces.clear(from_index);
+				int from_index = pieces.pop_lsb();
 
 				bool is_promoted = promoted_pieces.is_set(from_index);
 				Bitboard attacks = AttackTable::get_attacks(type, is_promoted, from_index, turn, occupancy);

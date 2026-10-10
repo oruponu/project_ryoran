@@ -447,8 +447,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 		}
 
 		while (!pieces.is_empty()) {
-			int from_index = pieces.lsb();
-			pieces.clear(from_index);
+			int from_index = pieces.pop_lsb();
 
 			bool is_promoted = promoted_pieces.is_set(from_index);
 
@@ -463,8 +462,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 			}
 
 			while (!attacks.is_empty()) {
-				int to_index = attacks.lsb();
-				attacks.clear(to_index);
+				int to_index = attacks.pop_lsb();
 
 				Coord to = Coord::from_index(to_index);
 
@@ -513,8 +511,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 				Bitboard target_bitboard = valid_drop_targets;
 
 				while (!target_bitboard.is_empty()) {
-					int to_index = target_bitboard.lsb();
-					target_bitboard.clear(to_index);
+					int to_index = target_bitboard.pop_lsb();
 
 					Coord to = Coord::from_index(to_index);
 
@@ -599,8 +596,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 		int cheapest_value = 99999999;
 		Bitboard iter = attackers;
 		while (!iter.is_empty()) {
-			int sq = iter.lsb();
-			iter.clear(sq);
+			int sq = iter.pop_lsb();
 			const Cell &cell = board.get_cell(Coord::from_index(sq));
 			int value = Shogi::PIECE_VALUES[std::to_underlying(cell.type)][cell.is_promoted ? 1 : 0];
 			if (value < cheapest_value) {

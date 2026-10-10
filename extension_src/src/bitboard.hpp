@@ -66,6 +66,12 @@ public:
 		return -1;
 	}
 
+	int pop_lsb() {
+		int index = lsb();
+		clear(index);
+		return index;
+	}
+
 	void set(int index) {
 		if (index < 64) {
 			lower_ |= (1ULL << index);
