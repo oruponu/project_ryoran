@@ -50,4 +50,40 @@ public:
 	static Bitboard get_promoted_rook_attacks(int square, const Bitboard &occupancy) {
 		return get_rook_attacks(square, occupancy) | get_king_attacks(square);
 	}
+
+	static Bitboard get_attacks(Shogi::PieceType type, bool is_promoted, int square, Shogi::Turn turn,
+			const Bitboard &occupancy) {
+		using enum Shogi::PieceType;
+		if (is_promoted) {
+			switch (type) {
+				case BISHOP:
+					return get_promoted_bishop_attacks(square, occupancy);
+				case ROOK:
+					return get_promoted_rook_attacks(square, occupancy);
+				default:
+					return get_gold_attacks(square, turn);
+			}
+		}
+
+		switch (type) {
+			case PAWN:
+				return get_pawn_attacks(square, turn);
+			case LANCE:
+				return get_lance_attacks(square, turn, occupancy);
+			case KNIGHT:
+				return get_knight_attacks(square, turn);
+			case SILVER:
+				return get_silver_attacks(square, turn);
+			case GOLD:
+				return get_gold_attacks(square, turn);
+			case BISHOP:
+				return get_bishop_attacks(square, occupancy);
+			case ROOK:
+				return get_rook_attacks(square, occupancy);
+			case KING:
+				return get_king_attacks(square);
+			default:
+				return Bitboard();
+		}
+	}
 };

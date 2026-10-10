@@ -160,52 +160,8 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 	int from_index = from.to_index();
 	int to_index = to.to_index();
 
-	using enum PieceType;
-	Bitboard attacks;
-	if (piece.is_promoted) {
-		switch (piece.type) {
-			case BISHOP:
-				attacks = AttackTable::get_promoted_bishop_attacks(from_index, board.bitboard_all_);
-				break;
-			case ROOK:
-				attacks = AttackTable::get_promoted_rook_attacks(from_index, board.bitboard_all_);
-				break;
-			default:
-				attacks = AttackTable::get_gold_attacks(from_index, piece.turn);
-				break;
-		}
-	} else {
-		switch (piece.type) {
-			case PAWN:
-				attacks = AttackTable::get_pawn_attacks(from_index, piece.turn);
-				break;
-			case LANCE:
-				attacks = AttackTable::get_lance_attacks(from_index, piece.turn, board.bitboard_all_);
-				break;
-			case KNIGHT:
-				attacks = AttackTable::get_knight_attacks(from_index, piece.turn);
-				break;
-			case SILVER:
-				attacks = AttackTable::get_silver_attacks(from_index, piece.turn);
-				break;
-			case GOLD:
-				attacks = AttackTable::get_gold_attacks(from_index, piece.turn);
-				break;
-			case BISHOP:
-				attacks = AttackTable::get_bishop_attacks(from_index, board.bitboard_all_);
-				break;
-			case ROOK:
-				attacks = AttackTable::get_rook_attacks(from_index, board.bitboard_all_);
-				break;
-			case KING:
-				attacks = AttackTable::get_king_attacks(from_index);
-				break;
-			default:
-				return false;
-		}
-	}
-
-	return attacks.is_set(to_index);
+	return AttackTable::get_attacks(piece.type, piece.is_promoted, from_index, piece.turn, board.bitboard_all_)
+			.is_set(to_index);
 }
 
 bool MoveGenerator::is_valid_drop(const BoardState &board, PieceType piece_type, bool is_enemy, Coord to) {
@@ -501,50 +457,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 			bool is_promoted = !(promoted_pieces & from_bitboard).is_empty();
 
 			Coord from = Coord::from_index(from_index);
-			Bitboard attacks;
-
-			// 駒の利き
-			if (is_promoted) {
-				if (type == PieceType::BISHOP) {
-					attacks = AttackTable::get_promoted_bishop_attacks(from_index, occupancy);
-				} else if (type == PieceType::ROOK) {
-					attacks = AttackTable::get_promoted_rook_attacks(from_index, occupancy);
-				} else {
-					attacks = AttackTable::get_gold_attacks(from_index, current_turn);
-				}
-			} else {
-				using enum PieceType;
-				switch (type) {
-					case PAWN:
-						attacks = AttackTable::get_pawn_attacks(from_index, current_turn);
-						break;
-					case LANCE:
-						attacks = AttackTable::get_lance_attacks(from_index, current_turn, occupancy);
-						break;
-					case KNIGHT:
-						attacks = AttackTable::get_knight_attacks(from_index, current_turn);
-						break;
-					case SILVER:
-						attacks = AttackTable::get_silver_attacks(from_index, current_turn);
-						break;
-					case GOLD:
-						attacks = AttackTable::get_gold_attacks(from_index, current_turn);
-						break;
-					case BISHOP:
-						attacks = AttackTable::get_bishop_attacks(from_index, occupancy);
-						break;
-					case ROOK:
-						attacks = AttackTable::get_rook_attacks(from_index, occupancy);
-						break;
-					case KING:
-						attacks = AttackTable::get_king_attacks(from_index);
-						break;
-					default:
-						break;
-				}
-			}
-
-			attacks = attacks & ~my_pieces_bitboard;
+			Bitboard attacks = AttackTable::get_attacks(type, is_promoted, from_index, current_turn, occupancy) & ~my_pieces_bitboard;
 			if (type != PieceType::KING) {
 				if (!(pin_masks.pinned & from_bitboard).is_empty()) {
 					attacks &= pin_masks.valid_ray_masks[from_index];
