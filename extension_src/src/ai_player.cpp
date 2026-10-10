@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include <iterator>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -888,8 +889,8 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	};
 
 	std::vector<RootMove> global_top;
-	for (int i = 0; i < static_cast<int>(move_list.size()) && i < count; ++i) {
-		global_top.push_back({ move_list[i], worst_score });
+	for (const Move &move : move_list | std::views::take(count)) {
+		global_top.push_back({ move, worst_score });
 	}
 
 	// TTから最善手を取得
