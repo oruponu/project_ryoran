@@ -14,19 +14,19 @@ public:
 	Bitboard() : lower_(0), upper_(0) {}
 	constexpr Bitboard(uint64_t lower, uint64_t upper) : lower_(lower), upper_(upper) {}
 
-	Bitboard operator&=(const Bitboard &rhs) {
+	Bitboard &operator&=(const Bitboard &rhs) {
 		lower_ &= rhs.lower_;
 		upper_ &= rhs.upper_;
 		return *this;
 	}
 
-	Bitboard operator|=(const Bitboard &rhs) {
+	Bitboard &operator|=(const Bitboard &rhs) {
 		lower_ |= rhs.lower_;
 		upper_ |= rhs.upper_;
 		return *this;
 	}
 
-	Bitboard operator^=(const Bitboard &rhs) {
+	Bitboard &operator^=(const Bitboard &rhs) {
 		lower_ ^= rhs.lower_;
 		upper_ ^= rhs.upper_;
 		return *this;
