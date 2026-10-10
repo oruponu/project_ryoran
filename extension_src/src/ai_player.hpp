@@ -102,9 +102,6 @@ private:
 	[[nodiscard]] static std::string format_percent(double value);
 
 public:
-	AIPlayer() {}
-	~AIPlayer() {}
-
 	[[nodiscard]] std::vector<ScoredMove> search_top_moves(BoardState board, int count);
 	void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
 	void set_time_limit_usec(uint64_t usec);

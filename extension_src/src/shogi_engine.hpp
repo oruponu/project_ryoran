@@ -30,7 +30,6 @@ protected:
 
 public:
 	ShogiEngine();
-	~ShogiEngine() {}
 
 	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_moves(const godot::String &sfen, int col, int row);
 	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_drops(const godot::String &sfen, int piece_type);

@@ -66,7 +66,6 @@ Bitboard MoveGenerator::get_checkers(const BoardState &board, Turn turn) {
 
 PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) {
 	PinMasks pin_masks;
-	pin_masks.pinned = Bitboard();
 
 	auto king_position = board.get_king_position(turn);
 	if (!king_position.has_value()) {

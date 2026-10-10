@@ -34,8 +34,6 @@ struct PinMasks {
 
 	// ピンされた駒の移動可能範囲
 	Bitboard valid_ray_masks[Shogi::BOARD_SIZE];
-
-	PinMasks() { pinned = Bitboard(); }
 };
 
 class BoardState {
