@@ -6,7 +6,9 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <algorithm>
 #include <optional>
+#include <ranges>
 #include <string>
 
 using namespace godot;
@@ -250,8 +252,8 @@ Array ShogiEngine::search_top_moves(int count) {
 		UtilityFunctions::print("Using Book Move. Hash: ", String::num_uint64(hash));
 
 		Array result;
-		for (size_t i = 0; i < book_moves.size() && static_cast<int>(i) < count; ++i) {
-			result.append(make_move_dictionary(book_moves[i], 0, 0.5));
+		for (const Move &move : book_moves | std::views::take(std::max(count, 0))) {
+			result.append(make_move_dictionary(move, 0, 0.5));
 		}
 		return result;
 	}
