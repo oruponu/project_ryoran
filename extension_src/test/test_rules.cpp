@@ -1,5 +1,6 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
+#include <span>
 
 namespace {
 
@@ -200,14 +201,14 @@ void run_zobrist_tests(const std::vector<uint8_t> &data) {
 	if (!bad_magic.empty()) {
 		bad_magic[0] ^= 0xFF;
 	}
-	check(!BoardState::load_zobrist_params(bad_magic.data(), bad_magic.size()), "zobrist: bad magic is rejected");
-	check(data.size() > 8 && !BoardState::load_zobrist_params(data.data(), data.size() - 8),
+	check(!BoardState::load_zobrist_params(bad_magic), "zobrist: bad magic is rejected");
+	check(data.size() > 8 && !BoardState::load_zobrist_params(std::span(data).first(data.size() - 8)),
 			"zobrist: truncated data is rejected");
 	check(!BoardState::zobrist_initialized(), "zobrist: rejected data leaves params uninitialized");
 
-	check(BoardState::load_zobrist_params(data.data(), data.size()), "zobrist: production file is accepted");
+	check(BoardState::load_zobrist_params(data), "zobrist: production file is accepted");
 	check(BoardState::zobrist_initialized(), "zobrist: initialized after loading");
-	check(BoardState::load_zobrist_params(nullptr, 0), "zobrist: loading again is a no-op success");
+	check(BoardState::load_zobrist_params({}), "zobrist: loading again is a no-op success");
 }
 
 void run_rules_tests() {

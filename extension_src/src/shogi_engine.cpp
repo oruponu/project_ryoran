@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <string>
 
 using namespace godot;
@@ -54,7 +55,7 @@ void load_zobrist_params_from_file(const String &path) {
 	}
 
 	PackedByteArray data = FileAccess::get_file_as_bytes(path);
-	if (!BoardState::load_zobrist_params(data.ptr(), static_cast<size_t>(data.size()))) {
+	if (!BoardState::load_zobrist_params(std::span(data.ptr(), static_cast<size_t>(data.size())))) {
 		UtilityFunctions::print("Invalid Zobrist params file format.");
 		return;
 	}

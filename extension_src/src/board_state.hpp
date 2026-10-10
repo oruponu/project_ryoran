@@ -3,9 +3,9 @@
 #include "bitboard.hpp"
 #include "evaluator.hpp"
 #include "shogi_utils.hpp"
-#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 
 struct Cell {
@@ -103,7 +103,7 @@ public:
 		return true;
 	}
 
-	static bool load_zobrist_params(const uint8_t *data, size_t size);
+	static bool load_zobrist_params(std::span<const uint8_t> data);
 	[[nodiscard]] static bool zobrist_initialized();
 
 	[[nodiscard]] uint64_t get_zobrist_hash() const;
