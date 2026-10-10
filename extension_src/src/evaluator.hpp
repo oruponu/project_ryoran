@@ -27,8 +27,7 @@ private:
 
 	inline static bool eval_tables_initialized_;
 
-	inline static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3]
-									  [KKPEE_PIECE_STATE_COUNT];
+	static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][KKPEE_PIECE_STATE_COUNT];
 	inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
 	inline static int threat_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
 	inline static int multi_effect_weight_table_[11];
