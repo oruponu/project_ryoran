@@ -398,21 +398,9 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
 		return;
 	}
 
-	int index = coord.to_index();
-	Cell old_cell = get_cell(coord);
-	if (!old_cell.is_empty()) {
-		int old_is_promoted = old_cell.is_promoted ? 1 : 0;
-		zobrist_hash_ ^= g_zobrist_board[std::to_underlying(old_cell.turn)][std::to_underlying(old_cell.type)]
-										[old_is_promoted][coord.col][coord.row];
-		remove_piece_from_bitboard(index, old_cell.turn, old_cell.type, old_cell.is_promoted);
-		if (old_cell.type == PieceType::KING) {
-			auto &cached_pos = king_pos_[std::to_underlying(old_cell.turn)];
-			if (cached_pos && cached_pos->col == coord.col && cached_pos->row == coord.row) {
-				cached_pos = std::nullopt;
-			}
-		}
-	}
+	clear_cell(coord);
 
+	int index = coord.to_index();
 	int new_is_promoted = is_promoted ? 1 : 0;
 	zobrist_hash_ ^=
 			g_zobrist_board[std::to_underlying(turn)][std::to_underlying(type)][new_is_promoted][coord.col][coord.row];
