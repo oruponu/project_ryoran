@@ -622,11 +622,6 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
 		remove_piece_from_bitboard(to_idx, original_side, moved_piece.type, moved_piece.is_promoted);
 
 		bool was_promoted_before = moved_piece.is_promoted && !move.is_promotion;
-		if (move.is_promotion) {
-			was_promoted_before = false;
-		} else {
-			was_promoted_before = moved_piece.is_promoted;
-		}
 
 		board_[from_idx] = Cell(moved_piece.type, original_side, was_promoted_before);
 		add_piece_to_bitboard(from_idx, original_side, moved_piece.type, was_promoted_before);
