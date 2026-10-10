@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -221,22 +222,21 @@ bool BoardState::zobrist_initialized() {
 	return g_zobrist_initialized;
 }
 
-bool BoardState::load_zobrist_params(const uint8_t *data, size_t size) {
+bool BoardState::load_zobrist_params(std::span<const uint8_t> data) {
 	if (g_zobrist_initialized) {
 		return true;
 	}
 
 	constexpr size_t value_count = sizeof(g_zobrist_board) / sizeof(uint64_t) +
 			sizeof(g_zobrist_hand) / sizeof(uint64_t) + 1;
-	if (data == nullptr || size < sizeof(uint32_t) + value_count * sizeof(uint64_t) ||
-			read_u32_le(data) != ZOBRIST_MAGIC) {
+	if (data.size() < sizeof(uint32_t) + value_count * sizeof(uint64_t) || read_u32_le(data.data()) != ZOBRIST_MAGIC) {
 		return false;
 	}
 
-	const uint8_t *cursor = data + sizeof(uint32_t);
-	auto next = [&cursor]() {
-		uint64_t value = read_u64_le(cursor);
-		cursor += sizeof(uint64_t);
+	std::span<const uint8_t> rest = data.subspan(sizeof(uint32_t));
+	auto next = [&rest]() {
+		uint64_t value = read_u64_le(rest.data());
+		rest = rest.subspan(sizeof(uint64_t));
 		return value;
 	};
 
