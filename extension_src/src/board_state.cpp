@@ -506,7 +506,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 	undo.prev_score = score_;
 
 	Turn current_side = turn_to_move_;
-	Turn opponent_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn opponent_side = Shogi::opponent(turn_to_move_);
 	int sign = (current_side == Turn::SENTE) ? 1 : -1;
 
 	int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
@@ -619,7 +619,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 void BoardState::undo_move(const Shogi::UndoInfo &undo) {
 	const Move &move = undo.move;
 
-	Turn original_side = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn original_side = Shogi::opponent(turn_to_move_);
 	Turn opponent_side = turn_to_move_;
 
 	int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
@@ -671,11 +671,11 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
 uint64_t BoardState::make_null_move() {
 	uint64_t prev_hash = zobrist_hash_;
 	zobrist_hash_ ^= g_zobrist_turn_enemy;
-	turn_to_move_ = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	turn_to_move_ = Shogi::opponent(turn_to_move_);
 	return prev_hash;
 }
 
 void BoardState::undo_null_move(uint64_t prev_hash) {
 	zobrist_hash_ = prev_hash;
-	turn_to_move_ = (turn_to_move_ == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	turn_to_move_ = Shogi::opponent(turn_to_move_);
 }

@@ -278,7 +278,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	// Null Move Pruning
 	constexpr int NULL_MOVE_R = 2;
 	if (can_null && depth >= 3 && !in_check) {
-		Turn null_next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+		Turn null_next_side = Shogi::opponent(turn);
 		int static_eval = board.get_score();
 
 		if (turn == Turn::SENTE ? (static_eval >= beta) : (static_eval <= alpha)) {
@@ -314,7 +314,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == m) || (killer_valid_[ply][1] && killer_moves_[ply][1] == m));
 	};
 
-	Turn next_side = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn next_side = Shogi::opponent(turn);
 	Move best_move = move_list[0];
 
 	if (turn == Turn::SENTE) {
@@ -474,7 +474,7 @@ void AIPlayer::generate_check_moves(BoardState &board, Shogi::MoveList &move_lis
 
 	Shogi::MoveList candidates;
 	MoveGenerator::get_legal_moves(board, candidates);
-	Turn enemy_turn = (board.get_turn_to_move() == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn enemy_turn = Shogi::opponent(board.get_turn_to_move());
 	for (const auto &move : candidates) {
 		Shogi::UndoInfo undo = board.apply_move(move);
 		if (MoveGenerator::is_king_in_check(board, enemy_turn)) {
@@ -923,7 +923,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		}
 
 		std::vector<RootMove> depth_top;
-		Turn next_turn_side = (root_side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+		Turn next_turn_side = Shogi::opponent(root_side);
 
 		uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
 		bool timeout = false;

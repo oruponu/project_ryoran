@@ -18,7 +18,7 @@ Bitboard MoveGenerator::get_checkers(const BoardState &board, Turn turn) {
 
 	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
 
-	const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	const Turn enemy_turn = Shogi::opponent(turn);
 	int enemy_index = std::to_underlying(enemy_turn);
 
 	const Bitboard &enemy_pawns = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::PAWN)];
@@ -75,7 +75,7 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 
 	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
 
-	Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn enemy_turn = Shogi::opponent(turn);
 	int my_index = std::to_underlying(turn);
 	int enemy_index = std::to_underlying(enemy_turn);
 
@@ -342,7 +342,7 @@ bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn 
 }
 
 bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
-	const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	const Turn enemy_turn = Shogi::opponent(turn);
 	auto king_position = board.get_king_position(enemy_turn);
 	if (!king_position.has_value()) {
 		return false;
@@ -382,7 +382,7 @@ bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
 
 	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
 
-	const Turn enemy_turn = (turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	const Turn enemy_turn = Shogi::opponent(turn);
 	int enemy_index = std::to_underlying(enemy_turn);
 
 	const Bitboard &enemy_pawns = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::PAWN)];
@@ -448,7 +448,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 	move_list.clear();
 
 	const Turn current_turn = board.turn_to_move_;
-	const Turn opponent_turn = (current_turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	const Turn opponent_turn = Shogi::opponent(current_turn);
 	const Bitboard my_pieces_bitboard = board.bitboard_side_[std::to_underlying(current_turn)];
 	const Bitboard opponent_pieces_bitboard = board.bitboard_side_[std::to_underlying(opponent_turn)];
 	const Bitboard occupancy = board.bitboard_all_;
@@ -630,7 +630,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 
 Bitboard MoveGenerator::attackers_to(const BoardState &board, int square, Turn side, const Bitboard &occupancy) {
 	int side_index = std::to_underlying(side);
-	Turn reverse_turn = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn reverse_turn = Shogi::opponent(side);
 
 	const Bitboard &pawns = board.bitboard_piece_[side_index][std::to_underlying(PieceType::PAWN)];
 	const Bitboard &lances = board.bitboard_piece_[side_index][std::to_underlying(PieceType::LANCE)];
@@ -680,7 +680,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 	Bitboard occupancy = board.bitboard_all_;
 	occupancy.clear(from_square);
 
-	Turn side = (first_attacker.turn == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+	Turn side = Shogi::opponent(first_attacker.turn);
 
 	while (depth < 39) {
 		Bitboard attackers = attackers_to(board, to_square, side, occupancy);
@@ -706,7 +706,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 		const Cell &cheapest_cell =
 				board.get_cell({ cheapest_square / Shogi::BOARD_ROWS, cheapest_square % Shogi::BOARD_ROWS });
 		if (cheapest_cell.type == PieceType::KING) {
-			Turn opponent = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+			Turn opponent = Shogi::opponent(side);
 			if (!attackers_to(board, to_square, opponent, occupancy).is_empty()) {
 				break;
 			}
@@ -718,7 +718,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 		// 一般的なSEE実装の早期打ち切りは取った駒の背後の飛び駒を見落とすため不採用
 		occupant_value = cheapest_value;
 		occupancy.clear(cheapest_square);
-		side = (side == Turn::SENTE) ? Turn::GOTE : Turn::SENTE;
+		side = Shogi::opponent(side);
 	}
 
 	// Negamax畳み込み

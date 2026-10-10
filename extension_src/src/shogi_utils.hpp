@@ -23,6 +23,10 @@ enum class Turn : uint8_t {
 	GOTE = 1
 };
 
+inline constexpr Turn opponent(Turn turn) {
+	return turn == Turn::SENTE ? Turn::GOTE : Turn::SENTE;
+}
+
 // 盤面のサイズ
 constexpr int BOARD_COLS = 9;
 constexpr int BOARD_ROWS = 9;
