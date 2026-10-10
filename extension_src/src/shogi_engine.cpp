@@ -2,7 +2,6 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -70,8 +69,6 @@ ShogiEngine::ShogiEngine() {
 	ai_player_.set_logger([](const std::string &message) { UtilityFunctions::print(message.c_str()); });
 
 	if (!is_initialized_) {
-		std::srand(Time::get_singleton()->get_ticks_usec());
-
 		load_zobrist_params_from_file("res://assets/data/zobrist_params.bin");
 		load_book_from_file("res://assets/data/book.bin");
 
