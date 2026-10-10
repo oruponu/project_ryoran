@@ -502,10 +502,10 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
 	Cell target = get_cell({ move.to_col, move.to_row });
 	if (!target.is_empty()) {
-		undo.captured_type = std::to_underlying(target.type);
+		undo.captured_type = target.type;
 		undo.captured_promoted = target.is_promoted;
 	} else {
-		undo.captured_type = std::to_underlying(PieceType::EMPTY);
+		undo.captured_type = PieceType::EMPTY;
 		undo.captured_promoted = false;
 	}
 
@@ -626,7 +626,7 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
 		board_[from_idx] = Cell(moved_piece.type, original_side, was_promoted_before);
 		add_piece_to_bitboard(from_idx, original_side, moved_piece.type, was_promoted_before);
 
-		PieceType captured_type = static_cast<PieceType>(undo.captured_type);
+		PieceType captured_type = undo.captured_type;
 		if (captured_type != PieceType::EMPTY) {
 			board_[to_idx] = Cell(captured_type, opponent_side, undo.captured_promoted);
 			add_piece_to_bitboard(to_idx, opponent_side, captured_type, undo.captured_promoted);

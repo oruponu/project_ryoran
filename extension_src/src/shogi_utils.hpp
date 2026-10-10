@@ -125,13 +125,13 @@ struct MoveList {
 
 struct UndoInfo {
 	Move move;
-	uint8_t captured_type;
+	PieceType captured_type;
 	bool captured_promoted;
 	uint64_t prev_hash;
 	uint16_t prev_pawn_cols[2];
 	int prev_score;
 
-	UndoInfo() : captured_type(std::to_underlying(PieceType::EMPTY)), captured_promoted(false), prev_hash(0), prev_score(0) {
+	UndoInfo() : captured_type(PieceType::EMPTY), captured_promoted(false), prev_hash(0), prev_score(0) {
 		prev_pawn_cols[0] = 0;
 		prev_pawn_cols[1] = 0;
 	}
