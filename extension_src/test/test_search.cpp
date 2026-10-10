@@ -1,6 +1,6 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
-#include <cstring>
+#include <algorithm>
 #include <regex>
 #include <string>
 
@@ -281,8 +281,8 @@ void run_path_repetition_tests() {
 	{
 		AIPlayer ra;
 		AIPlayerTestAccess ra_t{ ra };
-		std::memset(ra_t.path_hashes(), 0, sizeof(ra_t.path_hashes()));
-		std::memset(ra_t.path_in_check(), 0, sizeof(ra_t.path_in_check()));
+		std::ranges::fill(ra_t.path_hashes(), 0);
+		std::ranges::fill(ra_t.path_in_check(), false);
 
 		const uint64_t H = 0xABCDEF12345678ULL;
 
@@ -319,8 +319,8 @@ void run_path_repetition_tests() {
 				"rep: opponent perpetual check makes SENTE win");
 
 		// 王手混在（連続でない）→ 引き分け0。4-ply サイクル [0,4]
-		std::memset(ra_t.path_hashes(), 0, sizeof(ra_t.path_hashes()));
-		std::memset(ra_t.path_in_check(), 0, sizeof(ra_t.path_in_check()));
+		std::ranges::fill(ra_t.path_hashes(), 0);
+		std::ranges::fill(ra_t.path_in_check(), false);
 		ra_t.path_hashes()[0] = H;
 		ra_t.path_in_check()[1] = true; // O 手番で王手
 		ra_t.path_in_check()[3] = false; // 次の O 手番では王手なし → S連続王手不成立
@@ -336,8 +336,8 @@ void run_path_repetition_tests() {
 				"rep: ply 1 has no ancestor (nullopt)");
 
 		// 相互連続王手（両者とも王手）→ stm_perpetual 優先で手番側 S が負け
-		std::memset(ra_t.path_hashes(), 0, sizeof(ra_t.path_hashes()));
-		std::memset(ra_t.path_in_check(), 0, sizeof(ra_t.path_in_check()));
+		std::ranges::fill(ra_t.path_hashes(), 0);
+		std::ranges::fill(ra_t.path_in_check(), false);
 		ra_t.path_hashes()[0] = H;
 		ra_t.path_in_check()[1] = true; // O の手番で王手
 		ra_t.path_in_check()[2] = true; // S(現在) も王手されている
@@ -351,8 +351,8 @@ void run_history_repetition_tests() {
 	{
 		AIPlayer ha;
 		AIPlayerTestAccess ha_t{ ha };
-		std::memset(ha_t.path_hashes(), 0, sizeof(ha_t.path_hashes()));
-		std::memset(ha_t.path_in_check(), 0, sizeof(ha_t.path_in_check()));
+		std::ranges::fill(ha_t.path_hashes(), 0);
+		std::ranges::fill(ha_t.path_in_check(), false);
 
 		// (1) 履歴の局面にルートが戻る → 引き分け0
 		const uint64_t X = 0xAAAA1111ULL, Y = 0xBBBB2222ULL;
@@ -374,8 +374,8 @@ void run_history_repetition_tests() {
 		// (3) サイクルが履歴(一致)＋経路(王手フラグ)をまたぐ → 手番側S負け
 		const uint64_t Z = 0xEEEE4444ULL;
 		ha.set_game_history({ Z }, { false }); // 履歴idx0=Z(S手番)
-		std::memset(ha_t.path_hashes(), 0, sizeof(ha_t.path_hashes()));
-		std::memset(ha_t.path_in_check(), 0, sizeof(ha_t.path_in_check()));
+		std::ranges::fill(ha_t.path_hashes(), 0);
+		std::ranges::fill(ha_t.path_in_check(), false);
 		ha_t.path_hashes()[0] = 0x9999ULL; // ルート(仮想idx1, O手番)
 		ha_t.path_in_check()[0] = true; // idx1(O手番)が王手を受けている = S が王手をかけている
 		ha_t.path_hashes()[1] = Z; // ply1(仮想idx2, S手番)が履歴Zと一致
