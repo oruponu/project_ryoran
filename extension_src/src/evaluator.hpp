@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shogi_utils.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 
