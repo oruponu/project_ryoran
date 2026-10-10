@@ -202,7 +202,7 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -99999999, 99999999, Turn::SENTE, 0, nodes);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes);
 		check(nodes > 1, "qsearch explores free capture (control)");
 
 		// Delta pruning: 取る駒+マージンを足しても alpha に届かなければ読まない
@@ -222,7 +222,7 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -99999999, 99999999, Turn::SENTE, 0, nodes);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes);
 		check(nodes == 1, "SEE pruning skips losing capture");
 		check(score == b.get_score(), "SEE pruning returns stand_pat");
 	}
@@ -234,7 +234,7 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -99999999, 99999999, Turn::SENTE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
 		check(nodes == 1, "QS ply limit stops search");
 		check(score == b.get_score(), "QS ply limit returns stand_pat");
 	}
@@ -250,7 +250,7 @@ void run_lmr_and_extension_tests() {
 			AIPlayerTestAccess mate_ai_t{ mate_ai };
 			bool timeout = false;
 			uint64_t nodes = 0;
-			int score = mate_ai_t.alpha_beta(mate_board, 5, 0, -99999999, 99999999, mate_board.get_turn_to_move(),
+			int score = mate_ai_t.alpha_beta(mate_board, 5, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, mate_board.get_turn_to_move(),
 					UINT64_MAX, timeout, nodes);
 			check(score >= AIPlayer::MATE_BOUND, "depth-5 search finds mate at kif2-60");
 		} else {
@@ -268,7 +268,7 @@ void run_lmr_and_extension_tests() {
 			AIPlayerTestAccess ext_ai_t{ ext_ai };
 			bool timeout = false;
 			uint64_t nodes = 0;
-			int score = ext_ai_t.alpha_beta(ext_board, 4, 0, -99999999, 99999999, ext_board.get_turn_to_move(),
+			int score = ext_ai_t.alpha_beta(ext_board, 4, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, ext_board.get_turn_to_move(),
 					UINT64_MAX, timeout, nodes);
 			check(score >= AIPlayer::MATE_BOUND, "check extension finds mate at kif2-60 at depth 4");
 		} else {
@@ -398,7 +398,7 @@ void run_alpha_beta_repetition_tests() {
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に入る = ply0 と同一局面 → 反復を検出してすぐ 0 を返す（評価関数を呼ばない）
-		int score = ra_t.alpha_beta(b, 3, 2, -99999999, 99999999, Turn::SENTE, UINT64_MAX, timeout, nodes);
+		int score = ra_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: alpha_beta returns draw 0 on path repetition");
 		check(nodes == 1, "rep: alpha_beta stops immediately on repetition");
 	}
@@ -419,7 +419,7 @@ void run_alpha_beta_repetition_tests() {
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に戻る = 反復。検出は TT probe より前なので 5000 ではなく 0 を返す
-		int score = ra_t.alpha_beta(b, 1, 2, -99999999, 99999999, Turn::SENTE, UINT64_MAX, timeout, nodes);
+		int score = ra_t.alpha_beta(b, 1, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: detection precedes TT probe (draw not TT score)");
 		check(nodes == 1, "rep: detection-before-TT stops immediately");
 	}

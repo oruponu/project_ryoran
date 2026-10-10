@@ -318,7 +318,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	Move best_move = move_list[0];
 
 	if (turn == Turn::SENTE) {
-		int max_eval = -99999999;
+		int max_eval = -INFINITE_SCORE;
 		int move_index = 0;
 		for (const Move &move : move_list) {
 			// Late Move Reductions
@@ -376,7 +376,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 		return max_eval;
 	} else {
-		int min_eval = 99999999;
+		int min_eval = INFINITE_SCORE;
 		int move_index = 0;
 		for (const Move &move : move_list) {
 			// Late Move Reductions
@@ -721,7 +721,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 		std::ranges::sort(move_list, std::ranges::greater{},
 				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
-		int max_eval = in_check ? -99999999 : stand_pat;
+		int max_eval = in_check ? -INFINITE_SCORE : stand_pat;
 
 		for (const auto &move : move_list) {
 			if (!in_check) {
@@ -775,7 +775,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 		std::ranges::sort(move_list, std::ranges::greater{},
 				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
-		int min_eval = in_check ? 99999999 : stand_pat;
+		int min_eval = in_check ? INFINITE_SCORE : stand_pat;
 
 		for (const auto &move : move_list) {
 			if (!in_check) {
@@ -881,7 +881,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	int max_depth_limit = 12;
 
-	const int worst_score = (root_side == Turn::SENTE) ? -99999999 : 99999999;
+	const int worst_score = (root_side == Turn::SENTE) ? -INFINITE_SCORE : INFINITE_SCORE;
 	auto is_better = [root_side](int a, int b) {
 		return (root_side == Turn::SENTE) ? (a > b) : (a < b);
 	};
@@ -935,8 +935,8 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			}
 
 			// MultiPV: 暫定リストの最下位より悪い手は候補に残らない
-			int alpha = -99999999;
-			int beta = 99999999;
+			int alpha = -INFINITE_SCORE;
+			int beta = INFINITE_SCORE;
 			if (std::ssize(depth_top) >= count) {
 				if (root_side == Turn::SENTE) {
 					alpha = depth_top.back().score;

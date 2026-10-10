@@ -47,6 +47,7 @@ class AIPlayer {
 public:
 	static constexpr int MATE_SCORE = 999999;
 	static constexpr int MATE_BOUND = MATE_SCORE - 10000;
+	static constexpr int INFINITE_SCORE = 99999999;
 
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
