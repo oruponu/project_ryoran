@@ -3,6 +3,7 @@
 #include "board_state.hpp"
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 using Shogi::PieceType;
@@ -125,7 +126,7 @@ void Evaluator::initialize() {
 									}
 								} else {
 									int piece_value =
-											Shogi::PIECE_VALUES[static_cast<int>(piece_type)][is_promoted ? 1 : 0];
+											Shogi::PIECE_VALUES[std::to_underlying(piece_type)][is_promoted ? 1 : 0];
 									if (!is_white) {
 										final_score +=
 												(double)piece_value * support_weights[black_effect_count] / 4096.0;
@@ -160,7 +161,7 @@ int Evaluator::get_kkpee_piece_index(const Cell &cell) {
 		return 0;
 	}
 
-	int type_index = static_cast<int>(cell.type);
+	int type_index = std::to_underlying(cell.type);
 	int promoted_index = cell.is_promoted ? 8 : 0;
 	int turn_index = (cell.turn == Turn::GOTE) ? 16 : 0;
 	return 1 + type_index + promoted_index + turn_index;
@@ -249,7 +250,7 @@ int Evaluator::calculate_score(const BoardState &board) {
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		int sign = (turn == Turn::SENTE) ? 1 : -1;
 		for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-			int count = board.hand_[static_cast<int>(turn)][piece_type];
+			int count = board.hand_[std::to_underlying(turn)][piece_type];
 			if (count > 0) {
 				int value = Shogi::PIECE_VALUES[piece_type][0];
 				score += count * value * sign;

@@ -11,6 +11,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <utility>
 
 using namespace godot;
 using Shogi::Coord;
@@ -26,7 +27,7 @@ Dictionary make_move_dictionary(const Move &move, int score, double win_rate) {
 	result["from_row"] = move.from_row;
 	result["to_col"] = move.to_col;
 	result["to_row"] = move.to_row;
-	result["piece_type"] = static_cast<int>(move.piece_type);
+	result["piece_type"] = std::to_underlying(move.piece_type);
 	result["is_promotion"] = move.is_promotion;
 	result["is_drop"] = move.is_drop;
 	result["score"] = score;

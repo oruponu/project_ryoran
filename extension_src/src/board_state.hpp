@@ -7,6 +7,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 
 struct Cell {
 	Shogi::PieceType type;
@@ -94,7 +95,7 @@ public:
 
 		for (Shogi::Turn turn : { Shogi::Turn::SENTE, Shogi::Turn::GOTE }) {
 			for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-				if (hand_[static_cast<int>(turn)][piece_type] != other.hand_[static_cast<int>(turn)][piece_type]) {
+				if (hand_[std::to_underlying(turn)][piece_type] != other.hand_[std::to_underlying(turn)][piece_type]) {
 					return false;
 				}
 			}

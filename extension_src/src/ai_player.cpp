@@ -161,8 +161,8 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 		// 駒を取る手：MVV-LVA
 		const Cell &target_cell = board.get_cell({ move.to_col, move.to_row });
 		if (!target_cell.is_empty()) {
-			int victim_value = Shogi::PIECE_VALUES[static_cast<int>(target_cell.type)][target_cell.is_promoted ? 1 : 0];
-			int aggressor_value = Shogi::PIECE_VALUES[static_cast<int>(move.piece_type)][0];
+			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(target_cell.type)][target_cell.is_promoted ? 1 : 0];
+			int aggressor_value = Shogi::PIECE_VALUES[std::to_underlying(move.piece_type)][0];
 			// 高い駒を安い駒で取るほど高得点
 			score = 1000000 + victim_value - aggressor_value;
 		}
@@ -179,9 +179,9 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 			}
 		}
 		if (!is_killer) {
-			int side = static_cast<int>(board.get_turn_to_move());
+			int side = std::to_underlying(board.get_turn_to_move());
 			int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
-			score = history_[side][static_cast<int>(move.piece_type)][to_sq];
+			score = history_[side][std::to_underlying(move.piece_type)][to_sq];
 		}
 	}
 
@@ -207,9 +207,9 @@ void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
 }
 
 void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int depth) {
-	int side = static_cast<int>(turn);
+	int side = std::to_underlying(turn);
 	int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
-	int &value = history_[side][static_cast<int>(move.piece_type)][to_sq];
+	int &value = history_[side][std::to_underlying(move.piece_type)][to_sq];
 	value += depth * depth;
 	if (value > HISTORY_CAP) {
 		value = HISTORY_CAP;
@@ -729,10 +729,10 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 			if (!in_check) {
 				// Delta Pruning
 				const Cell &victim = board.get_cell({ move.to_col, move.to_row });
-				int victim_value = Shogi::PIECE_VALUES[static_cast<int>(victim.type)][victim.is_promoted ? 1 : 0];
+				int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
 				int promotion_gain = 0;
 				if (move.is_promotion) {
-					int pt = static_cast<int>(move.piece_type);
+					int pt = std::to_underlying(move.piece_type);
 					promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
 				}
 				if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
@@ -783,10 +783,10 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 			if (!in_check) {
 				// Delta Pruning
 				const Cell &victim = board.get_cell({ move.to_col, move.to_row });
-				int victim_value = Shogi::PIECE_VALUES[static_cast<int>(victim.type)][victim.is_promoted ? 1 : 0];
+				int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
 				int promotion_gain = 0;
 				if (move.is_promotion) {
-					int pt = static_cast<int>(move.piece_type);
+					int pt = std::to_underlying(move.piece_type);
 					promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
 				}
 				if (stand_pat - victim_value - promotion_gain - DELTA_MARGIN >= beta) {
