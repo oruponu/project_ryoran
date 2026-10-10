@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -299,16 +300,15 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	if (has_tt_move) {
-		auto it = std::find(move_list.begin(), move_list.end(), tt_best_move);
+		auto it = std::ranges::find(move_list, tt_best_move);
 		if (it != move_list.end()) {
-			std::rotate(move_list.begin(), it, it + 1);
+			std::ranges::rotate(move_list.begin(), it, it + 1);
 		}
 	}
 
 	auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
-	std::sort(sort_start, move_list.end(), [&](const Move &a, const Move &b) {
-		return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
-	});
+	std::ranges::sort(sort_start, move_list.end(), std::ranges::greater{},
+			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
 	auto is_killer_move = [&](const Move &m) {
 		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == m) || (killer_valid_[ply][1] && killer_moves_[ply][1] == m));
@@ -718,9 +718,8 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 			// 詰み（手番側の負け）
 			return -(MATE_SCORE - ply);
 		}
-		std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-			return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
-		});
+		std::ranges::sort(move_list, std::ranges::greater{},
+				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
 		int max_eval = in_check ? -99999999 : stand_pat;
 
@@ -773,9 +772,8 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 			// 詰み（手番側の負け）
 			return MATE_SCORE - ply;
 		}
-		std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-			return get_move_ordering_score(board, a, ply) > get_move_ordering_score(board, b, ply);
-		});
+		std::ranges::sort(move_list, std::ranges::greater{},
+				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
 		int min_eval = in_check ? 99999999 : stand_pat;
 
@@ -914,14 +912,13 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			break;
 		}
 
-		std::sort(move_list.begin(), move_list.end(), [&](const Move &a, const Move &b) {
-			return get_move_ordering_score(board, a, 0) > get_move_ordering_score(board, b, 0);
-		});
+		std::ranges::sort(move_list, std::ranges::greater{},
+				[&](const Move &move) { return get_move_ordering_score(board, move, 0); });
 
 		if (has_prev_best) {
-			auto it = std::find(move_list.begin(), move_list.end(), best_move_prev_iter);
+			auto it = std::ranges::find(move_list, best_move_prev_iter);
 			if (it != move_list.end()) {
-				std::rotate(move_list.begin(), it, it + 1);
+				std::ranges::rotate(move_list.begin(), it, it + 1);
 			}
 		}
 
@@ -979,8 +976,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			}
 
 			if (static_cast<int>(depth_top.size()) < count || is_better(score, depth_top.back().score)) {
-				auto pos = std::find_if(depth_top.begin(), depth_top.end(),
-						[&](const RootMove &entry) { return is_better(score, entry.score); });
+				auto pos = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return is_better(score, entry.score); });
 				depth_top.insert(pos, { move, score });
 				if (static_cast<int>(depth_top.size()) > count) {
 					depth_top.pop_back();
