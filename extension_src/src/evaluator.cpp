@@ -9,6 +9,8 @@
 using Shogi::PieceType;
 using Shogi::Turn;
 
+int16_t Evaluator::kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][KKPEE_PIECE_STATE_COUNT];
+
 void Evaluator::initialize() {
 	if (eval_tables_initialized_) {
 		return;
