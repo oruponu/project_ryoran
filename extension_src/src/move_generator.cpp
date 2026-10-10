@@ -160,13 +160,14 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 	int from_index = from.col * Shogi::BOARD_ROWS + from.row;
 	int to_index = to.col * Shogi::BOARD_ROWS + to.row;
 
+	using enum PieceType;
 	Bitboard attacks;
 	if (piece.is_promoted) {
 		switch (piece.type) {
-			case PieceType::BISHOP:
+			case BISHOP:
 				attacks = AttackTable::get_promoted_bishop_attacks(from_index, board.bitboard_all_);
 				break;
-			case PieceType::ROOK:
+			case ROOK:
 				attacks = AttackTable::get_promoted_rook_attacks(from_index, board.bitboard_all_);
 				break;
 			default:
@@ -175,28 +176,28 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 		}
 	} else {
 		switch (piece.type) {
-			case PieceType::PAWN:
+			case PAWN:
 				attacks = AttackTable::get_pawn_attacks(from_index, piece.turn);
 				break;
-			case PieceType::LANCE:
+			case LANCE:
 				attacks = AttackTable::get_lance_attacks(from_index, piece.turn, board.bitboard_all_);
 				break;
-			case PieceType::KNIGHT:
+			case KNIGHT:
 				attacks = AttackTable::get_knight_attacks(from_index, piece.turn);
 				break;
-			case PieceType::SILVER:
+			case SILVER:
 				attacks = AttackTable::get_silver_attacks(from_index, piece.turn);
 				break;
-			case PieceType::GOLD:
+			case GOLD:
 				attacks = AttackTable::get_gold_attacks(from_index, piece.turn);
 				break;
-			case PieceType::BISHOP:
+			case BISHOP:
 				attacks = AttackTable::get_bishop_attacks(from_index, board.bitboard_all_);
 				break;
-			case PieceType::ROOK:
+			case ROOK:
 				attacks = AttackTable::get_rook_attacks(from_index, board.bitboard_all_);
 				break;
-			case PieceType::KING:
+			case KING:
 				attacks = AttackTable::get_king_attacks(from_index);
 				break;
 			default:
@@ -308,11 +309,12 @@ bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool 
 
 bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_enemy, int to_row) {
 	int relative_row = is_enemy ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
+	using enum PieceType;
 	switch (piece_type) {
-		case PieceType::PAWN:
-		case PieceType::LANCE:
+		case PAWN:
+		case LANCE:
 			return relative_row == 0;
-		case PieceType::KNIGHT:
+		case KNIGHT:
 			return relative_row <= 1;
 		default:
 			return false;
@@ -511,29 +513,30 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 					attacks = AttackTable::get_gold_attacks(from_index, current_turn);
 				}
 			} else {
+				using enum PieceType;
 				switch (type) {
-					case PieceType::PAWN:
+					case PAWN:
 						attacks = AttackTable::get_pawn_attacks(from_index, current_turn);
 						break;
-					case PieceType::LANCE:
+					case LANCE:
 						attacks = AttackTable::get_lance_attacks(from_index, current_turn, occupancy);
 						break;
-					case PieceType::KNIGHT:
+					case KNIGHT:
 						attacks = AttackTable::get_knight_attacks(from_index, current_turn);
 						break;
-					case PieceType::SILVER:
+					case SILVER:
 						attacks = AttackTable::get_silver_attacks(from_index, current_turn);
 						break;
-					case PieceType::GOLD:
+					case GOLD:
 						attacks = AttackTable::get_gold_attacks(from_index, current_turn);
 						break;
-					case PieceType::BISHOP:
+					case BISHOP:
 						attacks = AttackTable::get_bishop_attacks(from_index, occupancy);
 						break;
-					case PieceType::ROOK:
+					case ROOK:
 						attacks = AttackTable::get_rook_attacks(from_index, occupancy);
 						break;
-					case PieceType::KING:
+					case KING:
 						attacks = AttackTable::get_king_attacks(from_index);
 						break;
 					default:
