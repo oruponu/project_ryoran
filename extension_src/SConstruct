@@ -27,7 +27,7 @@ else:
 
 if env["platform"] == "windows":
     test_env = env.Clone()
-    test_env.Replace(CPPPATH=["#src"], LIBS=[], LIBPATH=[])
+    test_env.Replace(CPPPATH=["#src"], LIBS=["stdc++exp"], LIBPATH=[])
     test_env.VariantDir("build/test/src", "src", duplicate=0)
     test_env.VariantDir("build/test/test", "test", duplicate=0)
     test_sources = [
