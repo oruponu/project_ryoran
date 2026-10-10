@@ -4,8 +4,8 @@
 #include <array>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
+#include <format>
 #include <functional>
 #include <iterator>
 #include <ranges>
@@ -93,9 +93,7 @@ void AIPlayer::log(const std::string &message) const {
 }
 
 std::string AIPlayer::format_percent(double value) {
-	char buffer[32];
-	std::snprintf(buffer, sizeof(buffer), "%.1f", value);
-	std::string text(buffer);
+	std::string text = std::format("{:.1f}", value);
 	if (text.contains('.')) {
 		while (text.back() == '0') {
 			text.pop_back();
@@ -863,7 +861,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	transposition_table_.reserve(TT_SIZE);
 
 	if (transposition_table_.size() > TT_SIZE) {
-		log("TT size exceeded limit, clearing. Size was: " + std::to_string(transposition_table_.size()));
+		log(std::format("TT size exceeded limit, clearing. Size was: {}", transposition_table_.size()));
 		clear_tt();
 	}
 
@@ -910,7 +908,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	for (int depth = 1; depth <= max_depth_limit; ++depth) {
 		if (depth > 1 && now_usec() > strict_limit_time) {
-			log("Time limit reached before depth " + std::to_string(depth));
+			log(std::format("Time limit reached before depth {}", depth));
 			break;
 		}
 
@@ -987,7 +985,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		}
 
 		if (timeout) {
-			log("Time limit reached before depth " + std::to_string(depth));
+			log(std::format("Time limit reached before depth {}", depth));
 			break;
 		}
 
@@ -997,18 +995,17 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 		int display_score = (root_side == Turn::SENTE) ? global_top[0].score : -global_top[0].score;
 		double win_prob = calculate_win_probability(display_score);
-		log("Depth " + std::to_string(depth) + " completed. BestScore: " + std::to_string(global_top[0].score) +
-				", WinRate: " + format_percent(win_prob * 100.0) + "%");
+		log(std::format("Depth {} completed. BestScore: {}, WinRate: {}%", depth, global_top[0].score,
+				format_percent(win_prob * 100.0)));
 
 		// 詰み筋を見つけたら打ち切り
 		if (global_top[0].score >= MATE_BOUND || global_top[0].score <= -MATE_BOUND) {
-			log("Checkmate found at depth " + std::to_string(depth));
+			log(std::format("Checkmate found at depth {}", depth));
 			break;
 		}
 	}
 
-	log("Total nodes searched: " + std::to_string(total_node_count) +
-			", TT size: " + std::to_string(transposition_table_.size()));
+	log(std::format("Total nodes searched: {}, TT size: {}", total_node_count, transposition_table_.size()));
 
 	// 手番側が勝ちを読み切った局面では1手だけを返す
 	bool root_win_proven = (root_side == Turn::SENTE) ? (global_top[0].score >= MATE_BOUND)
