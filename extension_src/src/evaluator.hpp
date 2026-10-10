@@ -36,10 +36,8 @@ private:
 	static int get_relative_direction(int from_index, int to_index);
 
 	static int distance(int lhs, int rhs) {
-		int col1 = lhs / Shogi::BOARD_ROWS;
-		int row1 = lhs % Shogi::BOARD_ROWS;
-		int col2 = rhs / Shogi::BOARD_ROWS;
-		int row2 = rhs % Shogi::BOARD_ROWS;
+		auto [col1, row1] = Shogi::Coord::from_index(lhs);
+		auto [col2, row2] = Shogi::Coord::from_index(rhs);
 		return std::max(std::abs(col1 - col2), std::abs(row1 - row2));
 	}
 

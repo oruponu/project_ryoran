@@ -57,8 +57,7 @@ void Evaluator::initialize() {
 				bool is_near_black_king = (distance(index, king_black_index) == 1);
 				bool is_near_white_king = (distance(index, king_white_index) == 1);
 
-				int col = index / Shogi::BOARD_ROWS;
-				int row = index % Shogi::BOARD_ROWS;
+				auto [col, row] = Shogi::Coord::from_index(index);
 				int position_bonus_index_black = (8 - col) + row * 9;
 
 				int inv_col = 8 - col;
@@ -170,10 +169,8 @@ int Evaluator::get_kkpee_piece_index(const Cell &cell) {
 }
 
 int Evaluator::get_relative_direction(int from_index, int to_index) {
-	int col_from = from_index / Shogi::BOARD_ROWS;
-	int row_from = from_index % Shogi::BOARD_ROWS;
-	int col_to = to_index / Shogi::BOARD_ROWS;
-	int row_to = to_index % Shogi::BOARD_ROWS;
+	auto [col_from, row_from] = Shogi::Coord::from_index(from_index);
+	auto [col_to, row_to] = Shogi::Coord::from_index(to_index);
 
 	int diff_col = col_to - col_from;
 	int diff_row = row_to - row_from;
@@ -271,8 +268,8 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		return 0;
 	}
 
-	int king_index_black = king_position_black->col * Shogi::BOARD_ROWS + king_position_black->row;
-	int king_index_white = king_position_white->col * Shogi::BOARD_ROWS + king_position_white->row;
+	int king_index_black = king_position_black->to_index();
+	int king_index_white = king_position_white->to_index();
 
 	Bitboard attacks_any[2];
 	Bitboard attacks_multi[2];

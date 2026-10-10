@@ -155,7 +155,7 @@ bool BoardState::parse_sfen(const std::string &sfen) {
 				return false;
 			}
 			Turn turn = std::isupper(static_cast<unsigned char>(c)) ? Turn::SENTE : Turn::GOTE;
-			board_[col * Shogi::BOARD_ROWS + row] = Cell(*type, turn, promoted);
+			board_[Shogi::to_index(col, row)] = Cell(*type, turn, promoted);
 			promoted = false;
 			++col;
 		}
@@ -290,7 +290,7 @@ void BoardState::build_bitboard() {
 				continue;
 			}
 
-			int index = col * Shogi::BOARD_ROWS + row;
+			int index = Shogi::to_index(col, row);
 			add_piece_to_bitboard(index, cell.turn, cell.type, cell.is_promoted);
 		}
 	}
@@ -367,7 +367,7 @@ void BoardState::update_king_position_cache() {
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+			const Cell &cell = board_[Shogi::to_index(col, row)];
 			if (cell.type == PieceType::KING) {
 				king_pos_[std::to_underlying(cell.turn)] = Coord{ col, row };
 			}
@@ -381,7 +381,7 @@ void BoardState::update_pawn_columns_cache() {
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			const Cell &cell = board_[col * Shogi::BOARD_ROWS + row];
+			const Cell &cell = board_[Shogi::to_index(col, row)];
 			if (cell.type == PieceType::PAWN && !cell.is_promoted) {
 				pawn_columns_[std::to_underlying(cell.turn)] |= (1 << col);
 			}
@@ -390,7 +390,7 @@ void BoardState::update_pawn_columns_cache() {
 }
 
 const Cell &BoardState::get_cell(Coord coord) const {
-	return board_[coord.col * Shogi::BOARD_ROWS + coord.row];
+	return board_[coord.to_index()];
 }
 
 void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promoted) {
@@ -398,7 +398,7 @@ void BoardState::set_cell(Coord coord, PieceType type, Turn turn, bool is_promot
 		return;
 	}
 
-	int index = coord.col * Shogi::BOARD_ROWS + coord.row;
+	int index = coord.to_index();
 	Cell old_cell = get_cell(coord);
 	if (!old_cell.is_empty()) {
 		int old_is_promoted = old_cell.is_promoted ? 1 : 0;
@@ -434,7 +434,7 @@ void BoardState::clear_cell(Coord coord) {
 		return;
 	}
 
-	int index = coord.col * Shogi::BOARD_ROWS + coord.row;
+	int index = coord.to_index();
 	Cell old_cell = get_cell(coord);
 	if (!old_cell.is_empty()) {
 		int old_is_promoted = old_cell.is_promoted ? 1 : 0;
@@ -454,7 +454,7 @@ void BoardState::clear_cell(Coord coord) {
 				if (row == coord.row) {
 					continue;
 				}
-				const Cell &cell = board_[coord.col * Shogi::BOARD_ROWS + row];
+				const Cell &cell = board_[Shogi::to_index(coord.col, row)];
 				if (cell.type == PieceType::PAWN && !cell.is_promoted && cell.turn == old_cell.turn) {
 					has_other_pawn = true;
 					break;
@@ -509,8 +509,8 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 	Turn opponent_side = Shogi::opponent(turn_to_move_);
 	int sign = (current_side == Turn::SENTE) ? 1 : -1;
 
-	int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
-	int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+	int from_idx = Shogi::to_index(move.from_col, move.from_row);
+	int to_idx = Shogi::to_index(move.to_col, move.to_row);
 
 	Cell target = get_cell({ move.to_col, move.to_row });
 	if (!target.is_empty()) {
@@ -622,8 +622,8 @@ void BoardState::undo_move(const Shogi::UndoInfo &undo) {
 	Turn original_side = Shogi::opponent(turn_to_move_);
 	Turn opponent_side = turn_to_move_;
 
-	int from_idx = move.from_col * Shogi::BOARD_ROWS + move.from_row;
-	int to_idx = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+	int from_idx = Shogi::to_index(move.from_col, move.from_row);
+	int to_idx = Shogi::to_index(move.to_col, move.to_row);
 
 	if (move.is_drop) {
 		remove_piece_from_bitboard(to_idx, original_side, move.piece_type, false);

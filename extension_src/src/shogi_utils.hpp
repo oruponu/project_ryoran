@@ -57,12 +57,20 @@ inline constexpr int get_piece_score(PieceType piece_type, bool is_promoted, Tur
 	return PIECE_VALUES[pt][is_promoted ? 1 : 0];
 }
 
+inline constexpr int to_index(int col, int row) {
+	return col * BOARD_ROWS + row;
+}
+
 struct Coord {
 	int col;
 	int row;
 
-	Coord() : col(-1), row(-1) {}
-	Coord(int c, int r) : col(c), row(r) {}
+	constexpr Coord() : col(-1), row(-1) {}
+	constexpr Coord(int c, int r) : col(c), row(r) {}
+
+	[[nodiscard]] static constexpr Coord from_index(int index) { return { index / BOARD_ROWS, index % BOARD_ROWS }; }
+
+	[[nodiscard]] constexpr int to_index() const { return Shogi::to_index(col, row); }
 
 	[[nodiscard]] bool is_valid() const { return col >= 0 && col < BOARD_COLS && row >= 0 && row < BOARD_ROWS; }
 

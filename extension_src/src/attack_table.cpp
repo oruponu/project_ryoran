@@ -10,13 +10,12 @@ void AttackTable::initialize() {
 
 	auto set_if_valid = [](Bitboard &bitboard, Coord coord) {
 		if (coord.is_valid()) {
-			bitboard.set(coord.col * Shogi::BOARD_ROWS + coord.row);
+			bitboard.set(coord.to_index());
 		}
 	};
 
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-		int col = index / Shogi::BOARD_ROWS;
-		int row = index % Shogi::BOARD_ROWS;
+		auto [col, row] = Coord::from_index(index);
 
 		for (int side = 0; side < 2; ++side) {
 			Shogi::Turn turn = static_cast<Shogi::Turn>(side);
@@ -58,14 +57,13 @@ void AttackTable::initialize() {
 	int dxs[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
 	int dys[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-		int col = index / Shogi::BOARD_ROWS;
-		int row = index % Shogi::BOARD_ROWS;
+		auto [col, row] = Coord::from_index(index);
 
 		for (int dir = 0; dir < 8; ++dir) {
 			Bitboard ray;
 			Coord coord = { col + dxs[dir], row + dys[dir] };
 			while (coord.is_valid()) {
-				ray.set(coord.col * Shogi::BOARD_ROWS + coord.row);
+				ray.set(coord.to_index());
 				coord.col += dxs[dir];
 				coord.row += dys[dir];
 			}

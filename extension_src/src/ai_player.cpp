@@ -178,7 +178,7 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 		}
 		if (!is_killer) {
 			int side = std::to_underlying(board.get_turn_to_move());
-			int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+			int to_sq = Shogi::to_index(move.to_col, move.to_row);
 			score = history_[side][std::to_underlying(move.piece_type)][to_sq];
 		}
 	}
@@ -206,7 +206,7 @@ void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
 
 void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int depth) {
 	int side = std::to_underlying(turn);
-	int to_sq = move.to_col * Shogi::BOARD_ROWS + move.to_row;
+	int to_sq = Shogi::to_index(move.to_col, move.to_row);
 	int &value = history_[side][std::to_underlying(move.piece_type)][to_sq];
 	value += depth * depth;
 	if (value > HISTORY_CAP) {

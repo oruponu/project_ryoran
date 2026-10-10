@@ -16,7 +16,7 @@ Bitboard MoveGenerator::get_checkers(const BoardState &board, Turn turn) {
 		return checkers;
 	}
 
-	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+	int king_square = king_position->to_index();
 
 	const Turn enemy_turn = Shogi::opponent(turn);
 	int enemy_index = std::to_underlying(enemy_turn);
@@ -73,7 +73,7 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 		return pin_masks;
 	}
 
-	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+	int king_square = king_position->to_index();
 
 	Turn enemy_turn = Shogi::opponent(turn);
 	int my_index = std::to_underlying(turn);
@@ -157,8 +157,8 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 		return false;
 	}
 
-	int from_index = from.col * Shogi::BOARD_ROWS + from.row;
-	int to_index = to.col * Shogi::BOARD_ROWS + to.row;
+	int from_index = from.to_index();
+	int to_index = to.to_index();
 
 	using enum PieceType;
 	Bitboard attacks;
@@ -244,8 +244,8 @@ bool MoveGenerator::is_legal_move(BoardState &board, Coord from, Coord to) {
 
 	const Cell from_cell = board.get_cell(from);
 	const Cell to_cell = board.get_cell(to);
-	const int from_idx = from.col * Shogi::BOARD_ROWS + from.row;
-	const int to_idx = to.col * Shogi::BOARD_ROWS + to.row;
+	const int from_idx = from.to_index();
+	const int to_idx = to.to_index();
 	const auto old_king_pos = board.king_pos_[std::to_underlying(from_cell.turn)];
 
 	board.board_[to_idx] = from_cell;
@@ -283,7 +283,7 @@ bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool 
 	}
 
 	const Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
-	const int to_idx = to.col * Shogi::BOARD_ROWS + to.row;
+	const int to_idx = to.to_index();
 
 	board.board_[to_idx] = Cell(piece_type, turn, false);
 
@@ -348,8 +348,8 @@ bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
 		return false;
 	}
 
-	const int to_index = to.col * Shogi::BOARD_ROWS + to.row;
-	const int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+	const int to_index = to.to_index();
+	const int king_square = king_position->to_index();
 	if (!AttackTable::get_pawn_attacks(to_index, turn).is_set(king_square)) {
 		return false;
 	}
@@ -380,7 +380,7 @@ bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
 		return false;
 	}
 
-	int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+	int king_square = king_position->to_index();
 
 	const Turn enemy_turn = Shogi::opponent(turn);
 	int enemy_index = std::to_underlying(enemy_turn);
@@ -469,7 +469,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 
 		auto king_position = board.get_king_position(current_turn);
 		if (king_position.has_value()) {
-			int king_square = king_position->col * Shogi::BOARD_ROWS + king_position->row;
+			int king_square = king_position->to_index();
 			for (int dir = 0; dir < 8; ++dir) {
 				Bitboard ray = AttackTable::get_ray(king_square, dir);
 				if (ray.is_set(checker_index)) {
@@ -500,7 +500,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 			from_bitboard.set(from_index);
 			bool is_promoted = !(promoted_pieces & from_bitboard).is_empty();
 
-			Coord from{ from_index / Shogi::BOARD_ROWS, from_index % Shogi::BOARD_ROWS };
+			Coord from = Coord::from_index(from_index);
 			Bitboard attacks;
 
 			// 駒の利き
@@ -557,7 +557,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 				int to_index = attacks.lsb();
 				attacks.clear(to_index);
 
-				Coord to{ to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS };
+				Coord to = Coord::from_index(to_index);
 
 				Bitboard to_bitboard;
 				to_bitboard.set(to_index);
@@ -609,7 +609,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 					int to_index = target_bitboard.lsb();
 					target_bitboard.clear(to_index);
 
-					Coord to{ to_index / Shogi::BOARD_ROWS, to_index % Shogi::BOARD_ROWS };
+					Coord to = Coord::from_index(to_index);
 
 					if (is_dead_end(type, current_turn == Turn::GOTE, to.row)) {
 						continue;
@@ -664,8 +664,8 @@ Bitboard MoveGenerator::attackers_to(const BoardState &board, int square, Turn s
 int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 	assert(move.is_capture && !move.is_drop);
 
-	const int to_square = move.to_col * Shogi::BOARD_ROWS + move.to_row;
-	const int from_square = move.from_col * Shogi::BOARD_ROWS + move.from_row;
+	const int to_square = Shogi::to_index(move.to_col, move.to_row);
+	const int from_square = Shogi::to_index(move.from_col, move.from_row);
 
 	const Cell &victim = board.get_cell({ move.to_col, move.to_row });
 	const Cell &first_attacker = board.get_cell({ move.from_col, move.from_row });
@@ -694,7 +694,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 		while (!iter.is_empty()) {
 			int sq = iter.lsb();
 			iter.clear(sq);
-			const Cell &cell = board.get_cell({ sq / Shogi::BOARD_ROWS, sq % Shogi::BOARD_ROWS });
+			const Cell &cell = board.get_cell(Coord::from_index(sq));
 			int value = Shogi::PIECE_VALUES[std::to_underlying(cell.type)][cell.is_promoted ? 1 : 0];
 			if (value < cheapest_value) {
 				cheapest_value = value;
@@ -704,7 +704,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 
 		// 玉は相手の利きが残るマスへ取り返し不可
 		const Cell &cheapest_cell =
-				board.get_cell({ cheapest_square / Shogi::BOARD_ROWS, cheapest_square % Shogi::BOARD_ROWS });
+				board.get_cell(Coord::from_index(cheapest_square));
 		if (cheapest_cell.type == PieceType::KING) {
 			Turn opponent = Shogi::opponent(side);
 			if (!attackers_to(board, to_square, opponent, occupancy).is_empty()) {
