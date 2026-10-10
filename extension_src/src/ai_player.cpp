@@ -107,7 +107,7 @@ std::string AIPlayer::format_percent(double value) {
 
 void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks) {
 	// 境界外参照防止のため短い方に合わせる
-	size_t n = hashes.size() < in_checks.size() ? hashes.size() : in_checks.size();
+	size_t n = std::min(hashes.size(), in_checks.size());
 	game_history_hashes_.assign(hashes.begin(), hashes.begin() + n);
 	game_history_in_check_.assign(in_checks.begin(), in_checks.begin() + n);
 	history_len_ = static_cast<int>(n);
@@ -208,10 +208,7 @@ void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int dep
 	int side = std::to_underlying(turn);
 	int to_sq = Shogi::to_index(move.to_col, move.to_row);
 	int &value = history_[side][std::to_underlying(move.piece_type)][to_sq];
-	value += depth * depth;
-	if (value > HISTORY_CAP) {
-		value = HISTORY_CAP;
-	}
+	value = std::min(value + depth * depth, HISTORY_CAP);
 }
 
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
