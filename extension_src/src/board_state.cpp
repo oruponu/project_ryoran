@@ -21,23 +21,24 @@ uint64_t g_zobrist_turn_enemy;
 bool g_zobrist_initialized = false;
 
 std::optional<Shogi::PieceType> piece_type_from_char(char c) {
+	using enum Shogi::PieceType;
 	switch (std::toupper(static_cast<unsigned char>(c))) {
 		case 'K':
-			return Shogi::PieceType::KING;
+			return KING;
 		case 'R':
-			return Shogi::PieceType::ROOK;
+			return ROOK;
 		case 'B':
-			return Shogi::PieceType::BISHOP;
+			return BISHOP;
 		case 'G':
-			return Shogi::PieceType::GOLD;
+			return GOLD;
 		case 'S':
-			return Shogi::PieceType::SILVER;
+			return SILVER;
 		case 'N':
-			return Shogi::PieceType::KNIGHT;
+			return KNIGHT;
 		case 'L':
-			return Shogi::PieceType::LANCE;
+			return LANCE;
 		case 'P':
-			return Shogi::PieceType::PAWN;
+			return PAWN;
 		default:
 			return std::nullopt;
 	}

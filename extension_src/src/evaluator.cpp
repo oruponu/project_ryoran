@@ -288,13 +288,14 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 				pieces.clear(from_index);
 
 				bool is_promoted = promoted_pieces.is_set(from_index);
+				using enum PieceType;
 				Bitboard attacks;
 				if (is_promoted) {
 					switch (type) {
-						case PieceType::BISHOP:
+						case BISHOP:
 							attacks = AttackTable::get_promoted_bishop_attacks(from_index, occupancy);
 							break;
-						case PieceType::ROOK:
+						case ROOK:
 							attacks = AttackTable::get_promoted_rook_attacks(from_index, occupancy);
 							break;
 						default:
@@ -303,28 +304,28 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 					}
 				} else {
 					switch (type) {
-						case PieceType::PAWN:
+						case PAWN:
 							attacks = AttackTable::get_pawn_attacks(from_index, turn);
 							break;
-						case PieceType::LANCE:
+						case LANCE:
 							attacks = AttackTable::get_lance_attacks(from_index, turn, occupancy);
 							break;
-						case PieceType::KNIGHT:
+						case KNIGHT:
 							attacks = AttackTable::get_knight_attacks(from_index, turn);
 							break;
-						case PieceType::SILVER:
+						case SILVER:
 							attacks = AttackTable::get_silver_attacks(from_index, turn);
 							break;
-						case PieceType::GOLD:
+						case GOLD:
 							attacks = AttackTable::get_gold_attacks(from_index, turn);
 							break;
-						case PieceType::BISHOP:
+						case BISHOP:
 							attacks = AttackTable::get_bishop_attacks(from_index, occupancy);
 							break;
-						case PieceType::ROOK:
+						case ROOK:
 							attacks = AttackTable::get_rook_attacks(from_index, occupancy);
 							break;
-						case PieceType::KING:
+						case KING:
 							attacks = AttackTable::get_king_attacks(from_index);
 							break;
 						default:
