@@ -1,10 +1,7 @@
 #pragma once
 
+#include <bit>
 #include <cstdint>
-
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
 
 struct Bitboard {
 private:
@@ -53,44 +50,20 @@ public:
 
 	int lsb() const {
 		if (lower_ != 0) {
-			unsigned long index;
-#ifdef _MSC_VER
-			_BitScanForward64(&index, lower_);
-#else
-			index = __builtin_ctzll(lower_);
-#endif
-			return static_cast<int>(index);
+			return std::countr_zero(lower_);
 		}
 		if (upper_ != 0) {
-			unsigned long index;
-#ifdef _MSC_VER
-			_BitScanForward64(&index, upper_);
-#else
-			index = __builtin_ctzll(upper_);
-#endif
-			return static_cast<int>(index) + 64;
+			return std::countr_zero(upper_) + 64;
 		}
 		return -1;
 	}
 
 	int msb() const {
 		if (upper_ != 0) {
-			unsigned long index;
-#ifdef _MSC_VER
-			_BitScanReverse64(&index, upper_);
-#else
-			index = 63 - __builtin_clzll(upper_);
-#endif
-			return static_cast<int>(index) + 64;
+			return 127 - std::countl_zero(upper_);
 		}
 		if (lower_ != 0) {
-			unsigned long index;
-#ifdef _MSC_VER
-			_BitScanReverse64(&index, lower_);
-#else
-			index = 63 - __builtin_clzll(lower_);
-#endif
-			return static_cast<int>(index);
+			return 63 - std::countl_zero(lower_);
 		}
 		return -1;
 	}
@@ -122,10 +95,6 @@ public:
 	bool is_empty() const { return lower_ == 0 && upper_ == 0; }
 
 	int count() const {
-#ifdef _MSC_VER
-		return static_cast<int>(__popcnt64(lower_) + __popcnt64(upper_));
-#else
-		return __builtin_popcountll(lower_) + __builtin_popcountll(upper_);
-#endif
+		return std::popcount(lower_) + std::popcount(upper_);
 	}
 };
