@@ -621,9 +621,9 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 
 		if (is_attacker) {
 			pn = min_pn;
-			dn = (int)sum_dn;
+			dn = static_cast<int>(sum_dn);
 		} else {
-			pn = (int)sum_pn;
+			pn = static_cast<int>(sum_pn);
 			dn = min_dn;
 		}
 
@@ -644,7 +644,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 			if (threshold_dn >= INFINITY_PN) {
 				next_threshold_dn = INFINITY_PN;
 			} else {
-				next_threshold_dn = threshold_dn - (int)dn_others;
+				next_threshold_dn = threshold_dn - static_cast<int>(dn_others);
 				if (next_threshold_dn < 0) {
 					next_threshold_dn = 0;
 				}
@@ -654,7 +654,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 			if (threshold_pn >= INFINITY_PN) {
 				next_threshold_pn = INFINITY_PN;
 			} else {
-				next_threshold_pn = threshold_pn - (int)pn_others;
+				next_threshold_pn = threshold_pn - static_cast<int>(pn_others);
 				if (next_threshold_pn < 0) {
 					next_threshold_pn = 0;
 				}

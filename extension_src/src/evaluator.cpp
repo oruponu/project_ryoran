@@ -130,14 +130,14 @@ void Evaluator::initialize() {
 											Shogi::PIECE_VALUES[std::to_underlying(piece_type)][is_promoted ? 1 : 0];
 									if (!is_white) {
 										final_score +=
-												(double)piece_value * support_weights[black_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * support_weights[black_effect_count] / 4096.0;
 										final_score -=
-												(double)piece_value * attack_weights[white_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * attack_weights[white_effect_count] / 4096.0;
 									} else {
 										final_score -=
-												(double)piece_value * support_weights[white_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * support_weights[white_effect_count] / 4096.0;
 										final_score +=
-												(double)piece_value * attack_weights[black_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * attack_weights[black_effect_count] / 4096.0;
 									}
 								}
 							}

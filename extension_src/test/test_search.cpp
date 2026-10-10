@@ -440,7 +440,7 @@ void run_dfpn_repetition_tests() {
 		uint64_t nodes = 0;
 		ra_t.dfpn_search(b, b.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn, dn, 5, nodes,
 				100000);
-		check(pn == (int)AIPlayerTestAccess::INFINITY_PN && dn == 0, "dfpn: path repetition returns unmate (pn=inf, dn=0)");
+		check(pn == static_cast<int>(AIPlayerTestAccess::INFINITY_PN) && dn == 0, "dfpn: path repetition returns unmate (pn=inf, dn=0)");
 		check(!ra_t.dfpn_table().contains(h), "dfpn: repetition node not cached (GHI guard)");
 
 		// 対照: 経路に祖先が無ければ反復扱いしない（KvK は王手になる手がなく不詰み、かつ表に保存される）
@@ -450,7 +450,7 @@ void run_dfpn_repetition_tests() {
 		uint64_t nodes2 = 0;
 		rb_t.dfpn_search(b, b.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn2, dn2, 5, nodes2,
 				100000);
-		check(pn2 == (int)AIPlayerTestAccess::INFINITY_PN && dn2 == 0, "dfpn: KvK leaf is unmate");
+		check(pn2 == static_cast<int>(AIPlayerTestAccess::INFINITY_PN) && dn2 == 0, "dfpn: KvK leaf is unmate");
 		check(rb_t.dfpn_table().contains(h), "dfpn: non-repetition leaf IS cached");
 	}
 }
