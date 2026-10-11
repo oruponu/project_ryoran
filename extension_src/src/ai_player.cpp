@@ -13,7 +13,6 @@
 #include <vector>
 
 using Shogi::Move;
-using Shogi::PieceType;
 using Shogi::Turn;
 
 namespace {

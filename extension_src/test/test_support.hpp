@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 
-using Shogi::Coord;
 using Shogi::Move;
 using Shogi::PieceType;
 using Shogi::Turn;
