@@ -54,8 +54,7 @@ func _ready() -> void:
 		game_state,
 		board_view,
 		audio_stream_player,
-		engine_worker,
-		game_dialogs.request_promotion
+		_decide_promotion
 	)
 
 	_reset_game()
@@ -192,6 +191,13 @@ func _finish_turn(record: MoveRecord) -> void:
 		_play_ai_turn()
 	else:
 		engine_worker.request_analysis()
+
+
+func _decide_promotion() -> bool:
+	engine_worker.suspend_analysis()
+	var should_promote: bool = await game_dialogs.request_promotion()
+	engine_worker.resume_analysis()
+	return should_promote
 
 
 func _play_ai_turn() -> void:

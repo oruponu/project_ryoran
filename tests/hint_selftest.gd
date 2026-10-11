@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_check_invalid_count()
 	_check_arrow_lifecycle()
 	await _check_filter()
+	await _check_promotion_decision()
 
 	print("== hint_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -138,3 +139,24 @@ func _check_arrow_lifecycle() -> void:
 	_expect("矢印: 空エントリで0本", board.hint_arrows.is_empty())
 
 	board.queue_free()
+
+
+func _check_promotion_decision() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	var suspended_while_asking := [false]
+	var answer := func() -> void:
+		suspended_while_asking[0] = worker._analysis_suspended
+		main.common_dialog._on_yes_pressed()
+	answer.call_deferred()
+
+	var should_promote: bool = await main._decide_promotion()
+	_expect("成りの確認: ダイアログ中は解析を抑止する", suspended_while_asking[0])
+	_expect("成りの確認: ダイアログを閉じたら解析の抑止を解く", not worker._analysis_suspended)
+	_expect("成りの確認: 「成る」を選ぶと true", should_promote)
+
+	main.queue_free()

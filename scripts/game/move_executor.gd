@@ -6,7 +6,6 @@ extends RefCounted
 var _game_state: GameState
 var _board_view: BoardView
 var _audio_stream_player: GameAudioPlayer
-var _engine_worker: EngineWorker
 var _promotion_decider: Callable
 
 
@@ -14,13 +13,11 @@ func _init(
 	game_state: GameState,
 	board_view: BoardView,
 	audio_stream_player: GameAudioPlayer,
-	engine_worker: EngineWorker,
 	promotion_decider: Callable
 ) -> void:
 	_game_state = game_state
 	_board_view = board_view
 	_audio_stream_player = audio_stream_player
-	_engine_worker = engine_worker
 	_promotion_decider = promotion_decider
 
 
@@ -81,12 +78,9 @@ func undo(record: MoveRecord) -> void:
 
 func _handle_promotion(state: PieceState, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var should_promote := false
-	var analysis_suspended := false
 	match mode:
 		PromotionMode.Type.ASK_USER:
 			_board_view.node_for(state).is_held = false
-			_engine_worker.suspend_analysis()
-			analysis_suspended = true
 			should_promote = await _promotion_decider.call()
 		PromotionMode.Type.FORCE_PROMOTE:
 			should_promote = true
@@ -97,6 +91,3 @@ func _handle_promotion(state: PieceState, move_record: MoveRecord, mode: Promoti
 		_game_state.set_promoted(state, true)
 		_board_view.refresh_display(state)
 		move_record.is_promotion = true
-
-	if analysis_suspended:
-		_engine_worker.resume_analysis()
