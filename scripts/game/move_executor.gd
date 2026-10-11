@@ -30,12 +30,12 @@ func _init(
 func execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var prev_row: int = state.current_row
 
-	var target_state := _game_state.get_piece(col, row)
-	if target_state != null:
-		move_record.captured_promoted = target_state.is_promoted
-		_game_state.capture(target_state)
-		_board_view.capture_piece(target_state)
-		move_record.captured_piece = target_state
+	var captured_state := _game_state.get_piece(col, row)
+	if captured_state != null:
+		move_record.captured_promoted = captured_state.is_promoted
+		_game_state.capture(captured_state)
+		_board_view.capture_piece(captured_state)
+		move_record.captured_state = captured_state
 
 	_game_state.move_piece(state, col, row)
 	_board_view.place_piece(state)
@@ -53,7 +53,7 @@ func execute_drop(state: PieceState, col: int, row: int) -> void:
 
 
 func undo(record: MoveRecord) -> void:
-	var state := record.piece
+	var state := record.state
 
 	if record.from_col == -1 and record.from_row == -1:
 		# 持ち駒から打った
@@ -68,13 +68,13 @@ func undo(record: MoveRecord) -> void:
 			_game_state.set_promoted(state, false)
 			_board_view.refresh_display(state)
 
-	if record.captured_piece != null:
-		_game_state.uncapture(record.captured_piece, record.to_col, record.to_row, record.captured_promoted)
-		_board_view.revive_piece(record.captured_piece)
+	if record.captured_state != null:
+		_game_state.uncapture(record.captured_state, record.to_col, record.to_row, record.captured_promoted)
+		_board_view.revive_piece(record.captured_state)
 
 
 func _handle_promotion(state: PieceState, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
-	if not _shogi_engine.can_promote(state.piece_type, state.is_promoted, state.is_enemy, prev_row, current_row):
+	if not _shogi_engine.can_promote(state.piece_type, state.is_promoted, state.is_gote, prev_row, current_row):
 		return
 
 	_board_view.node_for(state).is_held = false

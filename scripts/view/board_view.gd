@@ -8,8 +8,8 @@ signal piece_spawned(piece: Piece)
 
 var _game_state: GameState
 var _board: Board
-var _player_piece_stand: PieceStand
-var _enemy_piece_stand: PieceStand
+var _sente_piece_stand: PieceStand
+var _gote_piece_stand: PieceStand
 var _piece_scene: PackedScene
 
 var _nodes: Dictionary[PieceState, Piece] = {}
@@ -18,14 +18,14 @@ var _nodes: Dictionary[PieceState, Piece] = {}
 func _init(
 	game_state: GameState,
 	board: Board,
-	player_piece_stand: PieceStand,
-	enemy_piece_stand: PieceStand,
+	sente_piece_stand: PieceStand,
+	gote_piece_stand: PieceStand,
 	piece_scene: PackedScene
 ) -> void:
 	_game_state = game_state
 	_board = board
-	_player_piece_stand = player_piece_stand
-	_enemy_piece_stand = enemy_piece_stand
+	_sente_piece_stand = sente_piece_stand
+	_gote_piece_stand = gote_piece_stand
 	_piece_scene = piece_scene
 
 
@@ -58,11 +58,11 @@ func _spawn_piece_for(state: PieceState) -> void:
 
 func rebuild() -> void:
 	_board.clear_pieces()
-	_player_piece_stand.clear_pieces()
-	_enemy_piece_stand.clear_pieces()
+	_sente_piece_stand.clear_pieces()
+	_gote_piece_stand.clear_pieces()
 	_nodes.clear()
 
-	if not _game_state.player_hand.is_empty() or not _game_state.enemy_hand.is_empty():
+	if not _game_state.sente_hand.is_empty() or not _game_state.gote_hand.is_empty():
 		push_error("BoardView.rebuild: 持ち駒ありの再構築は未対応です")
 
 	for row in range(GameConfig.BOARD_ROWS):
@@ -79,7 +79,7 @@ func place_piece(state: PieceState) -> void:
 
 func capture_piece(state: PieceState) -> void:
 	var piece := node_for(state)
-	var stand := _enemy_piece_stand if state.is_enemy else _player_piece_stand
+	var stand := _gote_piece_stand if state.is_gote else _sente_piece_stand
 	stand.add_piece(piece)
 
 
@@ -99,10 +99,10 @@ func drop_piece(state: PieceState) -> void:
 func return_to_stand(state: PieceState) -> void:
 	var piece := node_for(state)
 
-	if state.is_enemy:
-		_enemy_piece_stand.add_piece(piece, true)
+	if state.is_gote:
+		_gote_piece_stand.add_piece(piece, true)
 	else:
-		_player_piece_stand.add_piece(piece, true)
+		_sente_piece_stand.add_piece(piece, true)
 
 
 func revive_piece(state: PieceState) -> void:

@@ -9,7 +9,7 @@ signal clicked(piece: Piece)
 const PIECE_DATA = {
 	PieceState.Type.KING: {
 		"default": "玉",
-		"enemy": "王"
+		"gote": "王"
 	},
 	PieceState.Type.ROOK: {
 		"default": "飛",
@@ -71,19 +71,19 @@ func _update_display() -> void:
 		return
 
 	var data: Dictionary = PIECE_DATA[state.piece_type]
-	var disp_text: String = data.get("default", "？")
+	var display_text: String = data.get("default", "？")
 	if state.is_promoted and data.has("promoted"):
-		disp_text = data["promoted"]
-	elif state.is_enemy and data.has("enemy"):
-		disp_text = data["enemy"]
-	label.text = disp_text
+		display_text = data["promoted"]
+	elif state.is_gote and data.has("gote"):
+		display_text = data["gote"]
+	label.text = display_text
 
 	if state.is_promoted:
 		label.modulate = Color(0.8, 0, 0)
 	else:
 		label.modulate = Color.BLACK
 
-	if state.is_enemy:
+	if state.is_gote:
 		rotation_degrees = 180
 	else:
 		rotation_degrees = 0

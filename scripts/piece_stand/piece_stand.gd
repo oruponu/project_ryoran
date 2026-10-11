@@ -3,7 +3,7 @@ class_name PieceStand
 extends Node2D
 
 
-@export var is_enemy: bool = false
+@export var is_gote: bool = false
 
 
 const DISPLAY_ORDER = [
@@ -52,8 +52,8 @@ func clear_pieces() -> void:
 
 func update_layout(immediate: bool = false) -> void:
 	var groups = {}
-	for type in DISPLAY_ORDER:
-		groups[type] = []
+	for piece_type in DISPLAY_ORDER:
+		groups[piece_type] = []
 
 	for child in get_children():
 		if child is Piece and not child.is_held:
@@ -66,18 +66,18 @@ func update_layout(immediate: bool = false) -> void:
 	var total_height = GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
 
 	var center_x = 0.0
-	if is_enemy:
+	if is_gote:
 		center_x = GameConfig.GRID_SIZE / 2.0 + 20
 	else:
 		center_x = GameConfig.GRID_SIZE / 2.0
 
-	for type in DISPLAY_ORDER:
-		var pieces = groups[type] as Array
+	for piece_type in DISPLAY_ORDER:
+		var pieces = groups[piece_type] as Array
 		if pieces.is_empty():
 			continue
 
 		var center_y = 0.0
-		if is_enemy:
+		if is_gote:
 			center_y = (stack_index * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 		else:
 			center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
@@ -94,8 +94,8 @@ func update_layout(immediate: bool = false) -> void:
 				pieces[i].visible = false
 				pieces[i].position = target_pos
 		else:
-			var dist = representative.position.distance_to(target_pos)
-			var is_capturing = dist > GameConfig.GRID_SIZE
+			var distance = representative.position.distance_to(target_pos)
+			var is_capturing = distance > GameConfig.GRID_SIZE
 
 			var tween = create_tween()
 			tween.tween_property(representative, "position", target_pos, 0.2)
@@ -108,15 +108,15 @@ func update_layout(immediate: bool = false) -> void:
 					pieces[i].visible = false
 					pieces[i].position = target_pos
 
-		representative.rotation_degrees = 180 if is_enemy else 0
+		representative.rotation_degrees = 180 if is_gote else 0
 
 		if pieces.size() > 1:
-			var label = _get_label(type)
+			var label = _get_label(piece_type)
 			label.text = str(pieces.size())
 			label.visible = true
 
 			var label_offset = Vector2(35, 0)
-			if is_enemy:
+			if is_gote:
 				label.position = target_pos - label_offset
 				label.rotation_degrees = 180
 			else:
@@ -126,14 +126,14 @@ func update_layout(immediate: bool = false) -> void:
 		stack_index += 1
 
 
-func _get_label(type: PieceState.Type) -> Label:
-	if _labels.has(type):
-		return _labels[type]
+func _get_label(piece_type: PieceState.Type) -> Label:
+	if _labels.has(piece_type):
+		return _labels[piece_type]
 
 	var label = Label.new()
 	label.add_theme_color_override("font_color", Color.BLACK)
 	label.add_theme_font_size_override("font_size", 24)
 	label.z_index = 5
 	add_child(label)
-	_labels[type] = label
+	_labels[piece_type] = label
 	return label

@@ -79,11 +79,11 @@ ShogiEngine::ShogiEngine() {
 void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_legal_moves", "sfen", "col", "row"), &ShogiEngine::get_legal_moves);
 	ClassDB::bind_method(D_METHOD("get_legal_drops", "sfen", "piece_type"), &ShogiEngine::get_legal_drops);
-	ClassDB::bind_method(D_METHOD("is_king_in_check", "sfen", "is_enemy"), &ShogiEngine::is_king_in_check);
+	ClassDB::bind_method(D_METHOD("is_king_in_check", "sfen", "is_gote"), &ShogiEngine::is_king_in_check);
 	ClassDB::bind_method(D_METHOD("has_any_legal_move", "sfen"), &ShogiEngine::has_any_legal_move);
 	ClassDB::bind_method(D_METHOD("get_position_hash", "sfen"), &ShogiEngine::get_position_hash);
-	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_enemy", "to_row"), &ShogiEngine::is_dead_end);
-	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_enemy", "from_row", "to_row"), &ShogiEngine::can_promote);
+	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_gote", "to_row"), &ShogiEngine::is_dead_end);
+	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_gote", "from_row", "to_row"), &ShogiEngine::can_promote);
 
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
 	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
@@ -161,12 +161,12 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 	}
 
 	BoardState board = board_from_sfen(sfen);
-	bool is_enemy = (board.get_turn_to_move() == Turn::GOTE);
+	bool is_gote = (board.get_turn_to_move() == Turn::GOTE);
 
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
 			Coord to{ col, row };
-			if (MoveGenerator::is_legal_drop(board, static_cast<PieceType>(piece_type), is_enemy, to)) {
+			if (MoveGenerator::is_legal_drop(board, static_cast<PieceType>(piece_type), is_gote, to)) {
 				result.append(Vector2i(col, row));
 			}
 		}
@@ -175,10 +175,10 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 	return result;
 }
 
-bool ShogiEngine::is_king_in_check(const String &sfen, bool is_enemy) {
+bool ShogiEngine::is_king_in_check(const String &sfen, bool is_gote) {
 	BoardState board = board_from_sfen(sfen);
 
-	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
+	Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
 
 	return MoveGenerator::is_king_in_check(board, turn);
 }
@@ -197,22 +197,22 @@ int64_t ShogiEngine::get_position_hash(const String &sfen) {
 	return static_cast<int64_t>(board.get_zobrist_hash());
 }
 
-bool ShogiEngine::is_dead_end(int piece_type, bool is_enemy, int to_row) {
+bool ShogiEngine::is_dead_end(int piece_type, bool is_gote, int to_row) {
 	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
 		UtilityFunctions::push_error("is_dead_end: invalid piece_type (", piece_type, ")");
 		return false;
 	}
 
-	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_enemy, to_row);
+	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_gote, to_row);
 }
 
-bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row) {
+bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_gote, int from_row, int to_row) {
 	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
 		UtilityFunctions::push_error("can_promote: invalid piece_type (", piece_type, ")");
 		return false;
 	}
 
-	return MoveGenerator::can_promote(static_cast<PieceType>(piece_type), is_promoted, is_enemy, from_row, to_row);
+	return MoveGenerator::can_promote(static_cast<PieceType>(piece_type), is_promoted, is_gote, from_row, to_row);
 }
 
 void ShogiEngine::update_state_from_sfen(const String &sfen) {

@@ -4,32 +4,32 @@ extends RefCounted
 
 
 var board_grid: Array = []
-var current_turn: int = 0
+var move_count: int = 0
 var move_history: Array[MoveRecord] = []
 var repetition_tracker := RepetitionTracker.new()
-var player_hand: Array[PieceState] = []
-var enemy_hand: Array[PieceState] = []
+var sente_hand: Array[PieceState] = []
+var gote_hand: Array[PieceState] = []
 
 
 func reset() -> void:
 	board_grid.clear()
-	player_hand.clear()
-	enemy_hand.clear()
-	current_turn = 0
+	sente_hand.clear()
+	gote_hand.clear()
+	move_count = 0
 	move_history.clear()
 
-	for x in range(GameConfig.BOARD_COLS):
+	for col in range(GameConfig.BOARD_COLS):
 		var column: Array = []
-		for y in range(GameConfig.BOARD_ROWS):
+		for row in range(GameConfig.BOARD_ROWS):
 			column.append(null)
 		board_grid.append(column)
 
 
 func setup_starting_position() -> void:
-	for x in range(GameConfig.BOARD_COLS):
-		var mirrored_x := GameConfig.BOARD_COLS - 1 - x
-		register_piece(PieceState.new(PieceState.Type.PAWN, false, x, 6))
-		register_piece(PieceState.new(PieceState.Type.PAWN, true, mirrored_x, 2))
+	for col in range(GameConfig.BOARD_COLS):
+		var mirrored_col := GameConfig.BOARD_COLS - 1 - col
+		register_piece(PieceState.new(PieceState.Type.PAWN, false, col, 6))
+		register_piece(PieceState.new(PieceState.Type.PAWN, true, mirrored_col, 2))
 
 	register_piece(PieceState.new(PieceState.Type.BISHOP, false, 1, 7))
 	register_piece(PieceState.new(PieceState.Type.ROOK, false, 7, 7))
@@ -41,15 +41,15 @@ func setup_starting_position() -> void:
 		PieceState.Type.KING,
 		PieceState.Type.GOLD, PieceState.Type.SILVER, PieceState.Type.KNIGHT, PieceState.Type.LANCE
 	]
-	for x in range(GameConfig.BOARD_COLS):
-		var mirrored_x := GameConfig.BOARD_COLS - 1 - x
-		var type := bottom_row_types[x]
-		register_piece(PieceState.new(type, false, x, 8))
-		register_piece(PieceState.new(type, true, mirrored_x, 0))
+	for col in range(GameConfig.BOARD_COLS):
+		var mirrored_col := GameConfig.BOARD_COLS - 1 - col
+		var piece_type := bottom_row_types[col]
+		register_piece(PieceState.new(piece_type, false, col, 8))
+		register_piece(PieceState.new(piece_type, true, mirrored_col, 0))
 
 
 func is_gote_turn() -> bool:
-	return current_turn % 2 != 0
+	return move_count % 2 != 0
 
 
 func get_piece(col: int, row: int) -> PieceState:
@@ -62,23 +62,23 @@ func register_piece(state: PieceState) -> void:
 	board_grid[state.current_col][state.current_row] = state
 
 
-func capture(target: PieceState) -> void:
-	if get_piece(target.current_col, target.current_row) != target:
-		push_error("capture: 盤上の対象が一致しません (%d, %d)" % [target.current_col, target.current_row])
-	board_grid[target.current_col][target.current_row] = null
-	target.is_enemy = not target.is_enemy
-	target.is_promoted = false
-	target.current_col = -1
-	target.current_row = -1
-	_hand_of(target.is_enemy).push_front(target)
+func capture(state: PieceState) -> void:
+	if get_piece(state.current_col, state.current_row) != state:
+		push_error("capture: 盤上の対象が一致しません (%d, %d)" % [state.current_col, state.current_row])
+	board_grid[state.current_col][state.current_row] = null
+	state.is_gote = not state.is_gote
+	state.is_promoted = false
+	state.current_col = -1
+	state.current_row = -1
+	_hand_of(state.is_gote).push_front(state)
 
 
 func uncapture(state: PieceState, col: int, row: int, was_promoted: bool) -> void:
-	var hand := _hand_of(state.is_enemy)
+	var hand := _hand_of(state.is_gote)
 	if not hand.has(state):
 		push_error("uncapture: 持ち駒に対象がありません")
 	hand.erase(state)
-	state.is_enemy = not state.is_enemy
+	state.is_gote = not state.is_gote
 	state.is_promoted = was_promoted
 	state.current_col = col
 	state.current_row = row
@@ -100,7 +100,7 @@ func move_piece(state: PieceState, col: int, row: int) -> void:
 
 
 func drop_piece(state: PieceState, col: int, row: int) -> void:
-	var hand := _hand_of(state.is_enemy)
+	var hand := _hand_of(state.is_gote)
 	if not hand.has(state):
 		push_error("drop_piece: 持ち駒に対象がありません")
 	hand.erase(state)
@@ -117,20 +117,20 @@ func return_to_hand(state: PieceState) -> void:
 	board_grid[state.current_col][state.current_row] = null
 	state.current_col = -1
 	state.current_row = -1
-	_hand_of(state.is_enemy).push_front(state)
+	_hand_of(state.is_gote).push_front(state)
 
 
 func set_promoted(state: PieceState, promoted: bool) -> void:
 	state.is_promoted = promoted
 
 
-func find_hand_piece(is_enemy: bool, piece_type: PieceState.Type) -> PieceState:
-	for state in _hand_of(is_enemy):
+func find_hand_piece(is_gote: bool, piece_type: PieceState.Type) -> PieceState:
+	for state in _hand_of(is_gote):
 		if state.piece_type == piece_type:
 			return state
 	push_error("find_hand_piece: 持ち駒が見つかりません (piece_type=%d)" % piece_type)
 	return null
 
 
-func _hand_of(is_enemy: bool) -> Array[PieceState]:
-	return enemy_hand if is_enemy else player_hand
+func _hand_of(is_gote: bool) -> Array[PieceState]:
+	return gote_hand if is_gote else sente_hand

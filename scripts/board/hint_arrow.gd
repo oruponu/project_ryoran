@@ -23,10 +23,10 @@ func _draw() -> void:
 	if _from == _to:
 		return
 
-	var dir := (_to - _from).normalized()
-	var shaft_end := _to - dir * HEAD_LENGTH
+	var direction := (_to - _from).normalized()
+	var shaft_end := _to - direction * HEAD_LENGTH
 	draw_line(_from, shaft_end, COLOR, LINE_WIDTH)
 
-	var side := dir.orthogonal() * (HEAD_WIDTH / 2.0)
+	var side := direction.orthogonal() * (HEAD_WIDTH / 2.0)
 	var points := PackedVector2Array([_to, shaft_end + side, shaft_end - side])
 	draw_polygon(points, PackedColorArray([COLOR]))

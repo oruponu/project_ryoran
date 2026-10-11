@@ -115,7 +115,7 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 			.is_set(to_index);
 }
 
-bool MoveGenerator::is_valid_drop(const BoardState &board, PieceType piece_type, bool is_enemy, Coord to) {
+bool MoveGenerator::is_valid_drop(const BoardState &board, PieceType piece_type, bool is_gote, Coord to) {
 	// 盤面の範囲外には配置不可
 	if (!to.is_valid()) {
 		return false;
@@ -126,13 +126,13 @@ bool MoveGenerator::is_valid_drop(const BoardState &board, PieceType piece_type,
 		return false;
 	}
 
-	Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
+	Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
 	if (board.get_hand_count(turn, piece_type) <= 0) {
 		return false;
 	}
 
 	// 行き所のない場所には配置不可
-	if (is_dead_end(piece_type, is_enemy, to.row)) {
+	if (is_dead_end(piece_type, is_gote, to.row)) {
 		return false;
 	}
 
@@ -184,12 +184,12 @@ bool MoveGenerator::is_legal_move(BoardState &board, Coord from, Coord to) {
 	return !in_check;
 }
 
-bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool is_enemy, Coord to) {
-	if (!is_valid_drop(board, piece_type, is_enemy, to)) {
+bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool is_gote, Coord to) {
+	if (!is_valid_drop(board, piece_type, is_gote, to)) {
 		return false;
 	}
 
-	const Turn turn = is_enemy ? Turn::GOTE : Turn::SENTE;
+	const Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
 	const int to_index = to.to_index();
 
 	board.board_[to_index] = Cell(piece_type, turn, false);
@@ -214,8 +214,8 @@ bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool 
 	return true;
 }
 
-bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_enemy, int to_row) {
-	int relative_row = is_enemy ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
+bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_gote, int to_row) {
+	int relative_row = is_gote ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
 	using enum PieceType;
 	switch (piece_type) {
 		case PAWN:
@@ -228,13 +228,13 @@ bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_enemy, int to_row)
 	}
 }
 
-bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, bool is_enemy, int from_row, int to_row) {
+bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, bool is_gote, int from_row, int to_row) {
 	if (is_promoted || piece_type == PieceType::KING || piece_type == PieceType::GOLD) {
 		return false;
 	}
 
-	const int zone_min = is_enemy ? 6 : 0;
-	const int zone_max = is_enemy ? 8 : 2;
+	const int zone_min = is_gote ? 6 : 0;
+	const int zone_max = is_gote ? 8 : 2;
 	const bool from_in_zone = (zone_min <= from_row && from_row <= zone_max);
 	const bool to_in_zone = (zone_min <= to_row && to_row <= zone_max);
 	return from_in_zone || to_in_zone;

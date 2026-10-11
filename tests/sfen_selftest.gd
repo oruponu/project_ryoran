@@ -49,7 +49,7 @@ func _check(test_name: String, condition: bool) -> void:
 func _test_serializer() -> void:
 	var game_state := GameState.new()
 	game_state.reset()
-	game_state.current_turn = 1
+	game_state.move_count = 1
 
 	game_state.register_piece(_piece_state(PieceState.Type.KING, true, false, 4, 0))
 	game_state.register_piece(_piece_state(PieceState.Type.ROOK, true, true, 3, 2))
@@ -57,17 +57,17 @@ func _test_serializer() -> void:
 	game_state.register_piece(_piece_state(PieceState.Type.SILVER, false, true, 0, 8))
 	game_state.register_piece(_piece_state(PieceState.Type.KING, false, false, 4, 8))
 
-	game_state.player_hand.append(PieceState.new(PieceState.Type.PAWN, false))
-	game_state.player_hand.append(PieceState.new(PieceState.Type.PAWN, false))
-	game_state.enemy_hand.append(PieceState.new(PieceState.Type.GOLD, true))
+	game_state.sente_hand.append(PieceState.new(PieceState.Type.PAWN, false))
+	game_state.sente_hand.append(PieceState.new(PieceState.Type.PAWN, false))
+	game_state.gote_hand.append(PieceState.new(PieceState.Type.GOLD, true))
 
 	var serializer := SfenSerializer.new(game_state)
 	var expected := "4k4/9/3+r5/9/9/9/4P4/9/+S3K4 w 2Pg 2"
 	_check("シリアライザー: 盤・成駒・持ち駒・後手番・手数", serializer.to_sfen() == expected)
 
 
-func _piece_state(type: PieceState.Type, is_enemy: bool, is_promoted: bool, col: int, row: int) -> PieceState:
-	var state := PieceState.new(type, is_enemy, col, row)
+func _piece_state(piece_type: PieceState.Type, is_gote: bool, is_promoted: bool, col: int, row: int) -> PieceState:
+	var state := PieceState.new(piece_type, is_gote, col, row)
 	state.is_promoted = is_promoted
 	return state
 

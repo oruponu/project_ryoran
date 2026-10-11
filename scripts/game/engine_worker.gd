@@ -3,19 +3,19 @@ class_name EngineWorker
 extends Node
 
 
-const AI_IS_ENEMY := true
+const AI_IS_GOTE := true
 
 
 signal search_completed(move: Dictionary)
 signal analysis_completed(moves: Array)
 
 
-var _serializer: SfenSerializer
-var _tracker: RepetitionTracker
-var _ai_engine: ShogiEngine = ShogiEngine.new()
-var _ai_thread: Thread
-var _eval_engine: ShogiEngine = ShogiEngine.new()
-var _eval_thread: Thread
+var _sfen_serializer: SfenSerializer
+var _repetition_tracker: RepetitionTracker
+var _search_engine: ShogiEngine = ShogiEngine.new()
+var _search_thread: Thread
+var _analysis_engine: ShogiEngine = ShogiEngine.new()
+var _analysis_thread: Thread
 var _analysis_pending: bool = false
 var _analysis_suspended: bool = false
 var _generation: int = 0
@@ -23,35 +23,35 @@ var _search_started_msec: int = 0
 
 
 func _exit_tree() -> void:
-	if _ai_thread != null and _ai_thread.is_started():
-		_ai_thread.wait_to_finish()
-		_ai_thread = null
+	if _search_thread != null and _search_thread.is_started():
+		_search_thread.wait_to_finish()
+		_search_thread = null
 
-	if _eval_thread != null and _eval_thread.is_started():
-		_eval_thread.wait_to_finish()
-		_eval_thread = null
+	if _analysis_thread != null and _analysis_thread.is_started():
+		_analysis_thread.wait_to_finish()
+		_analysis_thread = null
 
 
-func setup(serializer: SfenSerializer, tracker: RepetitionTracker) -> void:
-	_serializer = serializer
-	_tracker = tracker
-	_eval_engine.set_time_limit_msec(GameConfig.HINT_ANALYSIS_TIME_MSEC)
+func setup(sfen_serializer: SfenSerializer, repetition_tracker: RepetitionTracker) -> void:
+	_sfen_serializer = sfen_serializer
+	_repetition_tracker = repetition_tracker
+	_analysis_engine.set_time_limit_msec(GameConfig.HINT_ANALYSIS_TIME_MSEC)
 
 
 func request_search() -> bool:
-	if _ai_thread != null:
+	if _search_thread != null:
 		push_error("AI探索スレッドを起動できません（既に実行中です）")
 		return false
 
-	_ai_engine.update_state_from_sfen(_serializer.to_sfen())
-	_ai_engine.set_game_history(_tracker.history_hashes(), _tracker.history_in_checks())
+	_search_engine.update_state_from_sfen(_sfen_serializer.to_sfen())
+	_search_engine.set_game_history(_repetition_tracker.history_hashes(), _repetition_tracker.history_in_checks())
 
 	var generation := _generation
-	_ai_thread = Thread.new()
-	var err := _ai_thread.start(_run_search.bind(generation))
-	if err != OK:
-		_ai_thread = null
-		push_error("AI探索スレッドを起動できません（%s）" % error_string(err))
+	_search_thread = Thread.new()
+	var error := _search_thread.start(_run_search.bind(generation))
+	if error != OK:
+		_search_thread = null
+		push_error("AI探索スレッドを起動できません（%s）" % error_string(error))
 		return false
 
 	_search_started_msec = Time.get_ticks_msec()
@@ -59,20 +59,20 @@ func request_search() -> bool:
 
 
 func request_analysis() -> void:
-	if _analysis_suspended or _eval_thread != null:
+	if _analysis_suspended or _analysis_thread != null:
 		_analysis_pending = true
 		return
 
-	var sfen := _serializer.to_sfen()
-	_eval_engine.update_state_from_sfen(sfen)
-	_eval_engine.set_game_history(_tracker.history_hashes(), _tracker.history_in_checks())
+	var sfen := _sfen_serializer.to_sfen()
+	_analysis_engine.update_state_from_sfen(sfen)
+	_analysis_engine.set_game_history(_repetition_tracker.history_hashes(), _repetition_tracker.history_in_checks())
 
 	var generation := _generation
-	_eval_thread = Thread.new()
-	var err := _eval_thread.start(_run_analysis.bind(generation, sfen))
-	if err != OK:
-		_eval_thread = null
-		push_error("評価解析スレッドを起動できません（%s）" % error_string(err))
+	_analysis_thread = Thread.new()
+	var error := _analysis_thread.start(_run_analysis.bind(generation, sfen))
+	if error != OK:
+		_analysis_thread = null
+		push_error("評価解析スレッドを起動できません（%s）" % error_string(error))
 
 
 func reset() -> void:
@@ -91,13 +91,13 @@ func resume_analysis() -> void:
 
 
 func _run_search(generation: int) -> void:
-	var move: Dictionary = _ai_engine.search_best_move()
+	var move: Dictionary = _search_engine.search_best_move()
 	call_deferred("_on_search_finished", move, generation)
 
 
 func _on_search_finished(move: Dictionary, generation: int) -> void:
-	_ai_thread.wait_to_finish()
-	_ai_thread = null
+	_search_thread.wait_to_finish()
+	_search_thread = null
 
 	if generation != _generation:
 		return
@@ -113,16 +113,16 @@ func _on_search_finished(move: Dictionary, generation: int) -> void:
 
 
 func _run_analysis(generation: int, sfen: String) -> void:
-	var moves: Array = _eval_engine.search_top_moves(GameConfig.HINT_CANDIDATE_COUNT)
+	var moves: Array = _analysis_engine.search_top_moves(GameConfig.HINT_CANDIDATE_COUNT)
 	call_deferred("_on_analysis_finished", moves, generation, sfen)
 
 
 func _on_analysis_finished(moves: Array, generation: int, sfen: String) -> void:
-	_eval_thread.wait_to_finish()
-	_eval_thread = null
+	_analysis_thread.wait_to_finish()
+	_analysis_thread = null
 
 	# 最新局面の解析だけを通知
-	var is_current := generation == _generation and sfen == _serializer.to_sfen()
+	var is_current := generation == _generation and sfen == _sfen_serializer.to_sfen()
 	if is_current and not _analysis_pending and not _analysis_suspended:
 		analysis_completed.emit(moves)
 

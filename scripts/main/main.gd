@@ -2,8 +2,8 @@ extends Node2D
 
 
 @onready var board: Board = $Board
-@onready var player_piece_stand: PieceStand = $PlayerPieceStand
-@onready var enemy_piece_stand: PieceStand = $EnemyPieceStand
+@onready var sente_piece_stand: PieceStand = $SentePieceStand
+@onready var gote_piece_stand: PieceStand = $GotePieceStand
 @onready var move_history_panel: MoveHistoryPanel = $MoveHistoryPanel
 @onready var new_game_button: Button = $HBoxContainer/NewGameButton
 @onready var undo_button: Button = $HBoxContainer/UndoButton
@@ -36,7 +36,7 @@ func _ready() -> void:
 	resign_button.pressed.connect(_on_resign_button_pressed)
 
 	sfen_serializer = SfenSerializer.new(game_state)
-	board_view = BoardView.new(game_state, board, player_piece_stand, enemy_piece_stand, board.piece_scene)
+	board_view = BoardView.new(game_state, board, sente_piece_stand, gote_piece_stand, board.piece_scene)
 	board_view.piece_spawned.connect(_on_piece_spawned)
 
 	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
@@ -90,8 +90,8 @@ func _on_resign_button_pressed() -> void:
 	if not result:
 		return
 
-	var is_player_win := game_state.is_gote_turn()
-	await _finish_game(is_player_win)
+	var is_sente_win := game_state.is_gote_turn()
+	await _finish_game(is_sente_win)
 
 
 func _update_button_states() -> void:
@@ -131,7 +131,7 @@ func _reset_game() -> void:
 	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
 	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
 	move_history_panel.clear()
-	move_history_panel.add_game_start(game_state.current_turn)
+	move_history_panel.add_game_start(game_state.move_count)
 	check_label.cancel_animation()
 	engine_worker.request_analysis()
 
@@ -153,7 +153,7 @@ func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 		move_executor.execute_drop(state, col, row)
 	else:
 		var mode: PromotionMode.Type
-		if _shogi_engine.is_dead_end(state.piece_type, state.is_enemy, row):
+		if _shogi_engine.is_dead_end(state.piece_type, state.is_gote, row):
 			mode = PromotionMode.Type.FORCE_PROMOTE
 		else:
 			mode = PromotionMode.Type.ASK_USER
@@ -169,39 +169,39 @@ func _finish_turn(piece: Piece) -> void:
 	_clear_hint()
 	input_controller.release_holding(piece)
 
-	game_state.current_turn += 1
+	game_state.move_count += 1
 	_update_button_states()
 	_update_last_move_highlight()
 	_update_turn_display()
 
 	var record: MoveRecord = game_state.move_history.back()
 	var prev_record: MoveRecord = game_state.move_history[-2] if game_state.move_history.size() >= 2 else null
-	move_history_panel.add_move(game_state.current_turn, record, prev_record)
+	move_history_panel.add_move(game_state.move_count, record, prev_record)
 
-	var stm_is_enemy := game_state.is_gote_turn()
+	var is_gote_turn := game_state.is_gote_turn()
 	var sfen := sfen_serializer.to_sfen()
-	var in_check := _shogi_engine.is_king_in_check(sfen, stm_is_enemy)
+	var in_check := _shogi_engine.is_king_in_check(sfen, is_gote_turn)
 
 	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
 	if rep_count >= GameConfig.SENNICHITE_COUNT:
 		match game_state.repetition_tracker.classify_sennichite():
-			RepetitionTracker.STM_PERPETUAL:
-				await _finish_game_perpetual_check(stm_is_enemy)
-			RepetitionTracker.OPP_PERPETUAL:
-				await _finish_game_perpetual_check(not stm_is_enemy)
+			RepetitionTracker.TURN_PERPETUAL:
+				await _finish_game_perpetual_check(is_gote_turn)
+			RepetitionTracker.OPPONENT_PERPETUAL:
+				await _finish_game_perpetual_check(not is_gote_turn)
 			_:
 				await _finish_game_draw()
 		return
 
 	if in_check:
 		if not _shogi_engine.has_any_legal_move(sfen):
-			if stm_is_enemy == EngineWorker.AI_IS_ENEMY:
-				await _finish_game(stm_is_enemy)
+			if is_gote_turn == EngineWorker.AI_IS_GOTE:
+				await _finish_game(is_gote_turn)
 				return
 
-			var chose_to_resign: bool = await request_checkmate_decision(stm_is_enemy)
+			var chose_to_resign: bool = await request_checkmate_decision(is_gote_turn)
 			if chose_to_resign:
-				await _finish_game(stm_is_enemy)
+				await _finish_game(is_gote_turn)
 				return
 			else:
 				_undo_last_move()
@@ -211,8 +211,8 @@ func _finish_turn(piece: Piece) -> void:
 			check_label.play_animation()
 			audio_stream_player.play_check()
 
-	var next_is_enemy := game_state.is_gote_turn()
-	if is_game_active and next_is_enemy == EngineWorker.AI_IS_ENEMY:
+	var next_is_gote := game_state.is_gote_turn()
+	if is_game_active and next_is_gote == EngineWorker.AI_IS_GOTE:
 		_play_ai_turn()
 	else:
 		engine_worker.request_analysis()
@@ -248,13 +248,13 @@ func _on_analysis_completed(moves: Array) -> void:
 func _on_search_completed(move: Dictionary) -> void:
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(!EngineWorker.AI_IS_ENEMY)
+		await _finish_game(!EngineWorker.AI_IS_GOTE)
 		is_ai_thinking = false
 		return
 
 	var state: PieceState = null
 	if move.is_drop:
-		state = game_state.find_hand_piece(EngineWorker.AI_IS_ENEMY, move.piece_type)
+		state = game_state.find_hand_piece(EngineWorker.AI_IS_GOTE, move.piece_type)
 	else:
 		state = game_state.get_piece(move.from_col, move.from_row)
 
@@ -274,35 +274,35 @@ func _on_search_completed(move: Dictionary) -> void:
 	_finish_turn(board_view.node_for(state))
 
 
-func _finish_game(is_player_win: bool) -> void:
+func _finish_game(is_sente_win: bool) -> void:
 	_clear_hint()
-	game_state.current_turn += 1
+	game_state.move_count += 1
 	_update_turn_display()
-	move_history_panel.add_resignation(game_state.current_turn)
+	move_history_panel.add_resignation(game_state.move_count)
 	check_label.cancel_animation()
-	await show_game_result(game_state.current_turn - 1, is_player_win)
+	await show_game_result(game_state.move_count - 1, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
 
 
 func _finish_game_draw() -> void:
-	game_state.current_turn += 1
+	game_state.move_count += 1
 	_update_turn_display()
-	move_history_panel.add_sennichite(game_state.current_turn)
+	move_history_panel.add_sennichite(game_state.move_count)
 	check_label.cancel_animation()
-	await show_draw_result(game_state.current_turn - 1)
+	await show_draw_result(game_state.move_count - 1)
 	is_game_active = false
 
 	_update_button_states()
 
 
-func _finish_game_perpetual_check(is_player_win: bool) -> void:
-	game_state.current_turn += 1
+func _finish_game_perpetual_check(is_sente_win: bool) -> void:
+	game_state.move_count += 1
 	_update_turn_display()
-	move_history_panel.add_perpetual_check(game_state.current_turn, is_player_win)
+	move_history_panel.add_perpetual_check(game_state.move_count, is_sente_win)
 	check_label.cancel_animation()
-	await show_perpetual_check_result(game_state.current_turn - 1, is_player_win)
+	await show_perpetual_check_result(game_state.move_count - 1, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
@@ -315,7 +315,7 @@ func _undo_last_move() -> void:
 	_clear_hint()
 
 	if not is_game_active:
-		game_state.current_turn -= 1
+		game_state.move_count -= 1
 		move_history_panel.remove_last_move()
 
 	var last_move: MoveRecord = game_state.move_history.pop_back()
@@ -323,7 +323,7 @@ func _undo_last_move() -> void:
 
 	move_executor.undo(last_move)
 
-	game_state.current_turn -= 1
+	game_state.move_count -= 1
 	is_game_active = true
 	_update_last_move_highlight()
 	_update_turn_display()
@@ -331,7 +331,7 @@ func _undo_last_move() -> void:
 	move_history_panel.remove_last_move()
 	check_label.cancel_animation()
 
-	if game_state.current_turn <= 0:
+	if game_state.move_count <= 0:
 		engine_worker.reset()
 		win_rate_bar.reset_bar(false)
 
@@ -388,8 +388,8 @@ func _hint_from_position(move: Dictionary) -> Variant:
 
 
 func _update_turn_display() -> void:
-	var current_side := "後手番" if game_state.is_gote_turn() else "先手番"
-	turn_label.text = current_side
+	var turn_text := "後手番" if game_state.is_gote_turn() else "先手番"
+	turn_label.text = turn_text
 
 
 func _current_position_hash() -> int:
@@ -404,9 +404,9 @@ func request_resign_decision() -> bool:
 	return await common_dialog.ask_user("投了しますか？", "投了する", "投了しない")
 
 
-func request_checkmate_decision(is_enemy_mated: bool) -> bool:
-	var side_text := "後手" if is_enemy_mated else "先手"
-	var message := "%sの玉が詰まされました。\n投了しますか？" % side_text
+func request_checkmate_decision(is_gote_mated: bool) -> bool:
+	var mated_text := "後手" if is_gote_mated else "先手"
+	var message := "%sの玉が詰まされました。\n投了しますか？" % mated_text
 	return await common_dialog.ask_user(message, "投了する", "待った")
 
 
@@ -414,9 +414,9 @@ func request_promotion_decision() -> bool:
 	return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 
 
-func show_game_result(move_count: int, is_player_win: bool) -> void:
-	var side_text := "先手" if is_player_win else "後手"
-	var message := "まで、%d手で%sの勝ち。" % [move_count, side_text]
+func show_game_result(move_count: int, is_sente_win: bool) -> void:
+	var winner_text := "先手" if is_sente_win else "後手"
+	var message := "まで、%d手で%sの勝ち。" % [move_count, winner_text]
 	await common_dialog.ask_user(message, "OK", "")
 
 
@@ -425,7 +425,7 @@ func show_draw_result(move_count: int) -> void:
 	await common_dialog.ask_user(message, "OK", "")
 
 
-func show_perpetual_check_result(move_count: int, is_player_win: bool) -> void:
-	var winner_text := "先手" if is_player_win else "後手"
+func show_perpetual_check_result(move_count: int, is_sente_win: bool) -> void:
+	var winner_text := "先手" if is_sente_win else "後手"
 	var message := "まで、%d手で連続王手の千日手。%sの反則勝ち。" % [move_count, winner_text]
 	await common_dialog.ask_user(message, "OK", "")

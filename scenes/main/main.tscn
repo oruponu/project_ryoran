@@ -26,12 +26,12 @@ script = ExtResource("1_7mycd")
 position = Vector2(485, 135)
 piece_scene = ExtResource("2_0xm2m")
 
-[node name="PlayerPieceStand" parent="." unique_id=467315102 instance=ExtResource("4_1bvp3")]
+[node name="SentePieceStand" parent="." unique_id=467315102 instance=ExtResource("4_1bvp3")]
 position = Vector2(1162.5, 297.5)
 
-[node name="EnemyPieceStand" parent="." unique_id=499889402 instance=ExtResource("4_1bvp3")]
+[node name="GotePieceStand" parent="." unique_id=499889402 instance=ExtResource("4_1bvp3")]
 position = Vector2(347.5, 112.5)
-is_enemy = true
+is_gote = true
 
 [node name="MoveHistoryPanel" parent="." unique_id=1301858096 instance=ExtResource("5_272bh")]
 offset_left = 1300.0

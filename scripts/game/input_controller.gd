@@ -12,14 +12,14 @@ var current_legal_coords: Array[Vector2i] = []
 var _game_state: GameState
 var _board: Board
 var _shogi_engine: ShogiEngine
-var _serializer: SfenSerializer
+var _sfen_serializer: SfenSerializer
 
 
-func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, serializer: SfenSerializer) -> void:
+func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, sfen_serializer: SfenSerializer) -> void:
 	_game_state = game_state
 	_board = board
 	_shogi_engine = shogi_engine
-	_serializer = serializer
+	_sfen_serializer = sfen_serializer
 
 
 func handle_click(piece: Piece) -> void:
@@ -51,7 +51,7 @@ func reset() -> void:
 
 
 func _pick_up(piece: Piece) -> void:
-	if piece.state.is_enemy != _game_state.is_gote_turn():
+	if piece.state.is_gote != _game_state.is_gote_turn():
 		return
 
 	holding_piece = piece
@@ -59,7 +59,7 @@ func _pick_up(piece: Piece) -> void:
 	piece.z_index = 10
 
 	current_legal_coords = []
-	var sfen := _serializer.to_sfen()
+	var sfen := _sfen_serializer.to_sfen()
 	if piece.state.is_in_hand():
 		var stand := piece.get_parent()
 		if stand is PieceStand:
@@ -72,14 +72,14 @@ func _pick_up(piece: Piece) -> void:
 
 
 func _attempt_place(piece: Piece) -> void:
-	var target_pos := GameConfig.position_to_cell(_board.to_local(piece.global_position))
+	var target_coord := GameConfig.position_to_cell(_board.to_local(piece.global_position))
 
 	# 合法手でないならキャンセル
-	if not target_pos in current_legal_coords:
+	if not target_coord in current_legal_coords:
 		_cancel_move(piece)
 		return
 
-	move_submitted.emit(piece, target_pos.x, target_pos.y)
+	move_submitted.emit(piece, target_coord.x, target_coord.y)
 
 
 func _cancel_move(piece: Piece, immediate: bool = false) -> void:
