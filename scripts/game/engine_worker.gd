@@ -89,7 +89,7 @@ func resume_analysis() -> void:
 
 func _run_search(generation: int) -> void:
 	var move: Dictionary = _search_engine.search_best_move()
-	call_deferred("_on_search_finished", move, generation)
+	_on_search_finished.call_deferred(move, generation)
 
 
 func _on_search_finished(move: Dictionary, generation: int) -> void:
@@ -111,7 +111,7 @@ func _on_search_finished(move: Dictionary, generation: int) -> void:
 
 func _run_analysis(generation: int, sfen: String) -> void:
 	var moves: Array = _analysis_engine.search_top_moves(GameConfig.HINT_CANDIDATE_COUNT)
-	call_deferred("_on_analysis_finished", moves, generation, sfen)
+	_on_analysis_finished.call_deferred(moves, generation, sfen)
 
 
 func _on_analysis_finished(moves: Array, generation: int, sfen: String) -> void:
