@@ -3,7 +3,7 @@ class_name CommonDialog
 extends CanvasLayer
 
 
-signal decision_mode(result: bool)
+signal decided(result: bool)
 
 
 @onready var message_label: Label = $Overlay/PanelContainer/VBoxContainer/MessageLabel
@@ -28,15 +28,15 @@ func ask_user(message: String, yes_text: String = "はい", no_text: String = "�
 		no_button.show()
 
 	show()
-	var result: bool = await decision_mode
+	var result: bool = await decided
 	return result
 
 
 func _on_yes_pressed() -> void:
 	hide()
-	decision_mode.emit(true)
+	decided.emit(true)
 
 
 func _on_no_pressed() -> void:
 	hide()
-	decision_mode.emit(false)
+	decided.emit(false)
