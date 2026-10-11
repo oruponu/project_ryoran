@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <limits>
 #include <utility>
 
 using Shogi::Coord;
@@ -393,7 +394,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 	const Cell &victim = board.get_cell({ move.to_col, move.to_row });
 	const Cell &first_attacker = board.get_cell({ move.from_col, move.from_row });
 
-	int gain[40];
+	std::array<int, 40> gain;
 	int depth = 0;
 	gain[0] = Shogi::PIECE_VALUES[std::to_underlying(victim.piece_type)][victim.is_promoted ? 1 : 0];
 
@@ -405,14 +406,14 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 
 	Turn turn = Shogi::opponent(first_attacker.turn);
 
-	while (depth < 39) {
+	while (depth < std::ssize(gain) - 1) {
 		Bitboard attackers = attackers_to(board, to_index, turn, occupancy);
 		if (attackers.is_empty()) {
 			break;
 		}
 
 		int cheapest_index = -1;
-		int cheapest_value = 99999999;
+		int cheapest_value = std::numeric_limits<int>::max();
 		Bitboard iter = attackers;
 		while (!iter.is_empty()) {
 			int index = iter.pop_lsb();
