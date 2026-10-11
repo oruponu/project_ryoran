@@ -16,7 +16,7 @@ Bitboard MoveGenerator::get_checkers(const BoardState &board, Turn turn) {
 		return Bitboard();
 	}
 
-	return attackers_to(board, king_position->to_index(), Shogi::opponent(turn), board.bitboard_all_);
+	return attackers_to(board, king_position->to_index(), Shogi::opponent(turn), board.get_occupancy());
 }
 
 PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) {
@@ -30,13 +30,11 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 	int king_index = king_position->to_index();
 
 	Turn opponent_turn = Shogi::opponent(turn);
-	int turn_index = std::to_underlying(turn);
-	int opponent_turn_index = std::to_underlying(opponent_turn);
 
-	const Bitboard &opponent_lances = board.bitboard_piece_[opponent_turn_index][std::to_underlying(PieceType::LANCE)];
-	const Bitboard &opponent_bishops = board.bitboard_piece_[opponent_turn_index][std::to_underlying(PieceType::BISHOP)];
-	const Bitboard &opponent_rooks = board.bitboard_piece_[opponent_turn_index][std::to_underlying(PieceType::ROOK)];
-	const Bitboard &opponent_promoted = board.bitboard_promoted_[opponent_turn_index];
+	const Bitboard &opponent_lances = board.get_pieces(opponent_turn, PieceType::LANCE);
+	const Bitboard &opponent_bishops = board.get_pieces(opponent_turn, PieceType::BISHOP);
+	const Bitboard &opponent_rooks = board.get_pieces(opponent_turn, PieceType::ROOK);
+	const Bitboard &opponent_promoted = board.get_promoted_pieces(opponent_turn);
 
 	Bitboard opponent_line_sliders = opponent_rooks;
 	Bitboard opponent_diagonal_sliders = opponent_bishops;
@@ -72,12 +70,12 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 		Bitboard path = ray ^ AttackTable::get_ray(attacker_index, direction);
 		path.set(attacker_index);
 
-		Bitboard between = path & board.bitboard_all_;
+		Bitboard between = path & board.get_occupancy();
 		between.clear(attacker_index);
 
 		if (between.count() == 1) {
 			int pinned_index = between.lsb();
-			if (board.bitboard_side_[turn_index].is_set(pinned_index)) {
+			if (board.get_pieces(turn).is_set(pinned_index)) {
 				pin_masks.pinned.set(pinned_index);
 				pin_masks.valid_ray_masks[pinned_index] = path;
 			}
@@ -118,7 +116,7 @@ bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn 
 		return false;
 	}
 
-	return (board.pawn_columns_[std::to_underlying(turn)] & (1 << col)) != 0;
+	return board.has_pawn_in_column(turn, col);
 }
 
 bool MoveGenerator::is_uchifuzume(BoardState &board, Coord to) {
@@ -152,12 +150,12 @@ bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
 void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures) {
 	move_list.clear();
 
-	const Turn turn = board.turn_to_move_;
+	const Turn turn = board.get_turn_to_move();
 	const Turn opponent_turn = Shogi::opponent(turn);
-	const Bitboard own_pieces_bitboard = board.bitboard_side_[std::to_underlying(turn)];
-	const Bitboard opponent_pieces_bitboard = board.bitboard_side_[std::to_underlying(opponent_turn)];
-	const Bitboard occupancy = board.bitboard_all_;
-	PinMasks pin_masks = calculate_pin_masks(board, board.turn_to_move_);
+	const Bitboard own_pieces_bitboard = board.get_pieces(turn);
+	const Bitboard opponent_pieces_bitboard = board.get_pieces(opponent_turn);
+	const Bitboard occupancy = board.get_occupancy();
+	PinMasks pin_masks = calculate_pin_masks(board, turn);
 
 	Bitboard checkers = get_checkers(board, turn);
 	Bitboard evasion_mask;
@@ -189,8 +187,8 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 	// 盤上の駒
 	for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
 		PieceType piece_type = static_cast<PieceType>(piece_type_index);
-		Bitboard pieces = board.bitboard_piece_[std::to_underlying(turn)][piece_type_index];
-		Bitboard promoted_pieces = board.bitboard_promoted_[std::to_underlying(turn)];
+		Bitboard pieces = board.get_pieces(turn, piece_type);
+		Bitboard promoted_pieces = board.get_promoted_pieces(turn);
 
 		// 両王手されている場合、玉以外の駒の移動は不可
 		if (piece_type != PieceType::KING && checkers.count() > 1) {
@@ -286,18 +284,17 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 }
 
 Bitboard MoveGenerator::attackers_to(const BoardState &board, int index, Turn turn, const Bitboard &occupancy) {
-	int turn_index = std::to_underlying(turn);
 	Turn opponent_turn = Shogi::opponent(turn);
 
-	const Bitboard &pawns = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::PAWN)];
-	const Bitboard &lances = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::LANCE)];
-	const Bitboard &knights = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::KNIGHT)];
-	const Bitboard &silvers = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::SILVER)];
-	const Bitboard &golds = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::GOLD)];
-	const Bitboard &bishops = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::BISHOP)];
-	const Bitboard &rooks = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::ROOK)];
-	const Bitboard &kings = board.bitboard_piece_[turn_index][std::to_underlying(PieceType::KING)];
-	const Bitboard &promoted = board.bitboard_promoted_[turn_index];
+	const Bitboard &pawns = board.get_pieces(turn, PieceType::PAWN);
+	const Bitboard &lances = board.get_pieces(turn, PieceType::LANCE);
+	const Bitboard &knights = board.get_pieces(turn, PieceType::KNIGHT);
+	const Bitboard &silvers = board.get_pieces(turn, PieceType::SILVER);
+	const Bitboard &golds = board.get_pieces(turn, PieceType::GOLD);
+	const Bitboard &bishops = board.get_pieces(turn, PieceType::BISHOP);
+	const Bitboard &rooks = board.get_pieces(turn, PieceType::ROOK);
+	const Bitboard &kings = board.get_pieces(turn, PieceType::KING);
+	const Bitboard &promoted = board.get_promoted_pieces(turn);
 
 	Bitboard attackers;
 	attackers |= AttackTable::get_pawn_attacks(index, opponent_turn) & (pawns & ~promoted);
@@ -334,7 +331,7 @@ int MoveGenerator::see(const BoardState &board, const Shogi::Move &move) {
 	// 次に取り返される駒の価値
 	int occupant_value = Shogi::PIECE_VALUES[std::to_underlying(first_attacker.piece_type)][first_attacker.is_promoted ? 1 : 0];
 
-	Bitboard occupancy = board.bitboard_all_;
+	Bitboard occupancy = board.get_occupancy();
 	occupancy.clear(from_index);
 
 	Turn turn = Shogi::opponent(first_attacker.turn);
