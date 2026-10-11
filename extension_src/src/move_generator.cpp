@@ -282,73 +282,7 @@ bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
 }
 
 bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
-	auto king_position = board.get_king_position(turn);
-	if (!king_position) {
-		return false;
-	}
-
-	int king_square = king_position->to_index();
-
-	const Turn enemy_turn = Shogi::opponent(turn);
-	int enemy_index = std::to_underlying(enemy_turn);
-
-	const Bitboard &enemy_pawns = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::PAWN)];
-	const Bitboard &enemy_lances = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::LANCE)];
-	const Bitboard &enemy_knights = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::KNIGHT)];
-	const Bitboard &enemy_silvers = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::SILVER)];
-	const Bitboard &enemy_golds = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::GOLD)];
-	const Bitboard &enemy_bishops = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::BISHOP)];
-	const Bitboard &enemy_rooks = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::ROOK)];
-	const Bitboard &enemy_kings = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::KING)];
-	const Bitboard &enemy_promoted = board.bitboard_promoted_[enemy_index];
-	const Bitboard &occupancy = board.bitboard_all_;
-
-	// 香車の利きをチェック
-	Bitboard lance_attacks = AttackTable::get_lance_attacks(king_square, turn, occupancy);
-	if (!(lance_attacks & (enemy_lances & ~enemy_promoted)).is_empty()) {
-		return true;
-	}
-
-	// 角の利きをチェック
-	Bitboard bishop_attacks = AttackTable::get_bishop_attacks(king_square, occupancy);
-	if (!(bishop_attacks & enemy_bishops).is_empty()) {
-		return true;
-	}
-
-	// 飛車の利きをチェック
-	Bitboard rook_attacks = AttackTable::get_rook_attacks(king_square, occupancy);
-	if (!(rook_attacks & enemy_rooks).is_empty()) {
-		return true;
-	}
-
-	// 歩の利きをチェック
-	if (!(AttackTable::get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted)).is_empty()) {
-		return true;
-	}
-
-	// 桂馬の利きをチェック
-	if (!(AttackTable::get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted)).is_empty()) {
-		return true;
-	}
-
-	// 銀の利きをチェック
-	if (!(AttackTable::get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted)).is_empty()) {
-		return true;
-	}
-
-	// 金および金と同じ動きをする成り駒の利きをチェック
-	Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
-	if (!(AttackTable::get_gold_attacks(king_square, turn) & gold_likes).is_empty()) {
-		return true;
-	}
-
-	// 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
-	Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
-	if (!(AttackTable::get_king_attacks(king_square) & king_likes).is_empty()) {
-		return true;
-	}
-
-	return false;
+	return !get_checkers(board, turn).is_empty();
 }
 
 void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures) {
