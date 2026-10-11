@@ -53,8 +53,8 @@ inline constexpr int apply_board_discount(int score) {
 }
 
 inline constexpr int get_piece_score(PieceType piece_type, bool is_promoted) {
-	int pt = std::to_underlying(piece_type);
-	return PIECE_VALUES[pt][is_promoted ? 1 : 0];
+	int piece_type_index = std::to_underlying(piece_type);
+	return PIECE_VALUES[piece_type_index][is_promoted ? 1 : 0];
 }
 
 inline constexpr int to_index(int col, int row) {
@@ -66,7 +66,7 @@ struct Coord {
 	int row;
 
 	constexpr Coord() : col(-1), row(-1) {}
-	constexpr Coord(int c, int r) : col(c), row(r) {}
+	constexpr Coord(int col, int row) : col(col), row(row) {}
 
 	[[nodiscard]] static constexpr Coord from_index(int index) { return { index / BOARD_ROWS, index % BOARD_ROWS }; }
 
@@ -89,7 +89,7 @@ struct Move {
 
 	Move() {}
 
-	Move(int fc, int fr, int tc, int tr, PieceType pt, bool promo, bool drop, bool capture) : from_col(static_cast<uint8_t>(fc)), from_row(static_cast<uint8_t>(fr)), to_col(static_cast<uint8_t>(tc)), to_row(static_cast<uint8_t>(tr)), piece_type(pt), is_promotion(promo), is_drop(drop), is_capture(capture) {}
+	Move(int from_col, int from_row, int to_col, int to_row, PieceType piece_type, bool is_promotion, bool is_drop, bool is_capture) : from_col(static_cast<uint8_t>(from_col)), from_row(static_cast<uint8_t>(from_row)), to_col(static_cast<uint8_t>(to_col)), to_row(static_cast<uint8_t>(to_row)), piece_type(piece_type), is_promotion(is_promotion), is_drop(is_drop), is_capture(is_capture) {}
 
 	[[nodiscard]] bool operator==(const Move &other) const = default;
 };
@@ -128,12 +128,12 @@ struct UndoInfo {
 	PieceType captured_type;
 	bool captured_promoted;
 	uint64_t prev_hash;
-	uint16_t prev_pawn_cols[2];
+	uint16_t prev_pawn_columns[2];
 	int prev_score;
 
 	UndoInfo() : captured_type(PieceType::EMPTY), captured_promoted(false), prev_hash(0), prev_score(0) {
-		prev_pawn_cols[0] = 0;
-		prev_pawn_cols[1] = 0;
+		prev_pawn_columns[0] = 0;
+		prev_pawn_columns[1] = 0;
 	}
 };
 

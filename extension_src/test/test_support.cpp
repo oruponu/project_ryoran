@@ -14,28 +14,28 @@ int g_failures = 0;
 const char *PIECE_NAMES[] = { "K", "R", "B", "G", "S", "N", "L", "P" };
 
 void dump_board(const BoardState &board) {
-	for (int r = 0; r < 9; ++r) {
+	for (int row = 0; row < 9; ++row) {
 		std::string line;
-		for (int f = 9; f >= 1; --f) {
-			const Cell &c = board.get_cell({ f - 1, r });
-			if (c.is_empty()) {
+		for (int file = 9; file >= 1; --file) {
+			const Cell &cell = board.get_cell({ file - 1, row });
+			if (cell.is_empty()) {
 				line += " . ";
 			} else {
-				char ch = PIECE_NAMES[std::to_underlying(c.type)][0];
-				if (c.turn == Turn::GOTE) {
-					ch = static_cast<char>(ch - 'A' + 'a');
+				char symbol = PIECE_NAMES[std::to_underlying(cell.piece_type)][0];
+				if (cell.turn == Turn::GOTE) {
+					symbol = static_cast<char>(symbol - 'A' + 'a');
 				}
-				line += std::format("{}{} ", ch, c.is_promoted ? '+' : ' ');
+				line += std::format("{}{} ", symbol, cell.is_promoted ? '+' : ' ');
 			}
 		}
-		std::println("{}  | rank {}", line, r + 1);
+		std::println("{}  | rank {}", line, row + 1);
 	}
-	for (Turn t : { Turn::SENTE, Turn::GOTE }) {
-		std::print("{} hand: ", t == Turn::SENTE ? "SENTE" : "GOTE ");
-		for (int p = 0; p < Shogi::PIECE_TYPE_COUNT; ++p) {
-			int n = board.get_hand_count(t, static_cast<PieceType>(p));
-			if (n > 0) {
-				std::print("{} x{}  ", PIECE_NAMES[p], n);
+	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
+		std::print("{} hand: ", turn == Turn::SENTE ? "SENTE" : "GOTE ");
+		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
+			int count = board.get_hand_count(turn, static_cast<PieceType>(piece_type_index));
+			if (count > 0) {
+				std::print("{} x{}  ", PIECE_NAMES[piece_type_index], count);
 			}
 		}
 		std::print("\n");
@@ -137,12 +137,12 @@ extern const KMove KIFU2[] = {
 };
 
 void setup_initial_position(BoardState &board) {
-	auto put = [&](int file, int rank, PieceType pt, Turn t) {
-		board.set_cell({ file - 1, rank - 1 }, pt, t, false);
+	auto put = [&](int file, int rank, PieceType piece_type, Turn turn) {
+		board.set_cell({ file - 1, rank - 1 }, piece_type, turn, false);
 	};
-	for (int f = 1; f <= 9; ++f) {
-		put(f, 7, P, Turn::SENTE);
-		put(f, 3, P, Turn::GOTE);
+	for (int file = 1; file <= 9; ++file) {
+		put(file, 7, P, Turn::SENTE);
+		put(file, 3, P, Turn::GOTE);
 	}
 	put(1, 9, L, Turn::SENTE);
 	put(9, 9, L, Turn::SENTE);
@@ -168,29 +168,29 @@ void setup_initial_position(BoardState &board) {
 	put(2, 2, B, Turn::GOTE);
 }
 
-bool replay(BoardState &board, int num_moves, const KMove *kifu) {
-	for (int i = 0; i < num_moves; ++i) {
-		const KMove &km = kifu[i];
-		Shogi::MoveList list;
-		MoveGenerator::get_legal_moves(board, list);
+bool replay(BoardState &board, int move_count, const KMove *kifu) {
+	for (int i = 0; i < move_count; ++i) {
+		const KMove &kifu_move = kifu[i];
+		Shogi::MoveList move_list;
+		MoveGenerator::get_legal_moves(board, move_list);
 		const Move *found = nullptr;
-		for (const Move &m : list) {
-			if (km.ff == 0) {
-				if (m.is_drop && m.piece_type == km.pt && m.to_col == km.tf - 1 && m.to_row == km.tr - 1) {
-					found = &m;
+		for (const Move &move : move_list) {
+			if (kifu_move.from_file == 0) {
+				if (move.is_drop && move.piece_type == kifu_move.piece_type && move.to_col == kifu_move.to_file - 1 && move.to_row == kifu_move.to_rank - 1) {
+					found = &move;
 					break;
 				}
 			} else {
-				if (!m.is_drop && m.from_col == km.ff - 1 && m.from_row == km.fr - 1 && m.to_col == km.tf - 1 &&
-						m.to_row == km.tr - 1 && m.is_promotion == km.promo) {
-					found = &m;
+				if (!move.is_drop && move.from_col == kifu_move.from_file - 1 && move.from_row == kifu_move.from_rank - 1 && move.to_col == kifu_move.to_file - 1 &&
+						move.to_row == kifu_move.to_rank - 1 && move.is_promotion == kifu_move.is_promotion) {
+					found = &move;
 					break;
 				}
 			}
 		}
 		if (found == nullptr) {
-			std::println("FAIL: move {} not found in legal moves (file={} rank={} -> file={} rank={})", i + 1, km.ff,
-					km.fr, km.tf, km.tr);
+			std::println("FAIL: move {} not found in legal moves (file={} rank={} -> file={} rank={})", i + 1, kifu_move.from_file,
+					kifu_move.from_rank, kifu_move.to_file, kifu_move.to_rank);
 			dump_board(board);
 			return false;
 		}

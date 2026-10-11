@@ -12,15 +12,15 @@ using Shogi::Turn;
 int16_t Evaluator::kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][KKPEE_PIECE_STATE_COUNT];
 
 void Evaluator::initialize() {
-	if (eval_tables_initialized_) {
+	if (is_initialized_) {
 		return;
 	}
 
 	for (int king_index = 0; king_index < Shogi::BOARD_SIZE; ++king_index) {
 		for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-			int dist = distance(king_index, index);
-			defense_weight_table_[king_index][index] = KING_DEFENSE_WEIGHTS[dist];
-			threat_weight_table_[king_index][index] = KING_THREAT_WEIGHTS[dist];
+			int king_distance = distance(king_index, index);
+			defense_weight_table_[king_index][index] = KING_DEFENSE_WEIGHTS[king_distance];
+			threat_weight_table_[king_index][index] = KING_THREAT_WEIGHTS[king_distance];
 		}
 	}
 
@@ -51,68 +51,68 @@ void Evaluator::initialize() {
 	const int support_weights[3] = { 0, 33, 43 };
 	const int attack_weights[3] = { 0, 113, 122 };
 
-	for (int king_black_index = 0; king_black_index < Shogi::BOARD_SIZE; ++king_black_index) {
-		for (int king_white_index = 0; king_white_index < Shogi::BOARD_SIZE; ++king_white_index) {
+	for (int sente_king_index = 0; sente_king_index < Shogi::BOARD_SIZE; ++sente_king_index) {
+		for (int gote_king_index = 0; gote_king_index < Shogi::BOARD_SIZE; ++gote_king_index) {
 			for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-				bool is_near_black_king = (distance(index, king_black_index) == 1);
-				bool is_near_white_king = (distance(index, king_white_index) == 1);
+				bool is_near_sente_king = (distance(index, sente_king_index) == 1);
+				bool is_near_gote_king = (distance(index, gote_king_index) == 1);
 
 				auto [col, row] = Shogi::Coord::from_index(index);
-				int position_bonus_index_black = (8 - col) + row * 9;
+				int sente_position_bonus_index = (8 - col) + row * 9;
 
 				int inv_col = 8 - col;
 				int inv_row = 8 - row;
-				int position_bonus_index_white = (8 - inv_col) + inv_row * 9;
+				int gote_position_bonus_index = (8 - inv_col) + inv_row * 9;
 
-				int inv_king_white_index = Shogi::BOARD_SIZE - 1 - king_white_index;
+				int inv_gote_king_index = Shogi::BOARD_SIZE - 1 - gote_king_index;
 				int inv_index = Shogi::BOARD_SIZE - 1 - index;
 
-				for (int black_effect_count = 0; black_effect_count < 3; ++black_effect_count) {
-					for (int white_effect_count = 0; white_effect_count < 3; ++white_effect_count) {
+				for (int sente_effect_count = 0; sente_effect_count < 3; ++sente_effect_count) {
+					for (int gote_effect_count = 0; gote_effect_count < 3; ++gote_effect_count) {
 						double base_score = 0;
-						base_score += defense_effect_value[king_black_index][index][black_effect_count];
-						base_score -= threat_effect_value[king_black_index][index][white_effect_count];
-						base_score -= defense_effect_value[inv_king_white_index][inv_index][white_effect_count];
-						base_score += threat_effect_value[inv_king_white_index][inv_index][black_effect_count];
+						base_score += defense_effect_value[sente_king_index][index][sente_effect_count];
+						base_score -= threat_effect_value[sente_king_index][index][gote_effect_count];
+						base_score -= defense_effect_value[inv_gote_king_index][inv_index][gote_effect_count];
+						base_score += threat_effect_value[inv_gote_king_index][inv_index][sente_effect_count];
 						for (int piece_index = 0; piece_index < KKPEE_PIECE_STATE_COUNT; ++piece_index) {
 							double final_score = base_score;
 							bool is_empty = (piece_index == 0);
-							bool is_white = false;
+							bool is_gote = false;
 							bool is_promoted = false;
 							Shogi::PieceType piece_type = Shogi::PieceType::EMPTY;
 							if (!is_empty) {
 								int piece_state = piece_index - 1;
-								is_white = (piece_state >= 16);
+								is_gote = (piece_state >= 16);
 								piece_state %= 16;
 								is_promoted = (piece_state >= 8);
 								piece_type = static_cast<Shogi::PieceType>(piece_state % 8);
 							}
 
 							// 先手玉の周辺
-							if (is_near_black_king) {
-								if (black_effect_count <= 1) {
-									if (is_empty || is_white) {
+							if (is_near_sente_king) {
+								if (sente_effect_count <= 1) {
+									if (is_empty || is_gote) {
 										final_score -= 11.0;
 									} else {
 										final_score += 20.0;
 									}
 								} else {
-									if (!is_empty && !is_white) {
+									if (!is_empty && !is_gote) {
 										final_score += 11.0;
 									}
 								}
 							}
 
 							// 後手玉の周辺
-							if (is_near_white_king) {
-								if (white_effect_count <= 1) {
-									if (is_empty || !is_white) {
+							if (is_near_gote_king) {
+								if (gote_effect_count <= 1) {
+									if (is_empty || !is_gote) {
 										final_score += 11.0;
 									} else {
 										final_score -= 20.0;
 									}
 								} else {
-									if (!is_empty && is_white) {
+									if (!is_empty && is_gote) {
 										final_score -= 11.0;
 									}
 								}
@@ -120,24 +120,24 @@ void Evaluator::initialize() {
 
 							if (!is_empty) {
 								if (piece_type == Shogi::PieceType::KING) {
-									if (!is_white) {
-										final_score += KING_POSITION_BONUS[position_bonus_index_black];
+									if (!is_gote) {
+										final_score += KING_POSITION_BONUS[sente_position_bonus_index];
 									} else {
-										final_score -= KING_POSITION_BONUS[position_bonus_index_white];
+										final_score -= KING_POSITION_BONUS[gote_position_bonus_index];
 									}
 								} else {
 									int piece_value =
 											Shogi::PIECE_VALUES[std::to_underlying(piece_type)][is_promoted ? 1 : 0];
-									if (!is_white) {
+									if (!is_gote) {
 										final_score +=
-												static_cast<double>(piece_value) * support_weights[black_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * support_weights[sente_effect_count] / 4096.0;
 										final_score -=
-												static_cast<double>(piece_value) * attack_weights[white_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * attack_weights[gote_effect_count] / 4096.0;
 									} else {
 										final_score -=
-												static_cast<double>(piece_value) * support_weights[white_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * support_weights[gote_effect_count] / 4096.0;
 										final_score +=
-												static_cast<double>(piece_value) * attack_weights[black_effect_count] / 4096.0;
+												static_cast<double>(piece_value) * attack_weights[sente_effect_count] / 4096.0;
 									}
 								}
 							}
@@ -145,8 +145,8 @@ void Evaluator::initialize() {
 							double scaled_score =
 									std::clamp(final_score * EVAL_SCALE_FACTOR, static_cast<double>(INT16_MIN),
 											static_cast<double>(INT16_MAX));
-							kkpee_table_[king_black_index][king_white_index][index][black_effect_count]
-										[white_effect_count][piece_index] = static_cast<int16_t>(scaled_score);
+							kkpee_table_[sente_king_index][gote_king_index][index][sente_effect_count]
+										[gote_effect_count][piece_index] = static_cast<int16_t>(scaled_score);
 						}
 					}
 				}
@@ -154,7 +154,7 @@ void Evaluator::initialize() {
 		}
 	}
 
-	eval_tables_initialized_ = true;
+	is_initialized_ = true;
 }
 
 int Evaluator::get_kkpee_piece_index(const Cell &cell) {
@@ -162,18 +162,18 @@ int Evaluator::get_kkpee_piece_index(const Cell &cell) {
 		return 0;
 	}
 
-	int type_index = std::to_underlying(cell.type);
-	int promoted_index = cell.is_promoted ? 8 : 0;
-	int turn_index = (cell.turn == Turn::GOTE) ? 16 : 0;
-	return 1 + type_index + promoted_index + turn_index;
+	int piece_type_index = std::to_underlying(cell.piece_type);
+	int promoted_offset = cell.is_promoted ? 8 : 0;
+	int turn_offset = (cell.turn == Turn::GOTE) ? 16 : 0;
+	return 1 + piece_type_index + promoted_offset + turn_offset;
 }
 
 int Evaluator::get_relative_direction(int from_index, int to_index) {
-	auto [col_from, row_from] = Shogi::Coord::from_index(from_index);
-	auto [col_to, row_to] = Shogi::Coord::from_index(to_index);
+	auto [from_col, from_row] = Shogi::Coord::from_index(from_index);
+	auto [to_col, to_row] = Shogi::Coord::from_index(to_index);
 
-	int diff_col = col_to - col_from;
-	int diff_row = row_to - row_from;
+	int diff_col = to_col - from_col;
+	int diff_row = to_row - from_row;
 
 	if (diff_col > 0) {
 		diff_col = -diff_col;
@@ -234,7 +234,7 @@ int Evaluator::calculate_score(const BoardState &board) {
 				continue;
 			}
 
-			int piece_score = Shogi::get_piece_score(cell.type, cell.is_promoted);
+			int piece_score = Shogi::get_piece_score(cell.piece_type, cell.is_promoted);
 			piece_score = Shogi::apply_board_discount(piece_score);
 
 			if (cell.turn == Turn::SENTE) {
@@ -248,10 +248,10 @@ int Evaluator::calculate_score(const BoardState &board) {
 	// 持ち駒
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		int sign = (turn == Turn::SENTE) ? 1 : -1;
-		for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-			int count = board.hand_[std::to_underlying(turn)][piece_type];
+		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
+			int count = board.hand_[std::to_underlying(turn)][piece_type_index];
 			if (count > 0) {
-				int value = Shogi::PIECE_VALUES[piece_type][0];
+				int value = Shogi::PIECE_VALUES[piece_type_index][0];
 				score += count * value * sign;
 			}
 		}
@@ -261,49 +261,49 @@ int Evaluator::calculate_score(const BoardState &board) {
 }
 
 int Evaluator::calculate_spatial_score(const BoardState &board) {
-	auto king_position_black = board.get_king_position(Turn::SENTE);
-	auto king_position_white = board.get_king_position(Turn::GOTE);
+	auto sente_king_position = board.get_king_position(Turn::SENTE);
+	auto gote_king_position = board.get_king_position(Turn::GOTE);
 
-	if (!king_position_black.has_value() || !king_position_white.has_value()) {
+	if (!sente_king_position.has_value() || !gote_king_position.has_value()) {
 		return 0;
 	}
 
-	int king_index_black = king_position_black->to_index();
-	int king_index_white = king_position_white->to_index();
+	int sente_king_index = sente_king_position->to_index();
+	int gote_king_index = gote_king_position->to_index();
 
 	Bitboard attacks_any[2];
 	Bitboard attacks_multi[2];
 
 	const Bitboard &occupancy = board.bitboard_all_;
 
-	for (int side = 0; side < 2; ++side) {
-		Shogi::Turn turn = static_cast<Shogi::Turn>(side);
-		const Bitboard promoted_pieces = board.bitboard_promoted_[side];
-		for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-			Shogi::PieceType type = static_cast<Shogi::PieceType>(piece_type);
-			Bitboard pieces = board.bitboard_piece_[side][piece_type];
+	for (int turn_index = 0; turn_index < 2; ++turn_index) {
+		Shogi::Turn turn = static_cast<Shogi::Turn>(turn_index);
+		const Bitboard promoted_pieces = board.bitboard_promoted_[turn_index];
+		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
+			Shogi::PieceType piece_type = static_cast<Shogi::PieceType>(piece_type_index);
+			Bitboard pieces = board.bitboard_piece_[turn_index][piece_type_index];
 			while (!pieces.is_empty()) {
 				int from_index = pieces.pop_lsb();
 
 				bool is_promoted = promoted_pieces.is_set(from_index);
-				Bitboard attacks = AttackTable::get_attacks(type, is_promoted, from_index, turn, occupancy);
+				Bitboard attacks = AttackTable::get_attacks(piece_type, is_promoted, from_index, turn, occupancy);
 
-				attacks_multi[side] |= (attacks_any[side] & attacks);
-				attacks_any[side] |= attacks;
+				attacks_multi[turn_index] |= (attacks_any[turn_index] & attacks);
+				attacks_any[turn_index] |= attacks;
 			}
 		}
 	}
 
 	long long score = 0;
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-		auto count_attacks = [&](int side) {
-			return attacks_any[side].is_set(index) + attacks_multi[side].is_set(index);
+		auto count_attacks = [&](int turn_index) {
+			return attacks_any[turn_index].is_set(index) + attacks_multi[turn_index].is_set(index);
 		};
-		int count_black = count_attacks(0);
-		int count_white = count_attacks(1);
+		int sente_attack_count = count_attacks(0);
+		int gote_attack_count = count_attacks(1);
 
 		int piece_index = get_kkpee_piece_index(board.board_[index]);
-		score += kkpee_table_[king_index_black][king_index_white][index][count_black][count_white][piece_index];
+		score += kkpee_table_[sente_king_index][gote_king_index][index][sente_attack_count][gote_attack_count][piece_index];
 	}
 
 	return static_cast<int>(score / EVAL_SCALE_FACTOR);

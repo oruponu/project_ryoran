@@ -220,17 +220,17 @@ void ShogiEngine::update_state_from_sfen(const String &sfen) {
 }
 
 void ShogiEngine::set_game_history(const PackedInt64Array &hashes, const PackedByteArray &in_checks) {
-	std::vector<uint64_t> h;
-	std::vector<bool> c;
-	h.reserve(hashes.size());
-	c.reserve(in_checks.size());
+	std::vector<uint64_t> history_hashes;
+	std::vector<bool> history_in_checks;
+	history_hashes.reserve(hashes.size());
+	history_in_checks.reserve(in_checks.size());
 	for (int i = 0; i < hashes.size(); ++i) {
-		h.push_back(static_cast<uint64_t>(hashes[i]));
+		history_hashes.push_back(static_cast<uint64_t>(hashes[i]));
 	}
 	for (int i = 0; i < in_checks.size(); ++i) {
-		c.push_back(in_checks[i] != 0);
+		history_in_checks.push_back(in_checks[i] != 0);
 	}
-	ai_player_.set_game_history(h, c);
+	ai_player_.set_game_history(history_hashes, history_in_checks);
 }
 
 Dictionary ShogiEngine::search_best_move() {

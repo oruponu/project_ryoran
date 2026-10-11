@@ -10,21 +10,21 @@
 #include <utility>
 
 struct Cell {
-	Shogi::PieceType type;
+	Shogi::PieceType piece_type;
 	Shogi::Turn turn;
 	bool is_promoted;
 
-	[[nodiscard]] bool is_empty() const { return type == Shogi::PieceType::EMPTY; }
+	[[nodiscard]] bool is_empty() const { return piece_type == Shogi::PieceType::EMPTY; }
 
-	Cell() : type(Shogi::PieceType::EMPTY), turn(Shogi::Turn::SENTE), is_promoted(false) {}
-	Cell(Shogi::PieceType t, Shogi::Turn s, bool p) : type(t), turn(s), is_promoted(p) {}
+	Cell() : piece_type(Shogi::PieceType::EMPTY), turn(Shogi::Turn::SENTE), is_promoted(false) {}
+	Cell(Shogi::PieceType piece_type, Shogi::Turn turn, bool is_promoted) : piece_type(piece_type), turn(turn), is_promoted(is_promoted) {}
 
 	[[nodiscard]] bool operator==(const Cell &other) const {
-		if (type == Shogi::PieceType::EMPTY && other.type == Shogi::PieceType::EMPTY) {
+		if (piece_type == Shogi::PieceType::EMPTY && other.piece_type == Shogi::PieceType::EMPTY) {
 			return true;
 		}
 
-		return type == other.type && turn == other.turn && is_promoted == other.is_promoted;
+		return piece_type == other.piece_type && turn == other.turn && is_promoted == other.is_promoted;
 	}
 };
 
@@ -59,12 +59,12 @@ private:
 	Shogi::Turn turn_to_move_;
 	uint64_t zobrist_hash_;
 	int score_;
-	std::optional<Shogi::Coord> king_pos_[2];
+	std::optional<Shogi::Coord> king_position_[2];
 	uint16_t pawn_columns_[2];
 
 	void build_bitboard();
-	void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
-	void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType type, bool is_promoted);
+	void add_piece_to_bitboard(int index, Shogi::Turn turn, Shogi::PieceType piece_type, bool is_promoted);
+	void remove_piece_from_bitboard(int index, Shogi::Turn turn, Shogi::PieceType piece_type, bool is_promoted);
 
 	[[nodiscard]] uint64_t calculate_zobrist_hash() const;
 
@@ -92,8 +92,8 @@ public:
 		}
 
 		for (Shogi::Turn turn : { Shogi::Turn::SENTE, Shogi::Turn::GOTE }) {
-			for (int piece_type = 0; piece_type < Shogi::PIECE_TYPE_COUNT; ++piece_type) {
-				if (hand_[std::to_underlying(turn)][piece_type] != other.hand_[std::to_underlying(turn)][piece_type]) {
+			for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
+				if (hand_[std::to_underlying(turn)][piece_type_index] != other.hand_[std::to_underlying(turn)][piece_type_index]) {
 					return false;
 				}
 			}
@@ -111,7 +111,7 @@ public:
 
 	// 盤面の操作
 	[[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
-	void set_cell(Shogi::Coord coord, Shogi::PieceType type, Shogi::Turn turn, bool is_promoted);
+	void set_cell(Shogi::Coord coord, Shogi::PieceType piece_type, Shogi::Turn turn, bool is_promoted);
 	void clear_cell(Shogi::Coord coord);
 	[[nodiscard]] int get_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type) const;
 	void set_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type, int count);

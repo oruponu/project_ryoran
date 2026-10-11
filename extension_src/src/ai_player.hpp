@@ -70,15 +70,15 @@ private:
 	std::vector<uint64_t> game_history_hashes_;
 	std::vector<bool> game_history_in_check_;
 	std::unordered_set<uint64_t> game_history_hash_set_;
-	int history_len_ = 0;
+	int game_history_length_ = 0;
 
 	[[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply);
 	[[nodiscard]] std::optional<int> detect_path_repetition(int ply, uint64_t hash);
 	[[nodiscard]] uint64_t hash_at(int v) const {
-		return v >= history_len_ ? path_hashes_[v - history_len_] : game_history_hashes_[v];
+		return v >= game_history_length_ ? path_hashes_[v - game_history_length_] : game_history_hashes_[v];
 	}
 	[[nodiscard]] bool in_check_at(int v) const {
-		return v >= history_len_ ? path_in_check_[v - history_len_] : game_history_in_check_[v];
+		return v >= game_history_length_ ? path_in_check_[v - game_history_length_] : game_history_in_check_[v];
 	}
 	void update_killer(int ply, const Shogi::Move &move);
 	void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);

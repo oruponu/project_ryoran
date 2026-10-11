@@ -115,140 +115,140 @@ void run_move_ordering_tests() {
 void run_see_tests() {
 	{
 		// A: タダ取り（守りのない後手歩を先手飛で取る）
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		Move m(4, 8, 4, 4, R, false, false, true);
-		check(MoveGenerator::see(b, m) == 90, "SEE: free pawn capture = +90");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(MoveGenerator::see(board, move) == 90, "SEE: free pawn capture = +90");
 	}
 	{
 		// B: 歩で守られた歩を飛車で取る → 取り返されて損
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		Move m(4, 8, 4, 4, R, false, false, true);
-		check(MoveGenerator::see(b, m) == -900, "SEE: defended pawn capture by rook = -900");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(MoveGenerator::see(board, move) == -900, "SEE: defended pawn capture by rook = -900");
 	}
 	{
 		// C: 取り合い連鎖 — 金が取り返すと飛に取られるため後手は取り返さない
 		//（negamax 畳み込みの検証: 後手が取り返しを放棄して +495 で確定）
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, S, Turn::GOTE, false);
-		b.set_cell({ 4, 3 }, G, Turn::GOTE, false); // 守りの金
-		b.set_cell({ 5, 5 }, S, Turn::SENTE, false); // 取る銀
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false); // 控えの飛
-		Move m(5, 5, 4, 4, S, false, false, true);
-		check(MoveGenerator::see(b, m) == 495, "SEE: gold declines recapture = +495");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, S, Turn::GOTE, false);
+		board.set_cell({ 4, 3 }, G, Turn::GOTE, false); // 守りの金
+		board.set_cell({ 5, 5 }, S, Turn::SENTE, false); // 取る銀
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false); // 控えの飛
+		Move move(5, 5, 4, 4, S, false, false, true);
+		check(MoveGenerator::see(board, move) == 495, "SEE: gold declines recapture = +495");
 	}
 	{
 		// D: 香車の x-ray — 取る歩の後ろの香が取り合いに参加する
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, S, Turn::GOTE, false);
-		b.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
-		b.set_cell({ 4, 5 }, P, Turn::SENTE, false); // 取る歩
-		b.set_cell({ 4, 7 }, L, Turn::SENTE, false); // 歩の後ろの香
-		Move m(4, 5, 4, 4, P, false, false, true);
-		check(MoveGenerator::see(b, m) == 495, "SEE: x-ray lance joins = +495");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, S, Turn::GOTE, false);
+		board.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
+		board.set_cell({ 4, 5 }, P, Turn::SENTE, false); // 取る歩
+		board.set_cell({ 4, 7 }, L, Turn::SENTE, false); // 歩の後ろの香
+		Move move(4, 5, 4, 4, P, false, false, true);
+		check(MoveGenerator::see(board, move) == 495, "SEE: x-ray lance joins = +495");
 
 		// 香がいなければ歩を取り返されて 495-90=405
-		BoardState b2(Turn::SENTE);
-		b2.set_cell({ 4, 4 }, S, Turn::GOTE, false);
-		b2.set_cell({ 4, 3 }, P, Turn::GOTE, false);
-		b2.set_cell({ 4, 5 }, P, Turn::SENTE, false);
-		check(MoveGenerator::see(b2, m) == 405, "SEE: without lance = +405");
+		BoardState board2(Turn::SENTE);
+		board2.set_cell({ 4, 4 }, S, Turn::GOTE, false);
+		board2.set_cell({ 4, 3 }, P, Turn::GOTE, false);
+		board2.set_cell({ 4, 5 }, P, Turn::SENTE, false);
+		check(MoveGenerator::see(board2, move) == 405, "SEE: without lance = +405");
 	}
 	{
 		// E: 玉は相手の利きが残るマスへ取り返しに出られない
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 3 }, K, Turn::GOTE, false); // 守りの玉
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		b.set_cell({ 3, 5 }, G, Turn::SENTE, false); // 55地点に利きを足す金（玉の取り返しを禁止）
-		Move m(4, 8, 4, 4, R, false, false, true);
-		check(MoveGenerator::see(b, m) == 90, "SEE: king cannot recapture into attack = +90");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 3 }, K, Turn::GOTE, false); // 守りの玉
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		board.set_cell({ 3, 5 }, G, Turn::SENTE, false); // 55地点に利きを足す金（玉の取り返しを禁止）
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(MoveGenerator::see(board, move) == 90, "SEE: king cannot recapture into attack = +90");
 
 		// 金がいなければ玉が取り返せて -900
-		BoardState b2(Turn::SENTE);
-		b2.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b2.set_cell({ 4, 3 }, K, Turn::GOTE, false);
-		b2.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		check(MoveGenerator::see(b2, m) == -900, "SEE: king recaptures freely = -900");
+		BoardState board2(Turn::SENTE);
+		board2.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board2.set_cell({ 4, 3 }, K, Turn::GOTE, false);
+		board2.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		check(MoveGenerator::see(board2, move) == -900, "SEE: king recaptures freely = -900");
 	}
 	{
 		// F: 成り駒の価値 — と金(540)を取る / と金で取る
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, true); // と金
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		Move m(4, 8, 4, 4, R, false, false, true);
-		check(MoveGenerator::see(b, m) == 540, "SEE: promoted pawn victim = +540");
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, true); // と金
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(MoveGenerator::see(board, move) == 540, "SEE: promoted pawn victim = +540");
 
 		// 守られた歩(90)をと金(540)で取ると 90-540=-450
-		BoardState b2(Turn::SENTE);
-		b2.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b2.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
-		b2.set_cell({ 4, 5 }, P, Turn::SENTE, true); // と金で取る（金の利きで5五に届く）
-		Move m2(4, 5, 4, 4, P, false, false, true);
-		check(MoveGenerator::see(b2, m2) == -450, "SEE: tokin attacker loses 540 = -450");
+		BoardState board2(Turn::SENTE);
+		board2.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board2.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
+		board2.set_cell({ 4, 5 }, P, Turn::SENTE, true); // と金で取る（金の利きで5五に届く）
+		Move move2(4, 5, 4, 4, P, false, false, true);
+		check(MoveGenerator::see(board2, move2) == -450, "SEE: tokin attacker loses 540 = -450");
 	}
 }
 
 void run_quiescence_tests() {
 	{
 		// 対照: 窓が広ければタダ取りは探索される（枝刈りが過剰でないこと）
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		AIPlayer qa;
-		AIPlayerTestAccess qa_t{ qa };
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
+		int score = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
 		check(nodes > 1, "qsearch explores free capture (control)");
 
 		// Delta pruning: 取る駒+マージンを足しても alpha に届かなければ読まない
-		int stand_pat = b.get_score();
+		int stand_pat = board.get_score();
 		nodes = 0;
 		int high_alpha = stand_pat + 90 + 540 + 1; // victim(90) + DELTA_MARGIN(540) でも届かない
-		score = qa_t.quiescence_search(b, high_alpha, high_alpha + 1, 0, nodes);
+		score = ai_t.quiescence_search(board, high_alpha, high_alpha + 1, 0, nodes);
 		check(nodes == 1, "delta pruning skips hopeless capture");
 		check(score == stand_pat, "delta pruning returns stand_pat");
 	}
 	{
 		// SEE pruning: 負け取りしかない局面では手を読まず stand_pat を返す
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		AIPlayer qa;
-		AIPlayerTestAccess qa_t{ qa };
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 3 }, P, Turn::GOTE, false); // 守りの歩
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
+		int score = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
 		check(nodes == 1, "SEE pruning skips losing capture");
-		check(score == b.get_score(), "SEE pruning returns stand_pat");
+		check(score == board.get_score(), "SEE pruning returns stand_pat");
 	}
 	{
 		// qs ply 上限: 上限到達ノードはタダ取りがあっても stand_pat を返す
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, P, Turn::GOTE, false);
-		b.set_cell({ 4, 8 }, R, Turn::SENTE, false);
-		AIPlayer qa;
-		AIPlayerTestAccess qa_t{ qa };
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
+		int score = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
 		check(nodes == 1, "QS ply limit stops search");
-		check(score == b.get_score(), "QS ply limit returns stand_pat");
+		check(score == board.get_score(), "QS ply limit returns stand_pat");
 	}
 	{
 		// 後手番: タダ取りを読むと手番側から見た評価値が stand_pat を上回る
-		BoardState b(Turn::GOTE);
-		b.set_cell({ 4, 4 }, P, Turn::SENTE, false);
-		b.set_cell({ 4, 0 }, R, Turn::GOTE, false);
-		AIPlayer qa;
-		AIPlayerTestAccess qa_t{ qa };
+		BoardState board(Turn::GOTE);
+		board.set_cell({ 4, 4 }, P, Turn::SENTE, false);
+		board.set_cell({ 4, 0 }, R, Turn::GOTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
+		int score = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
 		check(nodes > 1, "qsearch explores free capture for GOTE");
-		check(score > -b.get_score(), "qsearch returns side-to-move score for GOTE");
+		check(score > -board.get_score(), "qsearch returns side-to-move score for GOTE");
 	}
 }
 
@@ -291,64 +291,64 @@ void run_lmr_and_extension_tests() {
 
 void run_path_repetition_tests() {
 	{
-		AIPlayer ra;
-		AIPlayerTestAccess ra_t{ ra };
-		std::ranges::fill(ra_t.path_hashes(), 0);
-		std::ranges::fill(ra_t.path_in_check(), false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
 
 		const uint64_t H = 0xABCDEF12345678ULL;
 
 		// 反復なし: 一致する祖先がない
-		ra_t.path_hashes()[0] = 0x1111ULL;
-		check(!ra_t.detect_path_repetition(2, H).has_value(),
+		ai_t.path_hashes()[0] = 0x1111ULL;
+		check(!ai_t.detect_path_repetition(2, H).has_value(),
 				"rep: no repetition when no ancestor matches");
 
 		// 単純反復（王手なし）→ 引き分け0。経路 ply0(=H) → ply1 → ply2(=H,現在)
-		ra_t.path_hashes()[0] = H;
-		ra_t.path_in_check()[0] = false;
-		ra_t.path_in_check()[1] = false;
-		ra_t.path_in_check()[2] = false; // 呼び出し側が現在の ply の王手状態を書き込む想定
-		auto r1 = ra_t.detect_path_repetition(2, H);
+		ai_t.path_hashes()[0] = H;
+		ai_t.path_in_check()[0] = false;
+		ai_t.path_in_check()[1] = false;
+		ai_t.path_in_check()[2] = false; // 呼び出し側が現在の ply の王手状態を書き込む想定
+		auto r1 = ai_t.detect_path_repetition(2, H);
 		check(r1.has_value() && r1.value() == 0, "rep: simple repetition scores draw 0");
 
 		// 手番側(S=SENTE)の連続王手 → S の負け。相手(O)の手番の ply1 が王手を受けている
-		ra_t.path_in_check()[1] = true;
-		ra_t.path_in_check()[2] = false;
-		auto r2 = ra_t.detect_path_repetition(2, H);
+		ai_t.path_in_check()[1] = true;
+		ai_t.path_in_check()[2] = false;
+		auto r2 = ai_t.detect_path_repetition(2, H);
 		check(r2.has_value() && r2.value() == -(AIPlayer::MATE_SCORE - 2),
 				"rep: STM perpetual check makes SENTE lose");
 
 		// 相手(O)の連続王手 → S 勝ち。S の手番 ply2(現在) が王手を受けている
-		ra_t.path_in_check()[1] = false;
-		ra_t.path_in_check()[2] = true;
-		auto r3 = ra_t.detect_path_repetition(2, H);
+		ai_t.path_in_check()[1] = false;
+		ai_t.path_in_check()[2] = true;
+		auto r3 = ai_t.detect_path_repetition(2, H);
 		check(r3.has_value() && r3.value() == (AIPlayer::MATE_SCORE - 2),
 				"rep: opponent perpetual check makes SENTE win");
 
 		// 王手混在（連続でない）→ 引き分け0。4-ply サイクル [0,4]
-		std::ranges::fill(ra_t.path_hashes(), 0);
-		std::ranges::fill(ra_t.path_in_check(), false);
-		ra_t.path_hashes()[0] = H;
-		ra_t.path_in_check()[1] = true; // O 手番で王手
-		ra_t.path_in_check()[3] = false; // 次の O 手番では王手なし → S連続王手不成立
-		ra_t.path_in_check()[2] = false;
-		ra_t.path_in_check()[4] = false; // S 手番は王手なし → O連続王手も不成立
-		auto r4 = ra_t.detect_path_repetition(4, H);
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
+		ai_t.path_hashes()[0] = H;
+		ai_t.path_in_check()[1] = true; // O 手番で王手
+		ai_t.path_in_check()[3] = false; // 次の O 手番では王手なし → S連続王手不成立
+		ai_t.path_in_check()[2] = false;
+		ai_t.path_in_check()[4] = false; // S 手番は王手なし → O連続王手も不成立
+		auto r4 = ai_t.detect_path_repetition(4, H);
 		check(r4.has_value() && r4.value() == 0, "rep: non-consecutive checks score draw 0");
 
 		// ply 0 / 1 は手番が同じ祖先がないため必ず nullopt
-		check(!ra_t.detect_path_repetition(0, H).has_value(),
+		check(!ai_t.detect_path_repetition(0, H).has_value(),
 				"rep: ply 0 has no ancestor (nullopt)");
-		check(!ra_t.detect_path_repetition(1, H).has_value(),
+		check(!ai_t.detect_path_repetition(1, H).has_value(),
 				"rep: ply 1 has no ancestor (nullopt)");
 
-		// 相互連続王手（両者とも王手）→ stm_perpetual 優先で手番側 S が負け
-		std::ranges::fill(ra_t.path_hashes(), 0);
-		std::ranges::fill(ra_t.path_in_check(), false);
-		ra_t.path_hashes()[0] = H;
-		ra_t.path_in_check()[1] = true; // O の手番で王手
-		ra_t.path_in_check()[2] = true; // S(現在) も王手されている
-		auto rm = ra_t.detect_path_repetition(2, H);
+		// 相互連続王手（両者とも王手）→ turn_perpetual 優先で手番側 S が負け
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
+		ai_t.path_hashes()[0] = H;
+		ai_t.path_in_check()[1] = true; // O の手番で王手
+		ai_t.path_in_check()[2] = true; // S(現在) も王手されている
+		auto rm = ai_t.detect_path_repetition(2, H);
 		check(rm.has_value() && rm.value() == -(AIPlayer::MATE_SCORE - 2),
 				"rep: mutual perpetual check, STM (SENTE) loses by precedence");
 	}
@@ -356,38 +356,38 @@ void run_path_repetition_tests() {
 
 void run_history_repetition_tests() {
 	{
-		AIPlayer ha;
-		AIPlayerTestAccess ha_t{ ha };
-		std::ranges::fill(ha_t.path_hashes(), 0);
-		std::ranges::fill(ha_t.path_in_check(), false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
 
 		// (1) 履歴の局面にルートが戻る → 引き分け0
 		const uint64_t X = 0xAAAA1111ULL, Y = 0xBBBB2222ULL;
-		ha.set_game_history({ X, Y }, { false, false });
-		ha_t.path_hashes()[0] = X; // ルート(現局面, 仮想idx2, S手番)が履歴idx0(X)と一致
-		ha_t.path_in_check()[0] = false;
-		auto rh1 = ha_t.detect_path_repetition(0, X);
+		ai.set_game_history({ X, Y }, { false, false });
+		ai_t.path_hashes()[0] = X; // ルート(現局面, 仮想idx2, S手番)が履歴idx0(X)と一致
+		ai_t.path_in_check()[0] = false;
+		auto rh1 = ai_t.detect_path_repetition(0, X);
 		check(rh1.has_value() && rh1.value() == 0, "rep: history-boundary repetition scores draw 0");
 
 		// (2) 連続王手のサイクルが履歴境界をまたぐ（王手フラグが履歴側）→ 手番側S負け
 		const uint64_t H = 0xCCCC3333ULL;
-		ha.set_game_history({ H, 0xDDDDULL }, { false, true }); // 履歴idx1(O手番)が王手
-		ha_t.path_hashes()[0] = H;
-		ha_t.path_in_check()[0] = false; // 現在(S)は王手を受けていない
-		auto rh2 = ha_t.detect_path_repetition(0, H);
+		ai.set_game_history({ H, 0xDDDDULL }, { false, true }); // 履歴idx1(O手番)が王手
+		ai_t.path_hashes()[0] = H;
+		ai_t.path_in_check()[0] = false; // 現在(S)は王手を受けていない
+		auto rh2 = ai_t.detect_path_repetition(0, H);
 		check(rh2.has_value() && rh2.value() == -(AIPlayer::MATE_SCORE - 0),
 				"rep: perpetual across history boundary makes SENTE lose");
 
 		// (3) サイクルが履歴(一致)＋経路(王手フラグ)をまたぐ → 手番側S負け
 		const uint64_t Z = 0xEEEE4444ULL;
-		ha.set_game_history({ Z }, { false }); // 履歴idx0=Z(S手番)
-		std::ranges::fill(ha_t.path_hashes(), 0);
-		std::ranges::fill(ha_t.path_in_check(), false);
-		ha_t.path_hashes()[0] = 0x9999ULL; // ルート(仮想idx1, O手番)
-		ha_t.path_in_check()[0] = true; // idx1(O手番)が王手を受けている = S が王手をかけている
-		ha_t.path_hashes()[1] = Z; // ply1(仮想idx2, S手番)が履歴Zと一致
-		ha_t.path_in_check()[1] = false; // 現在(S)は王手なし
-		auto rh3 = ha_t.detect_path_repetition(1, Z);
+		ai.set_game_history({ Z }, { false }); // 履歴idx0=Z(S手番)
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
+		ai_t.path_hashes()[0] = 0x9999ULL; // ルート(仮想idx1, O手番)
+		ai_t.path_in_check()[0] = true; // idx1(O手番)が王手を受けている = S が王手をかけている
+		ai_t.path_hashes()[1] = Z; // ply1(仮想idx2, S手番)が履歴Zと一致
+		ai_t.path_in_check()[1] = false; // 現在(S)は王手なし
+		auto rh3 = ai_t.detect_path_repetition(1, Z);
 		check(rh3.has_value() && rh3.value() == -(AIPlayer::MATE_SCORE - 1),
 				"rep: perpetual with cycle crossing boundary (path+history)");
 	}
@@ -395,38 +395,38 @@ void run_history_repetition_tests() {
 
 void run_alpha_beta_repetition_tests() {
 	{
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, K, Turn::GOTE, false);
-		b.set_cell({ 4, 0 }, K, Turn::SENTE, false);
-		AIPlayer ra;
-		AIPlayerTestAccess ra_t{ ra };
-		ra_t.path_hashes()[0] = b.get_zobrist_hash(); // 現局面を ply0 の祖先として登録
-		ra_t.path_in_check()[0] = false;
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, K, Turn::GOTE, false);
+		board.set_cell({ 4, 0 }, K, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		ai_t.path_hashes()[0] = board.get_zobrist_hash(); // 現局面を ply0 の祖先として登録
+		ai_t.path_in_check()[0] = false;
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に入る = ply0 と同一局面 → 反復を検出してすぐ 0 を返す（評価関数を呼ばない）
-		int score = ra_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		int score = ai_t.alpha_beta(board, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: alpha_beta returns draw 0 on path repetition");
 		check(nodes == 1, "rep: alpha_beta stops immediately on repetition");
 	}
 
 	// TT に非引き分けエントリがあっても反復検出が優先される
 	{
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, K, Turn::GOTE, false);
-		b.set_cell({ 4, 0 }, K, Turn::SENTE, false);
-		AIPlayer ra;
-		AIPlayerTestAccess ra_t{ ra };
-		uint64_t h = b.get_zobrist_hash();
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, K, Turn::GOTE, false);
+		board.set_cell({ 4, 0 }, K, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		uint64_t hash = board.get_zobrist_hash();
 		// この局面に対する非引き分けの TT エントリを仕込む（別の経路で保存されたエントリを模したもの）
-		ra_t.transposition_table()[h] = TTEntry{ 5000, 10, TTFlag::EXACT, Move{} };
+		ai_t.transposition_table()[hash] = TTEntry{ 5000, 10, TTFlag::EXACT, Move{} };
 		// 現局面を経路の起点として登録
-		ra_t.path_hashes()[0] = h;
-		ra_t.path_in_check()[0] = false;
+		ai_t.path_hashes()[0] = hash;
+		ai_t.path_in_check()[0] = false;
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に戻る = 反復。検出は TT probe より前なので 5000 ではなく 0 を返す
-		int score = ra_t.alpha_beta(b, 1, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		int score = ai_t.alpha_beta(board, 1, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: detection precedes TT probe (draw not TT score)");
 		check(nodes == 1, "rep: detection-before-TT stops immediately");
 	}
@@ -435,32 +435,32 @@ void run_alpha_beta_repetition_tests() {
 void run_gote_search_tests() {
 	// 頭金で詰んでいる後手番: 手番側の負け
 	{
-		BoardState b(Turn::GOTE);
-		b.set_cell({ 0, 0 }, K, Turn::GOTE, false);
-		b.set_cell({ 0, 1 }, G, Turn::SENTE, false);
-		b.set_cell({ 0, 2 }, P, Turn::SENTE, false);
-		AIPlayer ga;
-		AIPlayerTestAccess ga_t{ ga };
+		BoardState board(Turn::GOTE);
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false);
+		board.set_cell({ 0, 1 }, G, Turn::SENTE, false);
+		board.set_cell({ 0, 2 }, P, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
 		bool timeout = false;
 		uint64_t nodes = 0;
-		int score = ga_t.alpha_beta(b, 1, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		int score = ai_t.alpha_beta(board, 1, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == -AIPlayer::MATE_SCORE, "GOTE mated: alpha_beta returns loss for side to move");
 	}
 
 	// 後手番の千日手（後手が連続王手をかけている）: 手番側の負け
 	{
-		BoardState b(Turn::GOTE);
-		b.set_cell({ 4, 4 }, K, Turn::GOTE, false);
-		b.set_cell({ 4, 0 }, K, Turn::SENTE, false);
-		AIPlayer ga;
-		AIPlayerTestAccess ga_t{ ga };
-		std::ranges::fill(ga_t.path_hashes(), 0);
-		std::ranges::fill(ga_t.path_in_check(), false);
-		ga_t.path_hashes()[0] = b.get_zobrist_hash();
-		ga_t.path_in_check()[1] = true; // ply1（先手の手番）で王手を受けている = 後手が王手をかけ続けている
+		BoardState board(Turn::GOTE);
+		board.set_cell({ 4, 4 }, K, Turn::GOTE, false);
+		board.set_cell({ 4, 0 }, K, Turn::SENTE, false);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		std::ranges::fill(ai_t.path_hashes(), 0);
+		std::ranges::fill(ai_t.path_in_check(), false);
+		ai_t.path_hashes()[0] = board.get_zobrist_hash();
+		ai_t.path_in_check()[1] = true; // ply1（先手の手番）で王手を受けている = 後手が王手をかけ続けている
 		bool timeout = false;
 		uint64_t nodes = 0;
-		int score = ga_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		int score = ai_t.alpha_beta(board, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == -(AIPlayer::MATE_SCORE - 2), "GOTE perpetual check: alpha_beta returns loss for side to move");
 	}
 
@@ -469,9 +469,9 @@ void run_gote_search_tests() {
 		std::optional<BoardState> board = BoardState::from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B7/LNSGKGSNL w - 1");
 		check(board.has_value(), "GOTE root: test position parses");
 		if (board.has_value()) {
-			AIPlayer ga;
-			ga.set_time_limit_usec(300000);
-			std::vector<ScoredMove> moves = ga.search_top_moves(*board, 3);
+			AIPlayer ai;
+			ai.set_time_limit_usec(300000);
+			std::vector<ScoredMove> moves = ai.search_top_moves(*board, 3);
 			bool ordered = true;
 			for (size_t i = 1; i < moves.size(); ++i) {
 				ordered = ordered && moves[i - 1].score >= moves[i].score;
@@ -485,31 +485,31 @@ void run_gote_search_tests() {
 
 void run_dfpn_repetition_tests() {
 	{
-		BoardState b(Turn::SENTE);
-		b.set_cell({ 4, 4 }, K, Turn::GOTE, false);
-		b.set_cell({ 4, 0 }, K, Turn::SENTE, false);
-		uint64_t h = b.get_zobrist_hash();
+		BoardState board(Turn::SENTE);
+		board.set_cell({ 4, 4 }, K, Turn::GOTE, false);
+		board.set_cell({ 4, 0 }, K, Turn::SENTE, false);
+		uint64_t hash = board.get_zobrist_hash();
 
 		// 反復: 現局面が経路上の祖先にすでに現れている → 不詰み(pn=∞,dn=0)を返し、表に保存しない
-		AIPlayer ra;
-		AIPlayerTestAccess ra_t{ ra };
-		ra_t.dfpn_path().push_back(h);
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		ai_t.dfpn_path().push_back(hash);
 		int pn = 1, dn = 1;
 		uint64_t nodes = 0;
-		ra_t.dfpn_search(b, b.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn, dn, 5, nodes,
+		ai_t.dfpn_search(board, board.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn, dn, 5, nodes,
 				100000);
 		check(pn == static_cast<int>(AIPlayerTestAccess::INFINITY_PN) && dn == 0, "dfpn: path repetition returns unmate (pn=inf, dn=0)");
-		check(!ra_t.dfpn_table().contains(h), "dfpn: repetition node not cached (GHI guard)");
+		check(!ai_t.dfpn_table().contains(hash), "dfpn: repetition node not cached (GHI guard)");
 
 		// 対照: 経路に祖先が無ければ反復扱いしない（KvK は王手になる手がなく不詰み、かつ表に保存される）
-		AIPlayer rb;
-		AIPlayerTestAccess rb_t{ rb };
+		AIPlayer ai2;
+		AIPlayerTestAccess ai2_t{ ai2 };
 		int pn2 = 1, dn2 = 1;
 		uint64_t nodes2 = 0;
-		rb_t.dfpn_search(b, b.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn2, dn2, 5, nodes2,
+		ai2_t.dfpn_search(board, board.get_turn_to_move(), AIPlayerTestAccess::INFINITY_PN, AIPlayerTestAccess::INFINITY_PN, pn2, dn2, 5, nodes2,
 				100000);
 		check(pn2 == static_cast<int>(AIPlayerTestAccess::INFINITY_PN) && dn2 == 0, "dfpn: KvK leaf is unmate");
-		check(rb_t.dfpn_table().contains(h), "dfpn: non-repetition leaf IS cached");
+		check(ai2_t.dfpn_table().contains(hash), "dfpn: non-repetition leaf IS cached");
 	}
 }
 

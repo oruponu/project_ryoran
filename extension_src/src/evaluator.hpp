@@ -25,7 +25,7 @@ private:
 	inline static const int DEFENSE_DIRECTION_WEIGHT[10] = { 1120, 1872, 112, 760, 744, 880, 1320, 600, 904, 1024 };
 	inline static const int THREAT_DIRECTION_WEIGHT[10] = { 1056, 1714, 1688, 1208, 248, 240, 496, 816, 928, 1024 };
 
-	inline static bool eval_tables_initialized_;
+	inline static bool is_initialized_;
 
 	static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][KKPEE_PIECE_STATE_COUNT];
 	inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];

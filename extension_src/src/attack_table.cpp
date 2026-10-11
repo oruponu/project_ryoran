@@ -4,7 +4,7 @@ using Shogi::Coord;
 using Shogi::Turn;
 
 void AttackTable::initialize() {
-	if (initialized_) {
+	if (is_initialized_) {
 		return;
 	}
 
@@ -17,66 +17,66 @@ void AttackTable::initialize() {
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
 		auto [col, row] = Coord::from_index(index);
 
-		for (int side = 0; side < 2; ++side) {
-			Shogi::Turn turn = static_cast<Shogi::Turn>(side);
+		for (int turn_index = 0; turn_index < 2; ++turn_index) {
+			Shogi::Turn turn = static_cast<Shogi::Turn>(turn_index);
 			int sign = (turn == Shogi::Turn::SENTE) ? -1 : 1;
 
 			// 歩
-			set_if_valid(attacks_pawn_[side][index], { col, row + sign });
+			set_if_valid(attacks_pawn_[turn_index][index], { col, row + sign });
 
 			// 桂馬
-			set_if_valid(attacks_knight_[side][index], { col - 1, row + sign * 2 });
-			set_if_valid(attacks_knight_[side][index], { col + 1, row + sign * 2 });
+			set_if_valid(attacks_knight_[turn_index][index], { col - 1, row + sign * 2 });
+			set_if_valid(attacks_knight_[turn_index][index], { col + 1, row + sign * 2 });
 			// 銀
-			set_if_valid(attacks_silver_[side][index], { col - 1, row + sign });
-			set_if_valid(attacks_silver_[side][index], { col, row + sign });
-			set_if_valid(attacks_silver_[side][index], { col + 1, row + sign });
-			set_if_valid(attacks_silver_[side][index], { col - 1, row - sign });
-			set_if_valid(attacks_silver_[side][index], { col + 1, row - sign });
+			set_if_valid(attacks_silver_[turn_index][index], { col - 1, row + sign });
+			set_if_valid(attacks_silver_[turn_index][index], { col, row + sign });
+			set_if_valid(attacks_silver_[turn_index][index], { col + 1, row + sign });
+			set_if_valid(attacks_silver_[turn_index][index], { col - 1, row - sign });
+			set_if_valid(attacks_silver_[turn_index][index], { col + 1, row - sign });
 			// 金
-			set_if_valid(attacks_gold_[side][index], { col - 1, row + sign });
-			set_if_valid(attacks_gold_[side][index], { col, row + sign });
-			set_if_valid(attacks_gold_[side][index], { col + 1, row + sign });
-			set_if_valid(attacks_gold_[side][index], { col - 1, row });
-			set_if_valid(attacks_gold_[side][index], { col + 1, row });
-			set_if_valid(attacks_gold_[side][index], { col, row - sign });
+			set_if_valid(attacks_gold_[turn_index][index], { col - 1, row + sign });
+			set_if_valid(attacks_gold_[turn_index][index], { col, row + sign });
+			set_if_valid(attacks_gold_[turn_index][index], { col + 1, row + sign });
+			set_if_valid(attacks_gold_[turn_index][index], { col - 1, row });
+			set_if_valid(attacks_gold_[turn_index][index], { col + 1, row });
+			set_if_valid(attacks_gold_[turn_index][index], { col, row - sign });
 		}
 
 		// 玉
-		for (int dx = -1; dx <= 1; ++dx) {
-			for (int dy = -1; dy <= 1; ++dy) {
-				if (dx == 0 && dy == 0) {
+		for (int diff_col = -1; diff_col <= 1; ++diff_col) {
+			for (int diff_row = -1; diff_row <= 1; ++diff_row) {
+				if (diff_col == 0 && diff_row == 0) {
 					continue;
 				}
-				set_if_valid(attacks_king_[index], { col + dx, row + dy });
+				set_if_valid(attacks_king_[index], { col + diff_col, row + diff_row });
 			}
 		}
 	}
 
 	// 走り駒
-	int dxs[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
-	int dys[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
+	int diff_cols[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+	int diff_rows[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
 		auto [col, row] = Coord::from_index(index);
 
-		for (int dir = 0; dir < 8; ++dir) {
+		for (int direction = 0; direction < 8; ++direction) {
 			Bitboard ray;
-			Coord coord = { col + dxs[dir], row + dys[dir] };
+			Coord coord = { col + diff_cols[direction], row + diff_rows[direction] };
 			while (coord.is_valid()) {
 				ray.set(coord.to_index());
-				coord.col += dxs[dir];
-				coord.row += dys[dir];
+				coord.col += diff_cols[direction];
+				coord.row += diff_rows[direction];
 			}
-			rays_[dir][index] = ray;
+			rays_[direction][index] = ray;
 		}
 	}
 
-	initialized_ = true;
+	is_initialized_ = true;
 }
 
-Bitboard AttackTable::get_lance_attacks(int square, Turn turn, const Bitboard &occupancy) {
+Bitboard AttackTable::get_lance_attacks(int index, Turn turn, const Bitboard &occupancy) {
 	int direction = (turn == Turn::SENTE) ? 0 : 4; // 0: 上，4: 下
-	Bitboard ray = rays_[direction][square];
+	Bitboard ray = rays_[direction][index];
 	Bitboard blockers = ray & occupancy;
 
 	if (!blockers.is_empty()) {
@@ -94,13 +94,13 @@ Bitboard AttackTable::get_lance_attacks(int square, Turn turn, const Bitboard &o
 	return ray;
 }
 
-Bitboard AttackTable::get_bishop_attacks(int square, const Bitboard &occupancy) {
+Bitboard AttackTable::get_bishop_attacks(int index, const Bitboard &occupancy) {
 	Bitboard attacks;
 	int directions[4] = { 1, 3, 5, 7 }; // 1: 右上，3: 右下，5: 左下，7: 左上
 
-	for (int dir = 0; dir < 4; ++dir) {
-		int direction = directions[dir];
-		Bitboard ray = rays_[direction][square];
+	for (int i = 0; i < 4; ++i) {
+		int direction = directions[i];
+		Bitboard ray = rays_[direction][index];
 		Bitboard blockers = ray & occupancy;
 
 		if (!blockers.is_empty()) {
@@ -124,13 +124,13 @@ Bitboard AttackTable::get_bishop_attacks(int square, const Bitboard &occupancy) 
 	return attacks;
 }
 
-Bitboard AttackTable::get_rook_attacks(int square, const Bitboard &occupancy) {
+Bitboard AttackTable::get_rook_attacks(int index, const Bitboard &occupancy) {
 	Bitboard attacks;
 	int directions[4] = { 0, 2, 4, 6 }; // 0: 上，2: 右，4: 下，6: 左
 
-	for (int dir = 0; dir < 4; ++dir) {
-		int direction = directions[dir];
-		Bitboard ray = rays_[direction][square];
+	for (int i = 0; i < 4; ++i) {
+		int direction = directions[i];
+		Bitboard ray = rays_[direction][index];
 		Bitboard blockers = ray & occupancy;
 
 		if (!blockers.is_empty()) {

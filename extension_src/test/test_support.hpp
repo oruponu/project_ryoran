@@ -22,9 +22,9 @@ constexpr PieceType R = PieceType::ROOK;
 constexpr PieceType K = PieceType::KING;
 
 struct KMove {
-	int ff, fr, tf, tr;
-	PieceType pt;
-	bool promo;
+	int from_file, from_rank, to_file, to_rank;
+	PieceType piece_type;
+	bool is_promotion;
 };
 
 extern const KMove KIFU2[];
@@ -34,7 +34,7 @@ int failure_count();
 
 std::vector<uint8_t> read_file(const char *path);
 void setup_initial_position(BoardState &board);
-bool replay(BoardState &board, int num_moves, const KMove *kifu);
+bool replay(BoardState &board, int move_count, const KMove *kifu);
 
 struct AIPlayerTestAccess {
 	AIPlayer &ai;

@@ -104,41 +104,41 @@ void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::
 	size_t n = std::min(hashes.size(), in_checks.size());
 	game_history_hashes_.assign(hashes.begin(), hashes.begin() + n);
 	game_history_in_check_.assign(in_checks.begin(), in_checks.begin() + n);
-	history_len_ = static_cast<int>(n);
+	game_history_length_ = static_cast<int>(n);
 	game_history_hash_set_.clear();
 	game_history_hash_set_.insert(game_history_hashes_.begin(), game_history_hashes_.end());
 }
 
 std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash) {
-	int v = history_len_ + ply;
+	int v = game_history_length_ + ply;
 	for (int p = v - 2; p >= 0; p -= 2) {
-		if (p < history_len_ && !game_history_hash_set_.contains(hash)) {
+		if (p < game_history_length_ && !game_history_hash_set_.contains(hash)) {
 			break; // 現局面が履歴に無ければ無駄な走査を打ち切る
 		}
 		if (hash_at(p) != hash) {
 			continue;
 		}
 
-		bool stm_perpetual = true; // 手番側が連続王手
+		bool turn_perpetual = true; // 手番側が連続王手
 		for (int q = p + 1; q <= v - 1; q += 2) {
 			if (!in_check_at(q)) {
-				stm_perpetual = false;
+				turn_perpetual = false;
 				break;
 			}
 		}
-		bool opp_perpetual = true; // 相手が連続王手
+		bool opponent_perpetual = true; // 相手が連続王手
 		for (int q = p + 2; q <= v; q += 2) {
 			if (!in_check_at(q)) {
-				opp_perpetual = false;
+				opponent_perpetual = false;
 				break;
 			}
 		}
 
 		int mate = MATE_SCORE - ply;
-		if (stm_perpetual) {
+		if (turn_perpetual) {
 			return -mate; // 連続王手の千日手は王手側の負け
 		}
-		if (opp_perpetual) {
+		if (opponent_perpetual) {
 			return mate;
 		}
 		return 0;
@@ -153,7 +153,7 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 		// 駒を取る手：MVV-LVA
 		const Cell &target_cell = board.get_cell({ move.to_col, move.to_row });
 		if (!target_cell.is_empty()) {
-			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(target_cell.type)][target_cell.is_promoted ? 1 : 0];
+			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(target_cell.piece_type)][target_cell.is_promoted ? 1 : 0];
 			int aggressor_value = Shogi::PIECE_VALUES[std::to_underlying(move.piece_type)][0];
 			// 高い駒を安い駒で取るほど高得点
 			score = 1000000 + victim_value - aggressor_value;
@@ -171,9 +171,9 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 			}
 		}
 		if (!is_killer) {
-			int side = std::to_underlying(board.get_turn_to_move());
-			int to_sq = Shogi::to_index(move.to_col, move.to_row);
-			score = history_[side][std::to_underlying(move.piece_type)][to_sq];
+			int turn_index = std::to_underlying(board.get_turn_to_move());
+			int to_index = Shogi::to_index(move.to_col, move.to_row);
+			score = history_[turn_index][std::to_underlying(move.piece_type)][to_index];
 		}
 	}
 
@@ -199,9 +199,9 @@ void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
 }
 
 void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int depth) {
-	int side = std::to_underlying(turn);
-	int to_sq = Shogi::to_index(move.to_col, move.to_row);
-	int &value = history_[side][std::to_underlying(move.piece_type)][to_sq];
+	int turn_index = std::to_underlying(turn);
+	int to_index = Shogi::to_index(move.to_col, move.to_row);
+	int &value = history_[turn_index][std::to_underlying(move.piece_type)][to_index];
 	value = std::min(value + depth * depth, HISTORY_CAP);
 }
 
@@ -215,8 +215,8 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	uint64_t hash = board.get_zobrist_hash();
-	Turn turn_to_move = board.get_turn_to_move();
-	bool in_check = MoveGenerator::is_king_in_check(board, turn_to_move);
+	Turn turn = board.get_turn_to_move();
+	bool in_check = MoveGenerator::is_king_in_check(board, turn);
 
 	// 千日手（経路反復）：TTより前に判定
 	if (ply < MAX_PLY) {
@@ -293,11 +293,11 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	std::ranges::sort(sort_start, move_list.end(), std::ranges::greater{},
 			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
 
-	auto is_killer_move = [&](const Move &m) {
-		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == m) || (killer_valid_[ply][1] && killer_moves_[ply][1] == m));
+	auto is_killer_move = [&](const Move &move) {
+		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == move) || (killer_valid_[ply][1] && killer_moves_[ply][1] == move));
 	};
 
-	Turn next_side = Shogi::opponent(turn_to_move);
+	Turn opponent_turn = Shogi::opponent(turn);
 	Move best_move = move_list[0];
 	int max_eval = -INFINITE_SCORE;
 	int move_index = 0;
@@ -313,7 +313,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		Shogi::UndoInfo undo = board.apply_move(move);
 
 		// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
-		if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
+		if (reduction > 0 && MoveGenerator::is_king_in_check(board, opponent_turn)) {
 			reduction = 0;
 		}
 
@@ -338,7 +338,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		if (beta <= alpha) {
 			if (!move.is_capture) {
 				update_killer(ply, move);
-				update_history(turn_to_move, move, depth);
+				update_history(turn, move, depth);
 			}
 			break; // βカット
 		}
@@ -395,10 +395,10 @@ void AIPlayer::generate_check_moves(BoardState &board, Shogi::MoveList &move_lis
 
 	Shogi::MoveList candidates;
 	MoveGenerator::get_legal_moves(board, candidates);
-	Turn enemy_turn = Shogi::opponent(board.get_turn_to_move());
+	Turn opponent_turn = Shogi::opponent(board.get_turn_to_move());
 	for (const auto &move : candidates) {
 		Shogi::UndoInfo undo = board.apply_move(move);
-		if (MoveGenerator::is_king_in_check(board, enemy_turn)) {
+		if (MoveGenerator::is_king_in_check(board, opponent_turn)) {
 			move_list.push(move);
 		}
 
@@ -647,11 +647,11 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 		if (!in_check) {
 			// Delta Pruning
 			const Cell &victim = board.get_cell({ move.to_col, move.to_row });
-			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
+			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.piece_type)][victim.is_promoted ? 1 : 0];
 			int promotion_gain = 0;
 			if (move.is_promotion) {
-				int pt = std::to_underlying(move.piece_type);
-				promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
+				int piece_type_index = std::to_underlying(move.piece_type);
+				promotion_gain = Shogi::PIECE_VALUES[piece_type_index][1] - Shogi::PIECE_VALUES[piece_type_index][0];
 			}
 			if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
 				continue;
@@ -706,7 +706,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		return {};
 	}
 
-	Turn root_side = board.get_turn_to_move();
+	Turn root_turn = board.get_turn_to_move();
 
 	auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES);
 	if (mate_move.has_value()) {
@@ -733,9 +733,9 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	// Killerは探索ごとにクリア
 	// Historyはエージングして対局内の学習を引き継ぐ
 	std::memset(killer_valid_, 0, sizeof(killer_valid_));
-	for (auto &side : history_) {
-		for (auto &piece : side) {
-			for (int &value : piece) {
+	for (auto &turn_history : history_) {
+		for (auto &piece_type_history : turn_history) {
+			for (int &value : piece_type_history) {
 				value >>= 1;
 			}
 		}
@@ -764,7 +764,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	// 千日手（経路反復）：ルート局面を経路の起点に登録
 	path_hashes_[0] = board.get_zobrist_hash();
-	path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_side);
+	path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_turn);
 
 	for (int depth = 1; depth <= max_depth_limit; ++depth) {
 		if (depth > 1 && now_usec() > strict_limit_time) {
@@ -830,8 +830,8 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			}
 
 			if (std::ssize(depth_top) < count || score > depth_top.back().score) {
-				auto pos = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return score > entry.score; });
-				depth_top.insert(pos, { .move = move, .score = score });
+				auto it = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return score > entry.score; });
+				depth_top.insert(it, { .move = move, .score = score });
 				if (std::ssize(depth_top) > count) {
 					depth_top.pop_back();
 				}

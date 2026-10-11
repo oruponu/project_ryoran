@@ -6,7 +6,7 @@ class MoveGenerator {
 private:
 	static Bitboard get_checkers(const BoardState &board, Shogi::Turn turn);
 	static PinMasks calculate_pin_masks(const BoardState &board, Shogi::Turn turn);
-	[[nodiscard]] static Bitboard attackers_to(const BoardState &board, int square, Shogi::Turn side,
+	[[nodiscard]] static Bitboard attackers_to(const BoardState &board, int index, Shogi::Turn turn,
 			const Bitboard &occupancy);
 	[[nodiscard]] static bool is_valid_move(const BoardState &board, Shogi::Coord from, Shogi::Coord to);
 	[[nodiscard]] static bool is_valid_drop(const BoardState &board, Shogi::PieceType piece_type, bool is_enemy,
