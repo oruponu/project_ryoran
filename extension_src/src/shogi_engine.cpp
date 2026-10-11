@@ -21,8 +21,8 @@ namespace {
 
 Dictionary make_move_dictionary(const Move &move, int score, double win_rate) {
 	Dictionary result;
-	result["from_col"] = move.from_col;
-	result["from_row"] = move.from_row;
+	result["from_col"] = move.is_drop ? -1 : move.from_col;
+	result["from_row"] = move.is_drop ? -1 : move.from_row;
 	result["to_col"] = move.to_col;
 	result["to_row"] = move.to_row;
 	result["piece_type"] = std::to_underlying(move.piece_type);

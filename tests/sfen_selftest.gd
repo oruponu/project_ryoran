@@ -211,6 +211,7 @@ func _test_search(engine: ShogiEngine) -> void:
 		and move.to_row == 1
 	)
 	_check("探索: 1手詰めの5二金打を見つける", found_mate)
+	_check("探索: 打つ手の移動元は -1", move.get("from_col") == -1 and move.get("from_row") == -1)
 
 	engine.update_state_from_sfen("4k4/4G4/4G4/9/9/9/9/9/4K4 w - 1")
 	_check("探索: 詰まされた側は投了 (空 Dictionary)", engine.search_best_move().is_empty())
