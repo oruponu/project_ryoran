@@ -12,10 +12,10 @@ const LAST_MOVE_COLOR = Color(1.0, 0.4, 0.0, 0.2)
 const MARGIN = 22.5
 
 
-var active_guides: Array[ColorRect] = []
-var last_move_rect: ColorRect = null
-var last_move_tween: Tween = null
-var hint_arrows: Array[HintArrow] = []
+var _active_guides: Array[ColorRect] = []
+var _last_move_rect: ColorRect = null
+var _last_move_tween: Tween = null
+var _hint_arrows: Array[HintArrow] = []
 
 
 func _ready() -> void:
@@ -81,44 +81,44 @@ func show_guides(coords_list: Array[Vector2i]) -> void:
 		rect.color = GUIDE_COLOR
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(rect)
-		active_guides.append(rect)
+		_active_guides.append(rect)
 
 
 func clear_guides() -> void:
-	for rect in active_guides:
+	for rect in _active_guides:
 		rect.queue_free()
-	active_guides.clear()
+	_active_guides.clear()
 
 
 func update_last_move_highlight(col: int, row: int) -> void:
-	if last_move_rect == null:
-		last_move_rect = ColorRect.new()
-		last_move_rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
-		last_move_rect.color = LAST_MOVE_COLOR
-		last_move_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(last_move_rect)
+	if _last_move_rect == null:
+		_last_move_rect = ColorRect.new()
+		_last_move_rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
+		_last_move_rect.color = LAST_MOVE_COLOR
+		_last_move_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_last_move_rect)
 
-	last_move_rect.position = Vector2(col * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
+	_last_move_rect.position = Vector2(col * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
 
-	if last_move_tween:
-		last_move_tween.kill()
+	if _last_move_tween:
+		_last_move_tween.kill()
 
-	last_move_rect.modulate.a = 1.0
+	_last_move_rect.modulate.a = 1.0
 
-	last_move_tween = create_tween()
-	last_move_tween.set_loops()
-	last_move_tween.tween_property(last_move_rect, "modulate:a", 0.2, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	last_move_tween.tween_property(last_move_rect, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_last_move_tween = create_tween()
+	_last_move_tween.set_loops()
+	_last_move_tween.tween_property(_last_move_rect, "modulate:a", 0.2, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_last_move_tween.tween_property(_last_move_rect, "modulate:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func clear_last_move_highlight() -> void:
-	if last_move_tween != null:
-		last_move_tween.kill()
-		last_move_tween = null
+	if _last_move_tween != null:
+		_last_move_tween.kill()
+		_last_move_tween = null
 
-	if last_move_rect != null:
-		last_move_rect.queue_free()
-		last_move_rect = null
+	if _last_move_rect != null:
+		_last_move_rect.queue_free()
+		_last_move_rect = null
 
 
 func show_hint_arrows(entries: Array[Dictionary]) -> void:
@@ -129,10 +129,10 @@ func show_hint_arrows(entries: Array[Dictionary]) -> void:
 		arrow.z_index = 6
 		add_child(arrow)
 		arrow.setup(entry.from, entry.to)
-		hint_arrows.append(arrow)
+		_hint_arrows.append(arrow)
 
 
 func clear_hint_arrows() -> void:
-	for arrow in hint_arrows:
+	for arrow in _hint_arrows:
 		arrow.queue_free()
-	hint_arrows.clear()
+	_hint_arrows.clear()

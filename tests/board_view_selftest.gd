@@ -43,17 +43,17 @@ func _check_input_controller(main: Node2D) -> void:
 	var gote_state: PieceState = main.game_state.get_piece(2, 2)
 	input.handle_click(gote_state)
 	_expect("入力: 手番でない駒は持ち上げない", not board_view._node_for(gote_state).is_held)
-	_expect("入力: 手番でない駒をクリックしてもガイドを出さない", board.active_guides.is_empty())
+	_expect("入力: 手番でない駒をクリックしてもガイドを出さない", board._active_guides.is_empty())
 
 	var state: PieceState = main.game_state.get_piece(2, 6)
 	var piece: Piece = board_view._node_for(state)
 	input.handle_click(state)
 	_expect("入力: 手番の駒を持ち上げる", piece.is_held and piece.z_index == 10)
-	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board.active_guides.size() == 1)
+	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board._active_guides.size() == 1)
 
 	input.cancel_holding()
 	_expect("入力: キャンセルで持ち上げを終える", not piece.is_held and piece.z_index == 0)
-	_expect("入力: キャンセルでガイドを消す", board.active_guides.is_empty())
+	_expect("入力: キャンセルでガイドを消す", board._active_guides.is_empty())
 	_expect("入力: キャンセルで元のマスに戻す", piece.position == _cell_position(2, 6))
 
 
@@ -119,4 +119,4 @@ func _check_rebuild(main: Node2D) -> void:
 	_expect("作り直し: 元の駒ノードをすべて解放する", old_pieces.all(func(piece): return not is_instance_valid(piece)))
 	_expect("作り直し: 40枚の駒ノードを作る", board_view._nodes.size() == 40)
 	_expect("作り直し: 駒台の歩の枚数を表示しない", not stand._labels[PieceState.Type.PAWN].visible)
-	_expect("作り直し: 最終手のハイライトを消す", main.board.last_move_rect == null)
+	_expect("作り直し: 最終手のハイライトを消す", main.board._last_move_rect == null)

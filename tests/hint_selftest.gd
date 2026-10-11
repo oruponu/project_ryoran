@@ -127,16 +127,16 @@ func _check_arrow_lifecycle() -> void:
 	]
 
 	board.show_hint_arrows(entries)
-	_expect("矢印: 3本生成", board.hint_arrows.size() == 3)
+	_expect("矢印: 3本生成", board._hint_arrows.size() == 3)
 
 	board.show_hint_arrows(entries.slice(0, 1))
-	_expect("矢印: もう一度表示すると前の矢印は置き換わる (1本)", board.hint_arrows.size() == 1)
+	_expect("矢印: もう一度表示すると前の矢印は置き換わる (1本)", board._hint_arrows.size() == 1)
 
 	board.clear_hint_arrows()
-	_expect("矢印: まとめて消える", board.hint_arrows.is_empty())
+	_expect("矢印: まとめて消える", board._hint_arrows.is_empty())
 
 	board.show_hint_arrows([])
-	_expect("矢印: 空エントリで0本", board.hint_arrows.is_empty())
+	_expect("矢印: 空エントリで0本", board._hint_arrows.is_empty())
 
 	board.queue_free()
 
