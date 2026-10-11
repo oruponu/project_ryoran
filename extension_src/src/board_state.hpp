@@ -29,9 +29,6 @@ struct Cell {
 };
 
 class BoardState {
-	friend class MoveGenerator;
-	friend class Evaluator;
-
 private:
 	// すべての駒のBitboard
 	Bitboard bitboard_all_;
