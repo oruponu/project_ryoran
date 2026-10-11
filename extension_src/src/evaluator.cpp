@@ -234,7 +234,7 @@ int Evaluator::calculate_score(const BoardState &board) {
 				continue;
 			}
 
-			int piece_score = Shogi::get_piece_score(cell.type, cell.is_promoted, cell.turn, col, row);
+			int piece_score = Shogi::get_piece_score(cell.type, cell.is_promoted);
 			piece_score = Shogi::apply_board_discount(piece_score);
 
 			if (cell.turn == Turn::SENTE) {

@@ -514,7 +514,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 		int count = hand_[std::to_underlying(current_side)][std::to_underlying(piece_type)];
 
 		int hand_value = Shogi::PIECE_VALUES[std::to_underlying(piece_type)][0];
-		int board_score = Shogi::get_piece_score(piece_type, false, current_side, move.to_col, move.to_row);
+		int board_score = Shogi::get_piece_score(piece_type, false);
 		board_score = Shogi::apply_board_discount(board_score);
 		score_ += sign * (board_score - hand_value);
 
@@ -537,8 +537,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 	} else {
 		Cell source = get_cell({ move.from_col, move.from_row });
 
-		int from_score =
-				Shogi::get_piece_score(source.type, source.is_promoted, current_side, move.from_col, move.from_row);
+		int from_score = Shogi::get_piece_score(source.type, source.is_promoted);
 		from_score = Shogi::apply_board_discount(from_score);
 		score_ -= sign * from_score;
 
@@ -548,8 +547,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 		remove_piece_from_bitboard(from_idx, current_side, source.type, source.is_promoted);
 
 		if (!target.is_empty()) {
-			int captured_score =
-					Shogi::get_piece_score(target.type, target.is_promoted, opponent_side, move.to_col, move.to_row);
+			int captured_score = Shogi::get_piece_score(target.type, target.is_promoted);
 			captured_score = Shogi::apply_board_discount(captured_score);
 			score_ += sign * captured_score;
 			int hand_value = Shogi::PIECE_VALUES[std::to_underlying(target.type)][0];
@@ -571,7 +569,7 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
 		bool is_promoted = move.is_promotion || source.is_promoted;
 
-		int to_score = Shogi::get_piece_score(source.type, is_promoted, current_side, move.to_col, move.to_row);
+		int to_score = Shogi::get_piece_score(source.type, is_promoted);
 		to_score = Shogi::apply_board_discount(to_score);
 		score_ += sign * to_score;
 

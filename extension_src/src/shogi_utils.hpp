@@ -52,7 +52,7 @@ inline constexpr int apply_board_discount(int score) {
 	return score - (score * 104 / 1024);
 }
 
-inline constexpr int get_piece_score(PieceType piece_type, bool is_promoted, Turn turn, int col, int row) {
+inline constexpr int get_piece_score(PieceType piece_type, bool is_promoted) {
 	int pt = std::to_underlying(piece_type);
 	return PIECE_VALUES[pt][is_promoted ? 1 : 0];
 }
