@@ -23,6 +23,7 @@ var board_view: BoardView
 var input_controller: InputController
 var move_executor: MoveExecutor
 var game_referee: GameReferee
+var game_dialogs: GameDialogs
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _hint_moves: Array[Dictionary] = []
@@ -48,13 +49,14 @@ func _ready() -> void:
 	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
 
+	game_dialogs = GameDialogs.new(common_dialog)
 	move_executor = MoveExecutor.new(
 		game_state,
 		board_view,
 		audio_stream_player,
 		engine_worker,
 		_shogi_engine,
-		request_promotion_decision
+		game_dialogs.request_promotion
 	)
 
 	_reset_game()
@@ -67,7 +69,7 @@ func _on_piece_spawned(piece: Piece) -> void:
 func _on_new_game_button_pressed() -> void:
 	input_controller.cancel_holding()
 
-	var result: bool = await request_new_game_decision()
+	var result: bool = await game_dialogs.request_new_game()
 	if not result:
 		return
 
@@ -83,7 +85,7 @@ func _on_undo_button_pressed() -> void:
 func _on_resign_button_pressed() -> void:
 	input_controller.cancel_holding()
 
-	var result: bool = await request_resign_decision()
+	var result: bool = await game_dialogs.request_resign()
 	if not result:
 		return
 
@@ -184,7 +186,7 @@ func _finish_turn(record: MoveRecord) -> void:
 				await _end_game(GameEnding.Type.RESIGNATION, is_gote_turn)
 				return
 
-			var chose_to_resign: bool = await request_checkmate_decision(is_gote_turn)
+			var chose_to_resign: bool = await game_dialogs.request_checkmate(is_gote_turn)
 			if chose_to_resign:
 				await _end_game(GameEnding.Type.RESIGNATION, is_gote_turn)
 			else:
@@ -255,7 +257,7 @@ func _end_game(ending: GameEnding.Type, is_sente_win: bool) -> void:
 	_clear_hint()
 	move_history_panel.add_ending(game_state.move_count + 1, ending, is_sente_win)
 	check_label.cancel_animation()
-	await show_result(game_state.move_count, ending, is_sente_win)
+	await game_dialogs.show_result(game_state.move_count, ending, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
@@ -354,34 +356,3 @@ func _is_ai_turn() -> bool:
 func _has_player_move() -> bool:
 	var player_move_count := 1 if GameConfig.AI_IS_GOTE else 2
 	return game_state.move_history.size() >= player_move_count
-
-
-func request_new_game_decision() -> bool:
-	return await common_dialog.ask_user("対局をはじめますか？", "はい", "いいえ")
-
-
-func request_resign_decision() -> bool:
-	return await common_dialog.ask_user("投了しますか？", "投了する", "投了しない")
-
-
-func request_checkmate_decision(is_gote_mated: bool) -> bool:
-	var mated_text := "後手" if is_gote_mated else "先手"
-	var message := "%sの玉が詰まされました。\n投了しますか？" % mated_text
-	return await common_dialog.ask_user(message, "投了する", "待った")
-
-
-func request_promotion_decision() -> bool:
-	return await common_dialog.ask_user("成りますか？", "成る", "成らない")
-
-
-func show_result(move_count: int, ending: GameEnding.Type, is_sente_win: bool) -> void:
-	var winner_text := "先手" if is_sente_win else "後手"
-	var message: String
-	match ending:
-		GameEnding.Type.RESIGNATION:
-			message = "まで、%d手で%sの勝ち。" % [move_count, winner_text]
-		GameEnding.Type.SENNICHITE:
-			message = "まで、%d手で千日手。引き分け。" % move_count
-		GameEnding.Type.PERPETUAL_CHECK:
-			message = "まで、%d手で連続王手の千日手。%sの反則勝ち。" % [move_count, winner_text]
-	await common_dialog.ask_user(message, "OK", "")
