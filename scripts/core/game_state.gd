@@ -6,7 +6,6 @@ extends RefCounted
 var board_grid: Array = []
 var move_count: int = 0
 var move_history: Array[MoveRecord] = []
-var repetition_tracker := RepetitionTracker.new()
 var sente_hand: Array[PieceState] = []
 var gote_hand: Array[PieceState] = []
 

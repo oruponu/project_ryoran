@@ -46,9 +46,6 @@ public:
 
 	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_moves(const godot::String &sfen, int col, int row);
 	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_drops(const godot::String &sfen, int piece_type);
-	[[nodiscard]] bool is_king_in_check(const godot::String &sfen, bool is_gote);
-	[[nodiscard]] bool has_any_legal_move(const godot::String &sfen);
-	[[nodiscard]] int64_t get_position_hash(const godot::String &sfen);
 	[[nodiscard]] godot::Dictionary inspect_position(const godot::String &sfen);
 	[[nodiscard]] bool is_dead_end(int piece_type, bool is_gote, int to_row);
 	[[nodiscard]] bool can_promote(int piece_type, bool is_promoted, bool is_gote, int from_row, int to_row);

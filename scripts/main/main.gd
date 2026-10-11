@@ -22,6 +22,7 @@ var sfen_serializer: SfenSerializer
 var board_view: BoardView
 var input_controller: InputController
 var move_executor: MoveExecutor
+var game_referee: GameReferee
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _hint_moves: Array[Dictionary] = []
@@ -38,8 +39,9 @@ func _ready() -> void:
 	sfen_serializer = SfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, sente_piece_stand, gote_piece_stand, board.piece_scene)
 	board_view.piece_spawned.connect(_on_piece_spawned)
+	game_referee = GameReferee.new(game_state, sfen_serializer, _shogi_engine)
 
-	engine_worker.setup(sfen_serializer, game_state.repetition_tracker)
+	engine_worker.setup(sfen_serializer, game_referee.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
@@ -123,8 +125,7 @@ func _reset_game() -> void:
 	win_rate_bar.reset_bar(true)
 	game_state.setup_starting_position()
 	board_view.rebuild()
-	var initial_in_check := _shogi_engine.is_king_in_check(sfen_serializer.to_sfen(), game_state.is_gote_turn())
-	game_state.repetition_tracker.reset(_current_position_hash(), initial_in_check)
+	game_referee.start()
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.move_count)
 	check_label.cancel_animation()
@@ -158,41 +159,33 @@ func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 
 		await move_executor.execute_move(state, col, row, move_record, mode)
 
-	game_state.move_history.append(move_record)
-
-	_finish_turn(piece)
+	_finish_turn(move_record)
 
 
-func _finish_turn(piece: Piece) -> void:
+func _finish_turn(record: MoveRecord) -> void:
 	_clear_hint()
-	input_controller.release_holding(piece)
+	input_controller.release_holding(board_view.node_for(record.state))
 
-	game_state.move_count += 1
+	var outcome := game_referee.commit(record)
 	_update_button_states()
 	_update_last_move_highlight()
 	_update_turn_display()
 
-	var record: MoveRecord = game_state.move_history.back()
 	var prev_record: MoveRecord = game_state.move_history[-2] if game_state.move_history.size() >= 2 else null
 	move_history_panel.add_move(game_state.move_count, record, prev_record)
 
 	var is_gote_turn := game_state.is_gote_turn()
-	var sfen := sfen_serializer.to_sfen()
-	var in_check := _shogi_engine.is_king_in_check(sfen, is_gote_turn)
-
-	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
-	if rep_count >= GameConfig.SENNICHITE_COUNT:
-		match game_state.repetition_tracker.classify_sennichite():
-			RepetitionTracker.Sennichite.TURN_PERPETUAL:
-				await _finish_game_perpetual_check(is_gote_turn)
-			RepetitionTracker.Sennichite.OPPONENT_PERPETUAL:
-				await _finish_game_perpetual_check(not is_gote_turn)
-			_:
-				await _finish_game_draw()
-		return
-
-	if in_check:
-		if not _shogi_engine.has_any_legal_move(sfen):
+	match outcome:
+		GameReferee.Outcome.SENNICHITE:
+			await _finish_game_draw()
+			return
+		GameReferee.Outcome.SENTE_WINS_BY_PERPETUAL_CHECK:
+			await _finish_game_perpetual_check(true)
+			return
+		GameReferee.Outcome.GOTE_WINS_BY_PERPETUAL_CHECK:
+			await _finish_game_perpetual_check(false)
+			return
+		GameReferee.Outcome.CHECKMATE:
 			if _is_ai_turn():
 				await _finish_game(is_gote_turn)
 				return
@@ -200,11 +193,10 @@ func _finish_turn(piece: Piece) -> void:
 			var chose_to_resign: bool = await request_checkmate_decision(is_gote_turn)
 			if chose_to_resign:
 				await _finish_game(is_gote_turn)
-				return
 			else:
 				_undo_to_player_turn()
-				return
-		else:
+			return
+		GameReferee.Outcome.CHECK:
 			check_label.play_animation()
 			audio_stream_player.play_check()
 
@@ -268,41 +260,33 @@ func _on_search_completed(move: Dictionary) -> void:
 		var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
 		await move_executor.execute_move(state, col, row, move_record, mode)
 
-	game_state.move_history.append(move_record)
-
 	is_ai_thinking = false
-	_finish_turn(board_view.node_for(state))
+	_finish_turn(move_record)
 
 
 func _finish_game(is_sente_win: bool) -> void:
 	_clear_hint()
-	game_state.move_count += 1
-	_update_turn_display()
-	move_history_panel.add_resignation(game_state.move_count)
+	move_history_panel.add_resignation(game_state.move_count + 1)
 	check_label.cancel_animation()
-	await show_game_result(game_state.move_count - 1, is_sente_win)
+	await show_game_result(game_state.move_count, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
 
 
 func _finish_game_draw() -> void:
-	game_state.move_count += 1
-	_update_turn_display()
-	move_history_panel.add_sennichite(game_state.move_count)
+	move_history_panel.add_sennichite(game_state.move_count + 1)
 	check_label.cancel_animation()
-	await show_draw_result(game_state.move_count - 1)
+	await show_draw_result(game_state.move_count)
 	is_game_active = false
 
 	_update_button_states()
 
 
 func _finish_game_perpetual_check(is_sente_win: bool) -> void:
-	game_state.move_count += 1
-	_update_turn_display()
-	move_history_panel.add_perpetual_check(game_state.move_count, is_sente_win)
+	move_history_panel.add_perpetual_check(game_state.move_count + 1, is_sente_win)
 	check_label.cancel_animation()
-	await show_perpetual_check_result(game_state.move_count - 1, is_sente_win)
+	await show_perpetual_check_result(game_state.move_count, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
@@ -321,15 +305,11 @@ func _undo_last_move() -> void:
 	_clear_hint()
 
 	if not is_game_active:
-		game_state.move_count -= 1
 		move_history_panel.remove_last_move()
 
-	var last_move: MoveRecord = game_state.move_history.pop_back()
-	game_state.repetition_tracker.undo()
-
+	var last_move := game_referee.rollback()
 	move_executor.undo(last_move)
 
-	game_state.move_count -= 1
 	is_game_active = true
 	_update_last_move_highlight()
 	_update_turn_display()
@@ -405,10 +385,6 @@ func _is_ai_turn() -> bool:
 func _has_player_move() -> bool:
 	var player_move_count := 1 if GameConfig.AI_IS_GOTE else 2
 	return game_state.move_history.size() >= player_move_count
-
-
-func _current_position_hash() -> int:
-	return _shogi_engine.get_position_hash(sfen_serializer.to_sfen())
 
 
 func request_new_game_decision() -> bool:

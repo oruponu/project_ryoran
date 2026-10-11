@@ -78,9 +78,6 @@ ShogiEngine::ShogiEngine() {
 void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_legal_moves", "sfen", "col", "row"), &ShogiEngine::get_legal_moves);
 	ClassDB::bind_method(D_METHOD("get_legal_drops", "sfen", "piece_type"), &ShogiEngine::get_legal_drops);
-	ClassDB::bind_method(D_METHOD("is_king_in_check", "sfen", "is_gote"), &ShogiEngine::is_king_in_check);
-	ClassDB::bind_method(D_METHOD("has_any_legal_move", "sfen"), &ShogiEngine::has_any_legal_move);
-	ClassDB::bind_method(D_METHOD("get_position_hash", "sfen"), &ShogiEngine::get_position_hash);
 	ClassDB::bind_method(D_METHOD("inspect_position", "sfen"), &ShogiEngine::inspect_position);
 	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_gote", "to_row"), &ShogiEngine::is_dead_end);
 	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_gote", "from_row", "to_row"), &ShogiEngine::can_promote);
@@ -182,28 +179,6 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 	}
 
 	return result;
-}
-
-bool ShogiEngine::is_king_in_check(const String &sfen, bool is_gote) {
-	BoardState board = board_from_sfen(sfen);
-
-	Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
-
-	return MoveGenerator::is_king_in_check(board, turn);
-}
-
-bool ShogiEngine::has_any_legal_move(const String &sfen) {
-	BoardState board = board_from_sfen(sfen);
-
-	Shogi::MoveList move_list;
-	MoveGenerator::get_legal_moves(board, move_list);
-
-	return !move_list.is_empty();
-}
-
-int64_t ShogiEngine::get_position_hash(const String &sfen) {
-	BoardState board = board_from_sfen(sfen);
-	return static_cast<int64_t>(board.get_zobrist_hash());
 }
 
 Dictionary ShogiEngine::inspect_position(const String &sfen) {
