@@ -81,6 +81,7 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_king_in_check", "sfen", "is_gote"), &ShogiEngine::is_king_in_check);
 	ClassDB::bind_method(D_METHOD("has_any_legal_move", "sfen"), &ShogiEngine::has_any_legal_move);
 	ClassDB::bind_method(D_METHOD("get_position_hash", "sfen"), &ShogiEngine::get_position_hash);
+	ClassDB::bind_method(D_METHOD("inspect_position", "sfen"), &ShogiEngine::inspect_position);
 	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_gote", "to_row"), &ShogiEngine::is_dead_end);
 	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_gote", "from_row", "to_row"), &ShogiEngine::can_promote);
 
@@ -203,6 +204,19 @@ bool ShogiEngine::has_any_legal_move(const String &sfen) {
 int64_t ShogiEngine::get_position_hash(const String &sfen) {
 	BoardState board = board_from_sfen(sfen);
 	return static_cast<int64_t>(board.get_zobrist_hash());
+}
+
+Dictionary ShogiEngine::inspect_position(const String &sfen) {
+	BoardState board = board_from_sfen(sfen);
+
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list);
+
+	Dictionary result;
+	result["hash"] = static_cast<int64_t>(board.get_zobrist_hash());
+	result["in_check"] = MoveGenerator::is_king_in_check(board, board.get_turn_to_move());
+	result["has_legal_move"] = !move_list.is_empty();
+	return result;
 }
 
 bool ShogiEngine::is_dead_end(int piece_type, bool is_gote, int to_row) {

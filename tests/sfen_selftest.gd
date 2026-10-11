@@ -2,6 +2,7 @@ extends SceneTree
 
 
 const START_SFEN := "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+const START_SFEN_W := "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1"
 
 
 var _failures: int = 0
@@ -89,19 +90,19 @@ func _piece_state(piece_type: PieceState.Type, is_gote: bool, is_promoted: bool,
 
 
 func _test_initial_position(engine: ShogiEngine) -> void:
-	_check("開始局面: 先手王手なし", not engine.is_king_in_check(START_SFEN, false))
-	_check("開始局面: 後手王手なし", not engine.is_king_in_check(START_SFEN, true))
-	_check("開始局面: 合法手あり", engine.has_any_legal_move(START_SFEN))
+	var position: Dictionary = engine.inspect_position(START_SFEN)
+	_check("開始局面: 先手王手なし", not position["in_check"])
+	_check("開始局面: 後手王手なし", not engine.inspect_position(START_SFEN_W)["in_check"])
+	_check("開始局面: 合法手あり", position["has_legal_move"])
 
 	var pawn_moves: Array = engine.get_legal_moves(START_SFEN, 4, 6)
 	_check("開始局面: 5七歩は5六のみ", pawn_moves.size() == 1 and pawn_moves[0] == Vector2i(4, 5))
 
 
 func _test_hash_turn_bit(engine: ShogiEngine) -> void:
-	var start_sfen_w := "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL w - 1"
-	var hash_b: int = engine.get_position_hash(START_SFEN)
-	_check("ハッシュ: 手番が違えば異なる", hash_b != engine.get_position_hash(start_sfen_w))
-	_check("ハッシュ: 同一 SFEN で一致", hash_b == engine.get_position_hash(START_SFEN))
+	var hash_b: int = engine.inspect_position(START_SFEN)["hash"]
+	_check("ハッシュ: 手番が違えば異なる", hash_b != engine.inspect_position(START_SFEN_W)["hash"])
+	_check("ハッシュ: 同一 SFEN で一致", hash_b == engine.inspect_position(START_SFEN)["hash"])
 
 
 func _test_pinned_gold(engine: ShogiEngine) -> void:
@@ -140,20 +141,21 @@ func _test_uchifuzume(engine: ShogiEngine) -> void:
 
 func _test_double_check(engine: ShogiEngine) -> void:
 	var sfen := "4r3k/9/9/9/b8/9/9/9/4K4 b R 1"
-	_check("両王手: 王手検出", engine.is_king_in_check(sfen, false))
+	var position: Dictionary = engine.inspect_position(sfen)
+	_check("両王手: 王手検出", position["in_check"])
 	_check("両王手: 合駒はどこにも打てない", engine.get_legal_drops(sfen, PieceState.Type.ROOK).is_empty())
-	_check("両王手: 玉の逃げ道はある", engine.has_any_legal_move(sfen))
+	_check("両王手: 玉の逃げ道はある", position["has_legal_move"])
 
 
 func _test_mate(engine: ShogiEngine) -> void:
-	var sfen := "4k4/4G4/4G4/9/9/9/9/9/4K4 w - 1"
-	_check("頭金: 王手", engine.is_king_in_check(sfen, true))
-	_check("頭金: 合法手なし (詰み)", not engine.has_any_legal_move(sfen))
+	var position: Dictionary = engine.inspect_position("4k4/4G4/4G4/9/9/9/9/9/4K4 w - 1")
+	_check("頭金: 王手", position["in_check"])
+	_check("頭金: 合法手なし (詰み)", not position["has_legal_move"])
 
 
 func _test_not_mate(engine: ShogiEngine) -> void:
-	var sfen := "4k4/4G4/9/9/9/9/9/9/4K4 w - 1"
-	_check("不詰: 支えのない金は玉で取れる", engine.has_any_legal_move(sfen))
+	var position: Dictionary = engine.inspect_position("4k4/4G4/9/9/9/9/9/9/4K4 w - 1")
+	_check("不詰: 支えのない金は玉で取れる", position["has_legal_move"])
 
 
 func _test_block_drop(engine: ShogiEngine) -> void:
@@ -167,16 +169,16 @@ func _test_block_drop(engine: ShogiEngine) -> void:
 
 
 func _test_block_escape(engine: ShogiEngine) -> void:
-	var sfen := "8k/6G2/9/9/9/9/9/9/4K3R w p 1"
-	_check("合駒で受ける: 王手検出", engine.is_king_in_check(sfen, true))
-	_check("合駒で受ける: 歩を打てば王手を逃れられる", engine.has_any_legal_move(sfen))
-	_check("合駒で受ける: 持ち駒がなければ詰み", not engine.has_any_legal_move("8k/6G2/9/9/9/9/9/9/4K3R w - 1"))
+	var position: Dictionary = engine.inspect_position("8k/6G2/9/9/9/9/9/9/4K3R w p 1")
+	_check("合駒で受ける: 王手検出", position["in_check"])
+	_check("合駒で受ける: 歩を打てば王手を逃れられる", position["has_legal_move"])
+	_check("合駒で受ける: 持ち駒がなければ詰み", not engine.inspect_position("8k/6G2/9/9/9/9/9/9/4K3R w - 1")["has_legal_move"])
 
 
 func _test_stalemate(engine: ShogiEngine) -> void:
-	var sfen := "8k/6G2/7G1/9/9/9/9/9/4K4 w - 1"
-	_check("ステイルメイト: 王手なし", not engine.is_king_in_check(sfen, true))
-	_check("ステイルメイト: 合法手なし", not engine.has_any_legal_move(sfen))
+	var position: Dictionary = engine.inspect_position("8k/6G2/7G1/9/9/9/9/9/4K4 w - 1")
+	_check("ステイルメイト: 王手なし", not position["in_check"])
+	_check("ステイルメイト: 合法手なし", not position["has_legal_move"])
 
 
 func _test_dead_end(engine: ShogiEngine) -> void:
@@ -192,10 +194,10 @@ func _test_multidigit_hand(engine: ShogiEngine) -> void:
 
 
 func _test_invalid_input(engine: ShogiEngine) -> void:
-	_check("不正 SFEN: 駒の文字が誤りなら空盤面 (合法手なし)", not engine.has_any_legal_move("xyz b - 1"))
-	_check("不正 SFEN: 段数不足で空盤面 (王手なし)", not engine.is_king_in_check("lnsgkgsnl/9 b - 1", false))
-	_check("不正 SFEN: 持ち駒の0枚指定で空盤面", not engine.has_any_legal_move("4k4/9/9/9/9/9/9/9/4K4 b 0P 1"))
-	_check("不正 SFEN: 手数欠落で空盤面", not engine.has_any_legal_move("4k4/9/9/9/9/9/9/9/4K4 b -"))
+	_check("不正 SFEN: 駒の文字が誤りなら空盤面 (合法手なし)", not engine.inspect_position("xyz b - 1")["has_legal_move"])
+	_check("不正 SFEN: 段数不足で空盤面 (王手なし)", not engine.inspect_position("lnsgkgsnl/9 b - 1")["in_check"])
+	_check("不正 SFEN: 持ち駒の0枚指定で空盤面", not engine.inspect_position("4k4/9/9/9/9/9/9/9/4K4 b 0P 1")["has_legal_move"])
+	_check("不正 SFEN: 手数欠落で空盤面", not engine.inspect_position("4k4/9/9/9/9/9/9/9/4K4 b -")["has_legal_move"])
 	_check("境界検証: 盤外座標で空配列", engine.get_legal_moves(START_SFEN, -1, 4).is_empty())
 	_check("境界検証: 範囲外 piece_type で空配列", engine.get_legal_drops(START_SFEN, 99).is_empty())
 
