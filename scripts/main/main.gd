@@ -75,12 +75,7 @@ func _on_new_game_button_pressed() -> void:
 func _on_undo_button_pressed() -> void:
 	input_controller.cancel_holding()
 
-	# 後手が投了しているときのみ一手前に戻す
-	if not is_game_active and not game_state.is_gote_turn():
-		_undo_last_move()
-	else:
-		_undo_last_move()
-		_undo_last_move()
+	_undo_to_player_turn()
 
 
 func _on_resign_button_pressed() -> void:
@@ -97,7 +92,7 @@ func _on_resign_button_pressed() -> void:
 func _update_button_states() -> void:
 	if not is_game_active:
 		new_game_button.disabled = false
-		undo_button.disabled = false
+		undo_button.disabled = not _has_player_move()
 		hint_button.disabled = true
 		resign_button.disabled = true
 		return
@@ -110,7 +105,7 @@ func _update_button_states() -> void:
 		return
 
 	new_game_button.disabled = false
-	undo_button.disabled = game_state.move_history.is_empty()
+	undo_button.disabled = not _has_player_move()
 	hint_button.disabled = _hint_moves.is_empty()
 	resign_button.disabled = game_state.move_history.is_empty()
 
@@ -133,7 +128,10 @@ func _reset_game() -> void:
 	move_history_panel.clear()
 	move_history_panel.add_game_start(game_state.move_count)
 	check_label.cancel_animation()
-	engine_worker.request_analysis()
+	if _is_ai_turn():
+		_play_ai_turn()
+	else:
+		engine_worker.request_analysis()
 
 
 func _on_piece_clicked(piece: Piece) -> void:
@@ -195,7 +193,7 @@ func _finish_turn(piece: Piece) -> void:
 
 	if in_check:
 		if not _shogi_engine.has_any_legal_move(sfen):
-			if is_gote_turn == GameConfig.AI_IS_GOTE:
+			if _is_ai_turn():
 				await _finish_game(is_gote_turn)
 				return
 
@@ -204,15 +202,13 @@ func _finish_turn(piece: Piece) -> void:
 				await _finish_game(is_gote_turn)
 				return
 			else:
-				_undo_last_move()
-				_undo_last_move()
+				_undo_to_player_turn()
 				return
 		else:
 			check_label.play_animation()
 			audio_stream_player.play_check()
 
-	var next_is_gote := game_state.is_gote_turn()
-	if is_game_active and next_is_gote == GameConfig.AI_IS_GOTE:
+	if is_game_active and _is_ai_turn():
 		_play_ai_turn()
 	else:
 		engine_worker.request_analysis()
@@ -312,6 +308,12 @@ func _finish_game_perpetual_check(is_sente_win: bool) -> void:
 	_update_button_states()
 
 
+func _undo_to_player_turn() -> void:
+	_undo_last_move()
+	if _is_ai_turn():
+		_undo_last_move()
+
+
 func _undo_last_move() -> void:
 	if game_state.move_history.is_empty():
 		return
@@ -394,6 +396,15 @@ func _hint_from_position(move: Dictionary) -> Variant:
 func _update_turn_display() -> void:
 	var turn_text := "後手番" if game_state.is_gote_turn() else "先手番"
 	turn_label.text = turn_text
+
+
+func _is_ai_turn() -> bool:
+	return game_state.is_gote_turn() == GameConfig.AI_IS_GOTE
+
+
+func _has_player_move() -> bool:
+	var player_move_count := 1 if GameConfig.AI_IS_GOTE else 2
+	return game_state.move_history.size() >= player_move_count
 
 
 func _current_position_hash() -> int:
