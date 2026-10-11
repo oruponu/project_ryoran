@@ -3,6 +3,11 @@ class_name MoveHistoryPanel
 extends Panel
 
 
+const FONT_SIZE = 24
+const MOVE_COUNT_WIDTH = 50
+const ROW_SEPARATION = 16
+
+
 @onready var history_scroll: ScrollContainer = $HistoryScroll
 @onready var history_list: VBoxContainer = $HistoryScroll/HistoryList
 
@@ -46,16 +51,16 @@ func clear() -> void:
 func _append_entry_row(move_count: int, move_text: String) -> void:
 	var move_count_label := Label.new()
 	move_count_label.text = str(move_count)
-	move_count_label.add_theme_font_size_override("font_size", 24)
-	move_count_label.custom_minimum_size = Vector2(50, 0)
+	move_count_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	move_count_label.custom_minimum_size = Vector2(MOVE_COUNT_WIDTH, 0)
 	move_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	var move_text_label := Label.new()
 	move_text_label.text = move_text
-	move_text_label.add_theme_font_size_override("font_size", 24)
+	move_text_label.add_theme_font_size_override("font_size", FONT_SIZE)
 
 	var row_container := HBoxContainer.new()
-	row_container.add_theme_constant_override("separation", 16)
+	row_container.add_theme_constant_override("separation", ROW_SEPARATION)
 	row_container.add_child(move_count_label)
 	row_container.add_child(move_text_label)
 

@@ -15,6 +15,9 @@ const DISPLAY_ORDER: Array[PieceState.Type] = [
 	PieceState.Type.BISHOP,
 	PieceState.Type.ROOK,
 ]
+const COUNT_LABEL_SPACE = 20
+const COUNT_LABEL_OFFSET = Vector2(35, 0)
+const COUNT_LABEL_FONT_SIZE = 24
 
 
 var _labels: Dictionary[PieceState.Type, Label] = {}
@@ -25,7 +28,7 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var rect := Rect2(0, 0, GameConfig.GRID_SIZE + 20, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
+	var rect := Rect2(0, 0, GameConfig.GRID_SIZE + COUNT_LABEL_SPACE, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
 	draw_rect(rect, GameConfig.BOARD_COLOR)
 	draw_rect(rect, GameConfig.LINE_COLOR, false, 2.0)
 
@@ -62,7 +65,7 @@ func update_layout(immediate: bool = false) -> void:
 
 	var center_x := 0.0
 	if is_gote:
-		center_x = GameConfig.GRID_SIZE / 2.0 + 20
+		center_x = GameConfig.GRID_SIZE / 2.0 + COUNT_LABEL_SPACE
 	else:
 		center_x = GameConfig.GRID_SIZE / 2.0
 
@@ -108,12 +111,11 @@ func update_layout(immediate: bool = false) -> void:
 			label.text = str(pieces.size())
 			label.visible = true
 
-			var label_offset := Vector2(35, 0)
 			if is_gote:
-				label.position = target_pos - label_offset
+				label.position = target_pos - COUNT_LABEL_OFFSET
 				label.rotation_degrees = 180
 			else:
-				label.position = target_pos + label_offset
+				label.position = target_pos + COUNT_LABEL_OFFSET
 				label.rotation_degrees = 0
 
 		stack_index += 1
@@ -125,7 +127,7 @@ func _get_label(piece_type: PieceState.Type) -> Label:
 
 	var label := Label.new()
 	label.add_theme_color_override("font_color", Color.BLACK)
-	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_font_size_override("font_size", COUNT_LABEL_FONT_SIZE)
 	label.z_index = 5
 	add_child(label)
 	_labels[piece_type] = label
