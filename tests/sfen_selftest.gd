@@ -213,6 +213,18 @@ func _test_search(engine: ShogiEngine) -> void:
 	_check("探索: 1手詰めの5二金打を見つける", found_mate)
 	_check("探索: 打つ手の移動元は -1", move.get("from_col") == -1 and move.get("from_row") == -1)
 
+	engine.update_state_from_sfen("4k4/9/9/9/9/9/4g4/9/4K4 w g 1")
+	var gote_moves: Array = engine.search_top_moves(1)
+	var found_gote_mate: bool = (
+		gote_moves.size() == 1
+		and gote_moves[0].is_drop
+		and gote_moves[0].piece_type == PieceState.Type.GOLD
+		and gote_moves[0].to_col == 4
+		and gote_moves[0].to_row == 7
+	)
+	_check("探索: 後手番の1手詰めの5八金打を見つける", found_gote_mate)
+	_check("探索: 勝率は手番側から見た値 (後手番で詰ませる手は 1.0)", found_gote_mate and gote_moves[0].win_rate == 1.0)
+
 	engine.update_state_from_sfen("4k4/4G4/4G4/9/9/9/9/9/4K4 w - 1")
 	_check("探索: 詰まされた側は投了 (空 Dictionary)", engine.search_best_move().is_empty())
 

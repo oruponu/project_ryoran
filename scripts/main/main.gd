@@ -229,12 +229,12 @@ func _play_ai_turn() -> void:
 
 func _on_analysis_completed(moves: Array) -> void:
 	if moves.is_empty():
-		win_rate_bar.update_bar(0.0)
+		win_rate_bar.update_bar(_to_sente_win_rate(0.0))
 		_hint_moves = []
 		_update_button_states()
 		return
 
-	win_rate_bar.update_bar(moves[0].win_rate)
+	win_rate_bar.update_bar(_to_sente_win_rate(moves[0].win_rate))
 
 	var best_win_rate: float = moves[0].win_rate
 	_hint_moves = []
@@ -243,6 +243,10 @@ func _on_analysis_completed(moves: Array) -> void:
 			_hint_moves.append(move)
 
 	_update_button_states()
+
+
+func _to_sente_win_rate(win_rate: float) -> float:
+	return 1.0 - win_rate if game_state.is_gote_turn() else win_rate
 
 
 func _on_search_completed(move: Dictionary) -> void:
