@@ -3,7 +3,7 @@ class_name RepetitionTracker
 extends RefCounted
 
 
-enum { DRAW, TURN_PERPETUAL, OPPONENT_PERPETUAL }
+enum Sennichite { DRAW, TURN_PERPETUAL, OPPONENT_PERPETUAL }
 
 var _hashes: Array[int] = []
 var _in_checks: Array[bool] = []
@@ -26,7 +26,7 @@ func undo() -> void:
 		_in_checks.pop_back()
 
 
-func classify_sennichite() -> int:
+func classify_sennichite() -> Sennichite:
 	var n := _hashes.size() - 1
 	var p := n - 2
 	while p >= 0:
@@ -46,12 +46,12 @@ func classify_sennichite() -> int:
 					break
 				q += 2
 			if turn_perpetual:
-				return TURN_PERPETUAL
+				return Sennichite.TURN_PERPETUAL
 			if opponent_perpetual:
-				return OPPONENT_PERPETUAL
-			return DRAW
+				return Sennichite.OPPONENT_PERPETUAL
+			return Sennichite.DRAW
 		p -= 2
-	return DRAW
+	return Sennichite.DRAW
 
 
 func history_hashes() -> PackedInt64Array:

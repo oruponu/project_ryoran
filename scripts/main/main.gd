@@ -183,9 +183,9 @@ func _finish_turn(piece: Piece) -> void:
 	var rep_count := game_state.repetition_tracker.record(_shogi_engine.get_position_hash(sfen), in_check)
 	if rep_count >= GameConfig.SENNICHITE_COUNT:
 		match game_state.repetition_tracker.classify_sennichite():
-			RepetitionTracker.TURN_PERPETUAL:
+			RepetitionTracker.Sennichite.TURN_PERPETUAL:
 				await _finish_game_perpetual_check(is_gote_turn)
-			RepetitionTracker.OPPONENT_PERPETUAL:
+			RepetitionTracker.Sennichite.OPPONENT_PERPETUAL:
 				await _finish_game_perpetual_check(not is_gote_turn)
 			_:
 				await _finish_game_draw()

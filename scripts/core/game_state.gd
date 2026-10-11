@@ -52,6 +52,19 @@ func is_gote_turn() -> bool:
 	return move_count % 2 != 0
 
 
+func push_move(record: MoveRecord) -> void:
+	move_history.append(record)
+	move_count += 1
+
+
+func pop_move() -> MoveRecord:
+	if move_history.is_empty():
+		push_error("pop_move: 棋譜が空です")
+		return null
+	move_count -= 1
+	return move_history.pop_back()
+
+
 func get_piece(col: int, row: int) -> PieceState:
 	return board_grid[col][row]
 
