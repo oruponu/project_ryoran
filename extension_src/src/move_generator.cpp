@@ -10,58 +10,12 @@ using Shogi::PieceType;
 using Shogi::Turn;
 
 Bitboard MoveGenerator::get_checkers(const BoardState &board, Turn turn) {
-	Bitboard checkers;
 	auto king_position = board.get_king_position(turn);
 	if (!king_position.has_value()) {
-		return checkers;
+		return Bitboard();
 	}
 
-	int king_square = king_position->to_index();
-
-	const Turn enemy_turn = Shogi::opponent(turn);
-	int enemy_index = std::to_underlying(enemy_turn);
-
-	const Bitboard &enemy_pawns = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::PAWN)];
-	const Bitboard &enemy_lances = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::LANCE)];
-	const Bitboard &enemy_knights = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::KNIGHT)];
-	const Bitboard &enemy_silvers = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::SILVER)];
-	const Bitboard &enemy_golds = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::GOLD)];
-	const Bitboard &enemy_bishops = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::BISHOP)];
-	const Bitboard &enemy_rooks = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::ROOK)];
-	const Bitboard &enemy_kings = board.bitboard_piece_[enemy_index][std::to_underlying(PieceType::KING)];
-	const Bitboard &enemy_promoted = board.bitboard_promoted_[enemy_index];
-	const Bitboard occupancy = board.bitboard_all_;
-
-	// 香車の利き
-	Bitboard lance_attacks = AttackTable::get_lance_attacks(king_square, turn, occupancy);
-	checkers |= (lance_attacks & (enemy_lances & ~enemy_promoted));
-
-	// 角の利き
-	Bitboard bishop_attacks = AttackTable::get_bishop_attacks(king_square, occupancy);
-	checkers |= (bishop_attacks & enemy_bishops);
-
-	// 飛車の利き
-	Bitboard rook_attacks = AttackTable::get_rook_attacks(king_square, occupancy);
-	checkers |= (rook_attacks & enemy_rooks);
-
-	// 歩の利き
-	checkers |= (AttackTable::get_pawn_attacks(king_square, turn) & (enemy_pawns & ~enemy_promoted));
-
-	// 桂馬の利き
-	checkers |= (AttackTable::get_knight_attacks(king_square, turn) & (enemy_knights & ~enemy_promoted));
-
-	// 銀の利き
-	checkers |= (AttackTable::get_silver_attacks(king_square, turn) & (enemy_silvers & ~enemy_promoted));
-
-	// 金および金と同じ動きをする成り駒の利きをチェック
-	Bitboard gold_likes = enemy_golds | (enemy_promoted & (enemy_pawns | enemy_lances | enemy_knights | enemy_silvers));
-	checkers |= (AttackTable::get_gold_attacks(king_square, turn) & gold_likes);
-
-	// 玉および竜（斜め1マス）と馬（縦横1マス）の利きをチェック
-	Bitboard king_likes = enemy_kings | (enemy_promoted & (enemy_bishops | enemy_rooks));
-	checkers |= (AttackTable::get_king_attacks(king_square) & king_likes);
-
-	return checkers;
+	return attackers_to(board, king_position->to_index(), Shogi::opponent(turn), board.bitboard_all_);
 }
 
 PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) {
