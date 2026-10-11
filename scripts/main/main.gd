@@ -248,7 +248,7 @@ func _on_analysis_completed(moves: Array) -> void:
 func _on_search_completed(move: Dictionary) -> void:
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(!GameConfig.AI_IS_GOTE)
+		await _finish_game(GameConfig.AI_IS_GOTE)
 		is_ai_thinking = false
 		return
 
