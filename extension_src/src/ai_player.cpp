@@ -529,7 +529,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 	if (move_list.is_empty()) {
 		pn = is_attacker ? INFINITY_PN : 0;
 		dn = is_attacker ? 0 : INFINITY_PN;
-		dfpn_table_[hash] = { .hash = hash, .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
+		dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 		return;
 	}
 
@@ -547,21 +547,21 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 			child_dn = it->second.dn;
 		}
 
-		children.push_back({ .move = move, .hash = child_hash, .pn = child_pn, .dn = child_dn });
+		children.push_back({ .move = move, .pn = child_pn, .dn = child_dn });
 		board.undo_move(undo);
 
 		if (is_attacker) {
 			if (child_pn == 0) {
 				pn = 0;
 				dn = INFINITY_PN;
-				dfpn_table_[hash] = { .hash = hash, .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
+				dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 				return;
 			}
 		} else {
 			if (child_pn >= INFINITY_PN) {
 				pn = INFINITY_PN;
 				dn = 0;
-				dfpn_table_[hash] = { .hash = hash, .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
+				dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 				return;
 			}
 		}
@@ -661,7 +661,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 	}
 	dfpn_path_.pop_back();
 
-	dfpn_table_[hash] = { .hash = hash, .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
+	dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 }
 
 int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, int ply, uint64_t &node_count,
@@ -805,7 +805,7 @@ double AIPlayer::calculate_win_probability(int score) {
 
 TTEntry *AIPlayer::probe_tt(uint64_t hash) {
 	auto it = transposition_table_.find(hash);
-	if (it != transposition_table_.end() && it->second.hash == hash) {
+	if (it != transposition_table_.end()) {
 		return &it->second;
 	}
 	return nullptr;
@@ -814,7 +814,7 @@ TTEntry *AIPlayer::probe_tt(uint64_t hash) {
 void AIPlayer::store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Move &best_move) {
 	auto it = transposition_table_.find(hash);
 	if (it == transposition_table_.end() || it->second.depth <= depth) {
-		transposition_table_[hash] = TTEntry{ .hash = hash, .score = score, .depth = depth, .flag = flag, .best_move = best_move };
+		transposition_table_[hash] = TTEntry{ .score = score, .depth = depth, .flag = flag, .best_move = best_move };
 	}
 }
 

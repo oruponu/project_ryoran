@@ -15,7 +15,6 @@ enum class TTFlag : uint8_t {
 };
 
 struct TTEntry {
-	uint64_t hash;
 	int score;
 	int depth;
 	TTFlag flag;
@@ -23,14 +22,12 @@ struct TTEntry {
 };
 
 struct DfpnEntry {
-	uint64_t hash;
 	uint32_t pn;
 	uint32_t dn;
 };
 
 struct ChildNode {
 	Shogi::Move move;
-	uint64_t hash;
 	int pn;
 	int dn;
 };

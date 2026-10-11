@@ -412,7 +412,7 @@ void run_alpha_beta_repetition_tests() {
 		AIPlayerTestAccess ra_t{ ra };
 		uint64_t h = b.get_zobrist_hash();
 		// この局面に対する非引き分けの TT エントリを仕込む（別の経路で保存されたエントリを模したもの）
-		ra_t.transposition_table()[h] = TTEntry{ h, 5000, 10, TTFlag::EXACT, Move{} };
+		ra_t.transposition_table()[h] = TTEntry{ 5000, 10, TTFlag::EXACT, Move{} };
 		// 現局面を経路の起点として登録
 		ra_t.path_hashes()[0] = h;
 		ra_t.path_in_check()[0] = false;
