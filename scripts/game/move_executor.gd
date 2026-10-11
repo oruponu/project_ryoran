@@ -27,7 +27,18 @@ func _init(
 	_promotion_decider = promotion_decider
 
 
-func execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
+func execute(state: PieceState, col: int, row: int, mode: PromotionMode.Type) -> MoveRecord:
+	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
+
+	if state.is_in_hand():
+		_execute_drop(state, col, row)
+	else:
+		await _execute_move(state, col, row, move_record, mode)
+
+	return move_record
+
+
+func _execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var prev_row: int = state.current_row
 
 	var captured_state := _game_state.get_piece(col, row)
@@ -45,7 +56,7 @@ func execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord
 	await _handle_promotion(state, prev_row, row, move_record, mode)
 
 
-func execute_drop(state: PieceState, col: int, row: int) -> void:
+func _execute_drop(state: PieceState, col: int, row: int) -> void:
 	_game_state.drop_piece(state, col, row)
 	_board_view.drop_piece(state)
 

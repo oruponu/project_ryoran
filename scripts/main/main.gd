@@ -146,20 +146,14 @@ func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
 	_clear_hint()
 
 	var state := piece.state
-	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
-
-	if state.is_in_hand():
-		move_executor.execute_drop(state, col, row)
+	var mode: PromotionMode.Type
+	if _shogi_engine.is_dead_end(state.piece_type, state.is_gote, row):
+		mode = PromotionMode.Type.FORCE_PROMOTE
 	else:
-		var mode: PromotionMode.Type
-		if _shogi_engine.is_dead_end(state.piece_type, state.is_gote, row):
-			mode = PromotionMode.Type.FORCE_PROMOTE
-		else:
-			mode = PromotionMode.Type.ASK_USER
+		mode = PromotionMode.Type.ASK_USER
 
-		await move_executor.execute_move(state, col, row, move_record, mode)
-
-	_finish_turn(move_record)
+	var record: MoveRecord = await move_executor.execute(state, col, row, mode)
+	_finish_turn(record)
 
 
 func _finish_turn(record: MoveRecord) -> void:
@@ -250,18 +244,11 @@ func _on_search_completed(move: Dictionary) -> void:
 	else:
 		state = game_state.get_piece(move.from_col, move.from_row)
 
-	var col: int = move.to_col
-	var row: int = move.to_row
-	var move_record := MoveRecord.new(state, state.current_col, state.current_row, col, row)
-
-	if state.is_in_hand():
-		move_executor.execute_drop(state, col, row)
-	else:
-		var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
-		await move_executor.execute_move(state, col, row, move_record, mode)
+	var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
+	var record: MoveRecord = await move_executor.execute(state, move.to_col, move.to_row, mode)
 
 	is_ai_thinking = false
-	_finish_turn(move_record)
+	_finish_turn(record)
 
 
 func _finish_game(is_sente_win: bool) -> void:
