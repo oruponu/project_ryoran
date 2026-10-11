@@ -32,6 +32,9 @@ constexpr int BOARD_COLS = 9;
 constexpr int BOARD_ROWS = 9;
 constexpr int BOARD_SIZE = 81;
 
+// 敵陣の段数
+constexpr int PROMOTION_ZONE_ROWS = 3;
+
 // 駒の種類数
 constexpr int PIECE_TYPE_COUNT = 8;
 

@@ -175,11 +175,11 @@ bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, bool is_
 		return false;
 	}
 
-	const int zone_min = is_gote ? 6 : 0;
-	const int zone_max = is_gote ? 8 : 2;
-	const bool from_in_zone = (zone_min <= from_row && from_row <= zone_max);
-	const bool to_in_zone = (zone_min <= to_row && to_row <= zone_max);
-	return from_in_zone || to_in_zone;
+	auto in_zone = [is_gote](int row) {
+		const int relative_row = is_gote ? (Shogi::BOARD_ROWS - 1 - row) : row;
+		return 0 <= relative_row && relative_row < Shogi::PROMOTION_ZONE_ROWS;
+	};
+	return in_zone(from_row) || in_zone(to_row);
 }
 
 bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn turn, int col) {

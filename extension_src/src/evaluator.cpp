@@ -58,11 +58,11 @@ void Evaluator::initialize() {
 				bool is_near_gote_king = (distance(index, gote_king_index) == 1);
 
 				auto [col, row] = Shogi::Coord::from_index(index);
-				int sente_position_bonus_index = (8 - col) + row * 9;
+				int sente_position_bonus_index = (Shogi::BOARD_COLS - 1 - col) + row * Shogi::BOARD_COLS;
 
-				int inv_col = 8 - col;
-				int inv_row = 8 - row;
-				int gote_position_bonus_index = (8 - inv_col) + inv_row * 9;
+				int inv_col = Shogi::BOARD_COLS - 1 - col;
+				int inv_row = Shogi::BOARD_ROWS - 1 - row;
+				int gote_position_bonus_index = (Shogi::BOARD_COLS - 1 - inv_col) + inv_row * Shogi::BOARD_COLS;
 
 				int inv_gote_king_index = Shogi::BOARD_SIZE - 1 - gote_king_index;
 				int inv_index = Shogi::BOARD_SIZE - 1 - index;
