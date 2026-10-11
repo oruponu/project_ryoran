@@ -325,11 +325,22 @@ void run_king_move_tests() {
 			BoardState board = make_board();
 			board.set_cell({ 4, 0 }, R, Turn::GOTE, false); // 5一飛
 			check(!has_target(king_targets(board), 4, 3), "king move: cannot capture checker defended by rook behind it");
+			check(!has_target(king_targets(board, true), 4, 3), "king move: captures-only excludes checker defended by rook behind it");
 		}
 		{
 			BoardState board = make_board();
 			board.set_cell({ 4, 2 }, P, Turn::GOTE, true); // 5三と
 			check(!has_target(king_targets(board), 4, 3), "king move: cannot capture checker defended by tokin");
+		}
+		{
+			BoardState board = make_board();
+			board.set_cell({ 3, 2 }, R, Turn::GOTE, true); // 4三竜
+			check(!has_target(king_targets(board), 4, 3), "king move: cannot capture checker defended diagonally by dragon");
+		}
+		{
+			BoardState board = make_board();
+			board.set_cell({ 4, 2 }, B, Turn::GOTE, true); // 5三馬
+			check(!has_target(king_targets(board), 4, 3), "king move: cannot capture checker defended orthogonally by horse");
 		}
 	}
 
