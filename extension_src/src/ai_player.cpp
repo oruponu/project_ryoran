@@ -1,7 +1,6 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -18,16 +17,6 @@ using Shogi::PieceType;
 using Shogi::Turn;
 
 namespace {
-
-constexpr std::array HAND_PIECE_TYPES = {
-	PieceType::PAWN,
-	PieceType::LANCE,
-	PieceType::KNIGHT,
-	PieceType::SILVER,
-	PieceType::GOLD,
-	PieceType::BISHOP,
-	PieceType::ROOK,
-};
 
 // 不詰みの証明はノード数上限まで探索しがちなため、思考時間に収まるよう上限を用途別に分ける
 constexpr int OWN_MATE_DEPTH = 21;
