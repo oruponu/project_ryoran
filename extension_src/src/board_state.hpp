@@ -101,6 +101,18 @@ public:
 
 	[[nodiscard]] std::optional<Shogi::Coord> get_king_position(Shogi::Turn turn) const;
 
+	[[nodiscard]] const Bitboard &get_occupancy() const { return bitboard_all_; }
+	[[nodiscard]] const Bitboard &get_pieces(Shogi::Turn turn) const { return bitboard_side_[std::to_underlying(turn)]; }
+	[[nodiscard]] const Bitboard &get_pieces(Shogi::Turn turn, Shogi::PieceType piece_type) const {
+		return bitboard_piece_[std::to_underlying(turn)][std::to_underlying(piece_type)];
+	}
+	[[nodiscard]] const Bitboard &get_promoted_pieces(Shogi::Turn turn) const {
+		return bitboard_promoted_[std::to_underlying(turn)];
+	}
+	[[nodiscard]] bool has_pawn_in_column(Shogi::Turn turn, int col) const {
+		return (pawn_columns_[std::to_underlying(turn)] & (1 << col)) != 0;
+	}
+
 	// 盤面の操作
 	[[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
 	void set_cell(Shogi::Coord coord, Shogi::PieceType piece_type, Shogi::Turn turn, bool is_promoted);
