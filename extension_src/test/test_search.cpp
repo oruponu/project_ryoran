@@ -202,14 +202,14 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
 		check(nodes > 1, "qsearch explores free capture (control)");
 
 		// Delta pruning: 取る駒+マージンを足しても alpha に届かなければ読まない
 		int stand_pat = b.get_score();
 		nodes = 0;
 		int high_alpha = stand_pat + 90 + 540 + 1; // victim(90) + DELTA_MARGIN(540) でも届かない
-		score = qa_t.quiescence_search(b, high_alpha, high_alpha + 1, Turn::SENTE, 0, nodes);
+		score = qa_t.quiescence_search(b, high_alpha, high_alpha + 1, 0, nodes);
 		check(nodes == 1, "delta pruning skips hopeless capture");
 		check(score == stand_pat, "delta pruning returns stand_pat");
 	}
@@ -222,7 +222,7 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
 		check(nodes == 1, "SEE pruning skips losing capture");
 		check(score == b.get_score(), "SEE pruning returns stand_pat");
 	}
@@ -234,9 +234,21 @@ void run_quiescence_tests() {
 		AIPlayer qa;
 		AIPlayerTestAccess qa_t{ qa };
 		uint64_t nodes = 0;
-		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes, AIPlayerTestAccess::QS_PLY_LIMIT);
 		check(nodes == 1, "QS ply limit stops search");
 		check(score == b.get_score(), "QS ply limit returns stand_pat");
+	}
+	{
+		// 後手番: タダ取りを読むと手番側から見た評価値が stand_pat を上回る
+		BoardState b(Turn::GOTE);
+		b.set_cell({ 4, 4 }, P, Turn::SENTE, false);
+		b.set_cell({ 4, 0 }, R, Turn::GOTE, false);
+		AIPlayer qa;
+		AIPlayerTestAccess qa_t{ qa };
+		uint64_t nodes = 0;
+		int score = qa_t.quiescence_search(b, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes);
+		check(nodes > 1, "qsearch explores free capture for GOTE");
+		check(score > -b.get_score(), "qsearch returns side-to-move score for GOTE");
 	}
 }
 

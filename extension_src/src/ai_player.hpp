@@ -88,8 +88,8 @@ private:
 	void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
 			int depth, uint64_t &node_count, const uint64_t max_nodes);
 	void generate_check_moves(BoardState &board, Shogi::MoveList &move_list);
-	[[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, Shogi::Turn turn, int ply,
-			uint64_t &node_count, int qs_ply = 0);
+	[[nodiscard]] int quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count,
+			int qs_ply = 0);
 	[[nodiscard]] double calculate_win_probability(int score);
 
 	[[nodiscard]] TTEntry *probe_tt(uint64_t hash);

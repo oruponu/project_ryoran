@@ -52,6 +52,11 @@ int score_from_tt(int score, int ply) {
 	return score;
 }
 
+int side_to_move_score(const BoardState &board) {
+	int score = board.get_score();
+	return (board.get_turn_to_move() == Turn::SENTE) ? score : -score;
+}
+
 struct RootMove {
 	Shogi::Move move;
 	int score;
@@ -248,7 +253,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	if (depth <= 0) {
 		// 静止探索を実行
-		return quiescence_search(board, alpha, beta, turn, ply, node_count);
+		if (turn == Turn::SENTE) {
+			return quiescence_search(board, alpha, beta, ply, node_count);
+		}
+		return -quiescence_search(board, -beta, -alpha, ply, node_count);
 	}
 
 	// 王手延長：王手を受けた側は深さを減らさず読む
@@ -664,10 +672,10 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 	dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 }
 
-int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn turn, int ply, uint64_t &node_count,
-		int qs_ply) {
+int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count, int qs_ply) {
 	++node_count;
 
+	Turn turn = board.get_turn_to_move();
 	bool in_check = MoveGenerator::is_king_in_check(board, turn);
 
 	// 千日手（経路反復）：Stand-Patより前に判定
@@ -675,127 +683,71 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, Turn tur
 		uint64_t hash = board.get_zobrist_hash();
 		path_in_check_[ply] = in_check;
 		if (auto rep = detect_path_repetition(ply, hash, turn); rep.has_value()) {
-			return rep.value();
+			return (turn == Turn::SENTE) ? rep.value() : -rep.value();
 		}
 		path_hashes_[ply] = hash;
 	}
 
-	int stand_pat = board.get_score();
+	int stand_pat = side_to_move_score(board);
 
 	// 取り合い連鎖が長すぎる場合は打ち切り
 	if (qs_ply >= QS_PLY_LIMIT) {
 		return stand_pat;
 	}
 
-	if (turn == Turn::SENTE) {
-		if (!in_check) {
-			if (stand_pat >= beta) {
-				return beta;
-			}
-
-			if (stand_pat > alpha) {
-				alpha = stand_pat;
-			}
+	if (!in_check) {
+		if (stand_pat >= beta) {
+			return beta;
 		}
 
-		Shogi::MoveList move_list;
-		MoveGenerator::get_legal_moves(board, move_list, !in_check);
-		if (in_check && move_list.is_empty()) {
-			// 詰み（手番側の負け）
-			return -(MATE_SCORE - ply);
+		if (stand_pat > alpha) {
+			alpha = stand_pat;
 		}
-		std::ranges::sort(move_list, std::ranges::greater{},
-				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
-
-		int max_eval = in_check ? -INFINITE_SCORE : stand_pat;
-
-		for (const auto &move : move_list) {
-			if (!in_check) {
-				// Delta Pruning
-				const Cell &victim = board.get_cell({ move.to_col, move.to_row });
-				int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
-				int promotion_gain = 0;
-				if (move.is_promotion) {
-					int pt = std::to_underlying(move.piece_type);
-					promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
-				}
-				if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
-					continue;
-				}
-				// Static Exchange Evaluation
-				if (MoveGenerator::see(board, move) < 0) {
-					continue;
-				}
-			}
-
-			Shogi::UndoInfo undo = board.apply_move(move);
-			int eval = quiescence_search(board, alpha, beta, Turn::GOTE, ply + 1, node_count, qs_ply + 1);
-			board.undo_move(undo);
-
-			max_eval = std::max(max_eval, eval);
-			alpha = std::max(alpha, eval);
-
-			if (alpha >= beta) {
-				return beta; // βカット
-			}
-		}
-
-		return max_eval;
-	} else {
-		if (!in_check) {
-			if (stand_pat <= alpha) {
-				return alpha;
-			}
-
-			if (stand_pat < beta) {
-				beta = stand_pat;
-			}
-		}
-
-		Shogi::MoveList move_list;
-		MoveGenerator::get_legal_moves(board, move_list, !in_check);
-		if (in_check && move_list.is_empty()) {
-			// 詰み（手番側の負け）
-			return MATE_SCORE - ply;
-		}
-		std::ranges::sort(move_list, std::ranges::greater{},
-				[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
-
-		int min_eval = in_check ? INFINITE_SCORE : stand_pat;
-
-		for (const auto &move : move_list) {
-			if (!in_check) {
-				// Delta Pruning
-				const Cell &victim = board.get_cell({ move.to_col, move.to_row });
-				int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
-				int promotion_gain = 0;
-				if (move.is_promotion) {
-					int pt = std::to_underlying(move.piece_type);
-					promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
-				}
-				if (stand_pat - victim_value - promotion_gain - DELTA_MARGIN >= beta) {
-					continue;
-				}
-				// Static Exchange Evaluation
-				if (MoveGenerator::see(board, move) < 0) {
-					continue;
-				}
-			}
-
-			Shogi::UndoInfo undo = board.apply_move(move);
-			int eval = quiescence_search(board, alpha, beta, Turn::SENTE, ply + 1, node_count, qs_ply + 1);
-			board.undo_move(undo);
-
-			min_eval = std::min(min_eval, eval);
-			beta = std::min(beta, eval);
-
-			if (beta <= alpha) {
-				return alpha; // αカット
-			}
-		}
-
-		return min_eval;
 	}
+
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list, !in_check);
+	if (in_check && move_list.is_empty()) {
+		// 詰み（手番側の負け）
+		return -(MATE_SCORE - ply);
+	}
+	std::ranges::sort(move_list, std::ranges::greater{},
+			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
+
+	int max_eval = in_check ? -INFINITE_SCORE : stand_pat;
+
+	for (const auto &move : move_list) {
+		if (!in_check) {
+			// Delta Pruning
+			const Cell &victim = board.get_cell({ move.to_col, move.to_row });
+			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(victim.type)][victim.is_promoted ? 1 : 0];
+			int promotion_gain = 0;
+			if (move.is_promotion) {
+				int pt = std::to_underlying(move.piece_type);
+				promotion_gain = Shogi::PIECE_VALUES[pt][1] - Shogi::PIECE_VALUES[pt][0];
+			}
+			if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
+				continue;
+			}
+			// Static Exchange Evaluation
+			if (MoveGenerator::see(board, move) < 0) {
+				continue;
+			}
+		}
+
+		Shogi::UndoInfo undo = board.apply_move(move);
+		int eval = -quiescence_search(board, -beta, -alpha, ply + 1, node_count, qs_ply + 1);
+		board.undo_move(undo);
+
+		max_eval = std::max(max_eval, eval);
+		alpha = std::max(alpha, eval);
+
+		if (alpha >= beta) {
+			return beta; // βカット
+		}
+	}
+
+	return max_eval;
 }
 
 double AIPlayer::calculate_win_probability(int score) {
