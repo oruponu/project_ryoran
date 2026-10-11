@@ -109,7 +109,7 @@ void AIPlayer::set_game_history(const std::vector<uint64_t> &hashes, const std::
 	game_history_hash_set_.insert(game_history_hashes_.begin(), game_history_hashes_.end());
 }
 
-std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash, Shogi::Turn stm) {
+std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash) {
 	int v = history_len_ + ply;
 	for (int p = v - 2; p >= 0; p -= 2) {
 		if (p < history_len_ && !game_history_hash_set_.contains(hash)) {
@@ -136,10 +136,10 @@ std::optional<int> AIPlayer::detect_path_repetition(int ply, uint64_t hash, Shog
 
 		int mate = MATE_SCORE - ply;
 		if (stm_perpetual) {
-			return (stm == Turn::SENTE) ? -mate : mate; // 連続王手の千日手は王手側の負け
+			return -mate; // 連続王手の千日手は王手側の負け
 		}
 		if (opp_perpetual) {
-			return (stm == Turn::SENTE) ? mate : -mate;
+			return mate;
 		}
 		return 0;
 	}
@@ -221,8 +221,8 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	// 千日手（経路反復）：TTより前に判定
 	if (ply < MAX_PLY) {
 		path_in_check_[ply] = in_check;
-		if (auto rep = detect_path_repetition(ply, hash, turn_to_move); rep.has_value()) {
-			return (turn_to_move == Turn::SENTE) ? rep.value() : -rep.value();
+		if (auto rep = detect_path_repetition(ply, hash); rep.has_value()) {
+			return rep.value();
 		}
 		path_hashes_[ply] = hash;
 	}
@@ -609,8 +609,8 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 	if (ply < MAX_PLY) {
 		uint64_t hash = board.get_zobrist_hash();
 		path_in_check_[ply] = in_check;
-		if (auto rep = detect_path_repetition(ply, hash, turn); rep.has_value()) {
-			return (turn == Turn::SENTE) ? rep.value() : -rep.value();
+		if (auto rep = detect_path_repetition(ply, hash); rep.has_value()) {
+			return rep.value();
 		}
 		path_hashes_[ply] = hash;
 	}

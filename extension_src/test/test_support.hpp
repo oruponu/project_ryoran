@@ -54,9 +54,7 @@ struct AIPlayerTestAccess {
 			uint64_t &node_count) {
 		return ai.alpha_beta(board, depth, ply, alpha, beta, end_time, timeout, node_count);
 	}
-	std::optional<int> detect_path_repetition(int ply, uint64_t hash, Turn stm) {
-		return ai.detect_path_repetition(ply, hash, stm);
-	}
+	std::optional<int> detect_path_repetition(int ply, uint64_t hash) { return ai.detect_path_repetition(ply, hash); }
 	std::optional<Move> find_mate(BoardState &board, int max_depth) { return ai.find_mate(board, max_depth); }
 	void dfpn_search(BoardState &board, Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn, int depth,
 			uint64_t &node_count, uint64_t max_nodes) {

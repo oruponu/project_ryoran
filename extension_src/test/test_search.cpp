@@ -300,7 +300,7 @@ void run_path_repetition_tests() {
 
 		// 反復なし: 一致する祖先がない
 		ra_t.path_hashes()[0] = 0x1111ULL;
-		check(!ra_t.detect_path_repetition(2, H, Turn::SENTE).has_value(),
+		check(!ra_t.detect_path_repetition(2, H).has_value(),
 				"rep: no repetition when no ancestor matches");
 
 		// 単純反復（王手なし）→ 引き分け0。経路 ply0(=H) → ply1 → ply2(=H,現在)
@@ -308,25 +308,20 @@ void run_path_repetition_tests() {
 		ra_t.path_in_check()[0] = false;
 		ra_t.path_in_check()[1] = false;
 		ra_t.path_in_check()[2] = false; // 呼び出し側が現在の ply の王手状態を書き込む想定
-		auto r1 = ra_t.detect_path_repetition(2, H, Turn::SENTE);
+		auto r1 = ra_t.detect_path_repetition(2, H);
 		check(r1.has_value() && r1.value() == 0, "rep: simple repetition scores draw 0");
 
 		// 手番側(S=SENTE)の連続王手 → S の負け。相手(O)の手番の ply1 が王手を受けている
 		ra_t.path_in_check()[1] = true;
 		ra_t.path_in_check()[2] = false;
-		auto r2 = ra_t.detect_path_repetition(2, H, Turn::SENTE);
+		auto r2 = ra_t.detect_path_repetition(2, H);
 		check(r2.has_value() && r2.value() == -(AIPlayer::MATE_SCORE - 2),
 				"rep: STM perpetual check makes SENTE lose");
-
-		// 同局面で手番 GOTE なら符号反転（S=GOTE が負け = 正の大値）
-		auto r2g = ra_t.detect_path_repetition(2, H, Turn::GOTE);
-		check(r2g.has_value() && r2g.value() == (AIPlayer::MATE_SCORE - 2),
-				"rep: STM perpetual check makes GOTE lose");
 
 		// 相手(O)の連続王手 → S 勝ち。S の手番 ply2(現在) が王手を受けている
 		ra_t.path_in_check()[1] = false;
 		ra_t.path_in_check()[2] = true;
-		auto r3 = ra_t.detect_path_repetition(2, H, Turn::SENTE);
+		auto r3 = ra_t.detect_path_repetition(2, H);
 		check(r3.has_value() && r3.value() == (AIPlayer::MATE_SCORE - 2),
 				"rep: opponent perpetual check makes SENTE win");
 
@@ -338,13 +333,13 @@ void run_path_repetition_tests() {
 		ra_t.path_in_check()[3] = false; // 次の O 手番では王手なし → S連続王手不成立
 		ra_t.path_in_check()[2] = false;
 		ra_t.path_in_check()[4] = false; // S 手番は王手なし → O連続王手も不成立
-		auto r4 = ra_t.detect_path_repetition(4, H, Turn::SENTE);
+		auto r4 = ra_t.detect_path_repetition(4, H);
 		check(r4.has_value() && r4.value() == 0, "rep: non-consecutive checks score draw 0");
 
 		// ply 0 / 1 は手番が同じ祖先がないため必ず nullopt
-		check(!ra_t.detect_path_repetition(0, H, Turn::SENTE).has_value(),
+		check(!ra_t.detect_path_repetition(0, H).has_value(),
 				"rep: ply 0 has no ancestor (nullopt)");
-		check(!ra_t.detect_path_repetition(1, H, Turn::SENTE).has_value(),
+		check(!ra_t.detect_path_repetition(1, H).has_value(),
 				"rep: ply 1 has no ancestor (nullopt)");
 
 		// 相互連続王手（両者とも王手）→ stm_perpetual 優先で手番側 S が負け
@@ -353,7 +348,7 @@ void run_path_repetition_tests() {
 		ra_t.path_hashes()[0] = H;
 		ra_t.path_in_check()[1] = true; // O の手番で王手
 		ra_t.path_in_check()[2] = true; // S(現在) も王手されている
-		auto rm = ra_t.detect_path_repetition(2, H, Turn::SENTE);
+		auto rm = ra_t.detect_path_repetition(2, H);
 		check(rm.has_value() && rm.value() == -(AIPlayer::MATE_SCORE - 2),
 				"rep: mutual perpetual check, STM (SENTE) loses by precedence");
 	}
@@ -371,7 +366,7 @@ void run_history_repetition_tests() {
 		ha.set_game_history({ X, Y }, { false, false });
 		ha_t.path_hashes()[0] = X; // ルート(現局面, 仮想idx2, S手番)が履歴idx0(X)と一致
 		ha_t.path_in_check()[0] = false;
-		auto rh1 = ha_t.detect_path_repetition(0, X, Turn::SENTE);
+		auto rh1 = ha_t.detect_path_repetition(0, X);
 		check(rh1.has_value() && rh1.value() == 0, "rep: history-boundary repetition scores draw 0");
 
 		// (2) 連続王手のサイクルが履歴境界をまたぐ（王手フラグが履歴側）→ 手番側S負け
@@ -379,7 +374,7 @@ void run_history_repetition_tests() {
 		ha.set_game_history({ H, 0xDDDDULL }, { false, true }); // 履歴idx1(O手番)が王手
 		ha_t.path_hashes()[0] = H;
 		ha_t.path_in_check()[0] = false; // 現在(S)は王手を受けていない
-		auto rh2 = ha_t.detect_path_repetition(0, H, Turn::SENTE);
+		auto rh2 = ha_t.detect_path_repetition(0, H);
 		check(rh2.has_value() && rh2.value() == -(AIPlayer::MATE_SCORE - 0),
 				"rep: perpetual across history boundary makes SENTE lose");
 
@@ -392,7 +387,7 @@ void run_history_repetition_tests() {
 		ha_t.path_in_check()[0] = true; // idx1(O手番)が王手を受けている = S が王手をかけている
 		ha_t.path_hashes()[1] = Z; // ply1(仮想idx2, S手番)が履歴Zと一致
 		ha_t.path_in_check()[1] = false; // 現在(S)は王手なし
-		auto rh3 = ha_t.detect_path_repetition(1, Z, Turn::SENTE);
+		auto rh3 = ha_t.detect_path_repetition(1, Z);
 		check(rh3.has_value() && rh3.value() == -(AIPlayer::MATE_SCORE - 1),
 				"rep: perpetual with cycle crossing boundary (path+history)");
 	}
