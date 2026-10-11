@@ -118,7 +118,6 @@ func _reset_game() -> void:
 	is_ai_thinking = false
 	_clear_hint()
 
-	_update_button_states()
 	_update_turn_display()
 	engine_worker.reset()
 	win_rate_bar.reset_bar(true)
@@ -149,8 +148,6 @@ func _on_move_submitted(state: PieceState, col: int, row: int, mode: PromotionMo
 
 
 func _finish_turn(record: MoveRecord) -> void:
-	_clear_hint()
-
 	var outcome := game_referee.commit(record)
 	_update_button_states()
 	_update_last_move_highlight()
