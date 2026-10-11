@@ -11,7 +11,6 @@ signal decision_mode(result: bool)
 @onready var no_button: Button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/NoButton
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	yes_button.pressed.connect(_on_yes_pressed)
 	no_button.pressed.connect(_on_no_pressed)

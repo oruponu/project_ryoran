@@ -30,7 +30,6 @@ var _hint_moves: Array[Dictionary] = []
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	new_game_button.pressed.connect(_on_new_game_button_pressed)
 	undo_button.pressed.connect(_on_undo_button_pressed)

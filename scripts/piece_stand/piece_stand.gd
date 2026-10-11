@@ -20,7 +20,6 @@ const DISPLAY_ORDER: Array[PieceState.Type] = [
 var _labels: Dictionary[PieceState.Type, Label] = {}
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	queue_redraw()
 

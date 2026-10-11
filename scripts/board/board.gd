@@ -18,7 +18,6 @@ var last_move_tween: Tween = null
 var hint_arrows: Array[HintArrow] = []
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	queue_redraw()
 
