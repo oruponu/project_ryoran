@@ -88,7 +88,7 @@ func _on_resign_button_pressed() -> void:
 		return
 
 	var is_sente_win := game_state.is_gote_turn()
-	await _finish_game(is_sente_win)
+	await _end_game(GameEnding.Type.RESIGNATION, is_sente_win)
 
 
 func _update_button_states() -> void:
@@ -171,22 +171,22 @@ func _finish_turn(record: MoveRecord) -> void:
 	var is_gote_turn := game_state.is_gote_turn()
 	match outcome:
 		GameReferee.Outcome.SENNICHITE:
-			await _finish_game_draw()
+			await _end_game(GameEnding.Type.SENNICHITE, false)
 			return
 		GameReferee.Outcome.SENTE_WINS_BY_PERPETUAL_CHECK:
-			await _finish_game_perpetual_check(true)
+			await _end_game(GameEnding.Type.PERPETUAL_CHECK, true)
 			return
 		GameReferee.Outcome.GOTE_WINS_BY_PERPETUAL_CHECK:
-			await _finish_game_perpetual_check(false)
+			await _end_game(GameEnding.Type.PERPETUAL_CHECK, false)
 			return
 		GameReferee.Outcome.CHECKMATE:
 			if _is_ai_turn():
-				await _finish_game(is_gote_turn)
+				await _end_game(GameEnding.Type.RESIGNATION, is_gote_turn)
 				return
 
 			var chose_to_resign: bool = await request_checkmate_decision(is_gote_turn)
 			if chose_to_resign:
-				await _finish_game(is_gote_turn)
+				await _end_game(GameEnding.Type.RESIGNATION, is_gote_turn)
 			else:
 				_undo_to_player_turn()
 			return
@@ -234,7 +234,7 @@ func _to_sente_win_rate(win_rate: float) -> float:
 func _on_search_completed(move: Dictionary) -> void:
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(GameConfig.AI_IS_GOTE)
+		await _end_game(GameEnding.Type.RESIGNATION, GameConfig.AI_IS_GOTE)
 		is_ai_thinking = false
 		return
 
@@ -251,29 +251,11 @@ func _on_search_completed(move: Dictionary) -> void:
 	_finish_turn(record)
 
 
-func _finish_game(is_sente_win: bool) -> void:
+func _end_game(ending: GameEnding.Type, is_sente_win: bool) -> void:
 	_clear_hint()
-	move_history_panel.add_resignation(game_state.move_count + 1)
+	move_history_panel.add_ending(game_state.move_count + 1, ending, is_sente_win)
 	check_label.cancel_animation()
-	await show_game_result(game_state.move_count, is_sente_win)
-	is_game_active = false
-
-	_update_button_states()
-
-
-func _finish_game_draw() -> void:
-	move_history_panel.add_sennichite(game_state.move_count + 1)
-	check_label.cancel_animation()
-	await show_draw_result(game_state.move_count)
-	is_game_active = false
-
-	_update_button_states()
-
-
-func _finish_game_perpetual_check(is_sente_win: bool) -> void:
-	move_history_panel.add_perpetual_check(game_state.move_count + 1, is_sente_win)
-	check_label.cancel_animation()
-	await show_perpetual_check_result(game_state.move_count, is_sente_win)
+	await show_result(game_state.move_count, ending, is_sente_win)
 	is_game_active = false
 
 	_update_button_states()
@@ -392,18 +374,14 @@ func request_promotion_decision() -> bool:
 	return await common_dialog.ask_user("成りますか？", "成る", "成らない")
 
 
-func show_game_result(move_count: int, is_sente_win: bool) -> void:
+func show_result(move_count: int, ending: GameEnding.Type, is_sente_win: bool) -> void:
 	var winner_text := "先手" if is_sente_win else "後手"
-	var message := "まで、%d手で%sの勝ち。" % [move_count, winner_text]
-	await common_dialog.ask_user(message, "OK", "")
-
-
-func show_draw_result(move_count: int) -> void:
-	var message := "まで、%d手で千日手。引き分け。" % move_count
-	await common_dialog.ask_user(message, "OK", "")
-
-
-func show_perpetual_check_result(move_count: int, is_sente_win: bool) -> void:
-	var winner_text := "先手" if is_sente_win else "後手"
-	var message := "まで、%d手で連続王手の千日手。%sの反則勝ち。" % [move_count, winner_text]
+	var message: String
+	match ending:
+		GameEnding.Type.RESIGNATION:
+			message = "まで、%d手で%sの勝ち。" % [move_count, winner_text]
+		GameEnding.Type.SENNICHITE:
+			message = "まで、%d手で千日手。引き分け。" % move_count
+		GameEnding.Type.PERPETUAL_CHECK:
+			message = "まで、%d手で連続王手の千日手。%sの反則勝ち。" % [move_count, winner_text]
 	await common_dialog.ask_user(message, "OK", "")

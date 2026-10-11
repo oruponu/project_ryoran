@@ -11,20 +11,18 @@ func add_game_start(move_count: int) -> void:
 	_append_entry_row(move_count, "開始局面")
 
 
-func add_resignation(move_count: int) -> void:
-	var is_sente_turn = (move_count - 1) % 2 == 0
-	var marker = "▲" if is_sente_turn else "△"
-	var move_text = "%s投了" % marker
-	_append_entry_row(move_count, move_text)
-
-
-func add_sennichite(move_count: int) -> void:
-	_append_entry_row(move_count, "千日手")
-
-
-func add_perpetual_check(move_count: int, is_sente_win: bool) -> void:
-	var marker := "▲" if is_sente_win else "△"
-	_append_entry_row(move_count, "%s反則勝ち" % marker)
+func add_ending(move_count: int, ending: GameEnding.Type, is_sente_win: bool) -> void:
+	var winner_marker := "▲" if is_sente_win else "△"
+	var loser_marker := "△" if is_sente_win else "▲"
+	var ending_text: String
+	match ending:
+		GameEnding.Type.RESIGNATION:
+			ending_text = "%s投了" % loser_marker
+		GameEnding.Type.SENNICHITE:
+			ending_text = "千日手"
+		GameEnding.Type.PERPETUAL_CHECK:
+			ending_text = "%s反則勝ち" % winner_marker
+	_append_entry_row(move_count, ending_text)
 
 
 func add_move(move_count: int, record: MoveRecord, prev_record: MoveRecord) -> void:
