@@ -61,10 +61,6 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 
 
 func refresh_display() -> void:
-	_update_display()
-
-
-func _update_display() -> void:
 	if state == null or not PIECE_DATA.has(state.piece_type):
 		label.text = "？"
 		return
