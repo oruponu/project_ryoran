@@ -3,9 +3,9 @@ class_name WinRateBar
 extends Control
 
 
-@onready var sente_bar = $LayoutContainer/MarginContainer/BarArea/SenteBar
-@onready var sente_value_label = $LayoutContainer/SenteValueLabel
-@onready var gote_value_label = $LayoutContainer/GoteValueLabel
+@onready var sente_bar: ColorRect = $LayoutContainer/MarginContainer/BarArea/SenteBar
+@onready var sente_value_label: Label = $LayoutContainer/SenteValueLabel
+@onready var gote_value_label: Label = $LayoutContainer/GoteValueLabel
 
 
 var _tween: Tween
@@ -16,17 +16,17 @@ func _ready() -> void:
 	reset_bar(true)
 
 
-func reset_bar(immediate: bool):
+func reset_bar(immediate: bool) -> void:
 	update_bar(0.5, immediate)
 
 
-func update_bar(sente_win_rate: float, immediate: bool = false):
-	var target_ratio = clamp(sente_win_rate, 0.0, 1.0)
+func update_bar(sente_win_rate: float, immediate: bool = false) -> void:
+	var target_ratio := clampf(sente_win_rate, 0.0, 1.0)
 
-	var sente_percent = int(target_ratio * 100)
+	var sente_percent := int(target_ratio * 100)
 	if sente_percent == 0 and target_ratio > 0.0:
 		sente_percent = 1
-	var gote_percent = 100 - sente_percent
+	var gote_percent := 100 - sente_percent
 
 	sente_value_label.text = str(sente_percent)
 	gote_value_label.text = str(gote_percent)

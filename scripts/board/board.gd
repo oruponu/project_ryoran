@@ -24,9 +24,9 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var board_width = GameConfig.GRID_SIZE * GameConfig.BOARD_COLS
-	var board_height = GameConfig.GRID_SIZE * GameConfig.BOARD_ROWS
-	var background_rect = Rect2(
+	var board_width := GameConfig.GRID_SIZE * GameConfig.BOARD_COLS
+	var board_height := GameConfig.GRID_SIZE * GameConfig.BOARD_ROWS
+	var background_rect := Rect2(
 		Vector2(-MARGIN, -MARGIN),
 		Vector2(board_width + MARGIN * 2, board_height + MARGIN * 2)
 	)
@@ -34,35 +34,35 @@ func _draw() -> void:
 	draw_rect(background_rect, GameConfig.LINE_COLOR, false, 2.0)
 
 	for col in range(GameConfig.BOARD_COLS + 1):
-		var start_pos = Vector2(col * GameConfig.GRID_SIZE, 0)
-		var end_pos = Vector2(col * GameConfig.GRID_SIZE, GameConfig.BOARD_ROWS * GameConfig.GRID_SIZE)
+		var start_pos := Vector2(col * GameConfig.GRID_SIZE, 0)
+		var end_pos := Vector2(col * GameConfig.GRID_SIZE, GameConfig.BOARD_ROWS * GameConfig.GRID_SIZE)
 		draw_line(start_pos, end_pos, GameConfig.LINE_COLOR, 2.0)
 
 	for row in range(GameConfig.BOARD_ROWS + 1):
-		var start_pos = Vector2(0, row * GameConfig.GRID_SIZE)
-		var end_pos = Vector2(GameConfig.BOARD_COLS * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
+		var start_pos := Vector2(0, row * GameConfig.GRID_SIZE)
+		var end_pos := Vector2(GameConfig.BOARD_COLS * GameConfig.GRID_SIZE, row * GameConfig.GRID_SIZE)
 		draw_line(start_pos, end_pos, GameConfig.LINE_COLOR, 2.0)
 
 	_draw_coordinates()
 
 
 func _draw_coordinates() -> void:
-	var font = ThemeDB.get_fallback_font()
-	var font_size = 16
-	var offset_y = -5
-	var offset_x = 3
+	var font := ThemeDB.get_fallback_font()
+	var font_size := 16
+	var offset_y := -5
+	var offset_x := 3
 
 	for col in range(GameConfig.BOARD_COLS):
-		var text = GameConfig.ARABIC_NUMS[9 - col - 1]
-		var pos_x = col * GameConfig.GRID_SIZE
-		var pos = Vector2(pos_x, offset_y)
+		var text := GameConfig.ARABIC_NUMS[9 - col - 1]
+		var pos_x := col * GameConfig.GRID_SIZE
+		var pos := Vector2(pos_x, offset_y)
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, GameConfig.GRID_SIZE, font_size, TEXT_COLOR)
 
 	for row in range(GameConfig.BOARD_ROWS):
-		var text = GameConfig.KANJI_NUMS[row]
-		var pos_x = GameConfig.BOARD_COLS * GameConfig.GRID_SIZE + offset_x
-		var cell_center_y = row * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
-		var pos = Vector2(pos_x, cell_center_y)
+		var text := GameConfig.KANJI_NUMS[row]
+		var pos_x := GameConfig.BOARD_COLS * GameConfig.GRID_SIZE + offset_x
+		var cell_center_y := row * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
+		var pos := Vector2(pos_x, cell_center_y)
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
 
@@ -76,7 +76,7 @@ func show_guides(coords_list: Array[Vector2i]) -> void:
 	clear_guides()
 
 	for coord in coords_list:
-		var rect = ColorRect.new()
+		var rect := ColorRect.new()
 		rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
 		rect.position = Vector2(coord.x * GameConfig.GRID_SIZE, coord.y * GameConfig.GRID_SIZE)
 		rect.color = GUIDE_COLOR

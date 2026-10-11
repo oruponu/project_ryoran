@@ -19,11 +19,11 @@ func _ready() -> void:
 	_check_player.volume_db = volume_db
 
 
-func play_place():
+func play_place() -> void:
 	stream = SE_PLACE
 	play()
 
 
-func play_check():
+func play_check() -> void:
 	_check_player.stream = SE_CHECK
 	_check_player.play()

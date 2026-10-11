@@ -3,7 +3,7 @@ class_name GameState
 extends RefCounted
 
 
-var board_grid: Array = []
+var board_grid: Array[Array] = []
 var move_count: int = 0
 var move_history: Array[MoveRecord] = []
 var sente_hand: Array[PieceState] = []

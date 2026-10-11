@@ -6,9 +6,9 @@ extends CanvasLayer
 signal decision_mode(result: bool)
 
 
-@onready var message_label = $Overlay/PanelContainer/VBoxContainer/MessageLabel
-@onready var yes_button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/YesButton
-@onready var no_button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/NoButton
+@onready var message_label: Label = $Overlay/PanelContainer/VBoxContainer/MessageLabel
+@onready var yes_button: Button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/YesButton
+@onready var no_button: Button = $Overlay/PanelContainer/VBoxContainer/HBoxContainer/NoButton
 
 
 # Called when the node enters the scene tree for the first time.
@@ -29,7 +29,7 @@ func ask_user(message: String, yes_text: String = "はい", no_text: String = "�
 		no_button.show()
 
 	show()
-	var result = await decision_mode
+	var result: bool = await decision_mode
 	return result
 
 

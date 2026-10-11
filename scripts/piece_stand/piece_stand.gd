@@ -6,7 +6,7 @@ extends Node2D
 @export var is_gote: bool = false
 
 
-const DISPLAY_ORDER = [
+const DISPLAY_ORDER: Array[PieceState.Type] = [
 	PieceState.Type.PAWN,
 	PieceState.Type.LANCE,
 	PieceState.Type.KNIGHT,
@@ -17,7 +17,7 @@ const DISPLAY_ORDER = [
 ]
 
 
-var _labels: Dictionary = {}
+var _labels: Dictionary[PieceState.Type, Label] = {}
 
 
 # Called when the node enters the scene tree for the first time.
@@ -26,7 +26,7 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var rect = Rect2(0, 0, GameConfig.GRID_SIZE + 20, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
+	var rect := Rect2(0, 0, GameConfig.GRID_SIZE + 20, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
 	draw_rect(rect, GameConfig.BOARD_COLOR)
 	draw_rect(rect, GameConfig.LINE_COLOR, false, 2.0)
 
@@ -47,7 +47,7 @@ func hide_count_labels() -> void:
 
 
 func update_layout(immediate: bool = false) -> void:
-	var groups = {}
+	var groups: Dictionary[PieceState.Type, Array] = {}
 	for piece_type in DISPLAY_ORDER:
 		groups[piece_type] = []
 
@@ -58,29 +58,29 @@ func update_layout(immediate: bool = false) -> void:
 	for label in _labels.values():
 		label.visible = false
 
-	var stack_index = 0
-	var total_height = GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
+	var stack_index := 0
+	var total_height := GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
 
-	var center_x = 0.0
+	var center_x := 0.0
 	if is_gote:
 		center_x = GameConfig.GRID_SIZE / 2.0 + 20
 	else:
 		center_x = GameConfig.GRID_SIZE / 2.0
 
 	for piece_type in DISPLAY_ORDER:
-		var pieces = groups[piece_type] as Array
+		var pieces: Array = groups[piece_type]
 		if pieces.is_empty():
 			continue
 
-		var center_y = 0.0
+		var center_y := 0.0
 		if is_gote:
 			center_y = (stack_index * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
 		else:
 			center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
 
-		var target_pos = Vector2(center_x, center_y)
+		var target_pos := Vector2(center_x, center_y)
 
-		var representative = pieces[0]
+		var representative: Piece = pieces[0]
 		representative.visible = true
 
 		if immediate:
@@ -90,10 +90,10 @@ func update_layout(immediate: bool = false) -> void:
 				pieces[i].visible = false
 				pieces[i].position = target_pos
 		else:
-			var distance = representative.position.distance_to(target_pos)
-			var is_capturing = distance > GameConfig.GRID_SIZE
+			var distance := representative.position.distance_to(target_pos)
+			var is_capturing := distance > GameConfig.GRID_SIZE
 
-			var tween = create_tween()
+			var tween := create_tween()
 			tween.tween_property(representative, "position", target_pos, 0.2)
 
 			if is_capturing:
@@ -107,11 +107,11 @@ func update_layout(immediate: bool = false) -> void:
 		representative.rotation_degrees = 180 if is_gote else 0
 
 		if pieces.size() > 1:
-			var label = _get_label(piece_type)
+			var label := _get_label(piece_type)
 			label.text = str(pieces.size())
 			label.visible = true
 
-			var label_offset = Vector2(35, 0)
+			var label_offset := Vector2(35, 0)
 			if is_gote:
 				label.position = target_pos - label_offset
 				label.rotation_degrees = 180
@@ -126,7 +126,7 @@ func _get_label(piece_type: PieceState.Type) -> Label:
 	if _labels.has(piece_type):
 		return _labels[piece_type]
 
-	var label = Label.new()
+	var label := Label.new()
 	label.add_theme_color_override("font_color", Color.BLACK)
 	label.add_theme_font_size_override("font_size", 24)
 	label.z_index = 5
