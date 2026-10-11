@@ -197,24 +197,24 @@ void run_uchifuzume_tests() {
 }
 
 void run_promotion_rule_tests() {
-	check(MoveGenerator::is_dead_end(P, false, 0), "dead_end: SENTE pawn on rank 1");
-	check(!MoveGenerator::is_dead_end(P, false, 1), "dead_end: SENTE pawn on rank 2 is allowed");
-	check(MoveGenerator::is_dead_end(N, false, 1), "dead_end: SENTE knight on rank 2");
-	check(MoveGenerator::is_dead_end(P, true, 8), "dead_end: GOTE pawn on rank 9");
+	check(MoveGenerator::is_dead_end(P, Turn::SENTE, 0), "dead_end: SENTE pawn on rank 1");
+	check(!MoveGenerator::is_dead_end(P, Turn::SENTE, 1), "dead_end: SENTE pawn on rank 2 is allowed");
+	check(MoveGenerator::is_dead_end(N, Turn::SENTE, 1), "dead_end: SENTE knight on rank 2");
+	check(MoveGenerator::is_dead_end(P, Turn::GOTE, 8), "dead_end: GOTE pawn on rank 9");
 
-	check(MoveGenerator::can_promote(P, false, false, 3, 2), "can_promote: SENTE to-square in zone");
-	check(MoveGenerator::can_promote(P, false, false, 2, 3), "can_promote: SENTE from-square in zone");
-	check(!MoveGenerator::can_promote(P, false, false, 4, 3), "can_promote: SENTE both squares outside zone");
-	check(MoveGenerator::can_promote(P, false, true, 5, 6), "can_promote: GOTE to-square in zone");
-	check(MoveGenerator::can_promote(P, false, true, 6, 5), "can_promote: GOTE from-square in zone");
-	check(!MoveGenerator::can_promote(P, false, true, 4, 5), "can_promote: GOTE both squares outside zone");
-	check(!MoveGenerator::can_promote(P, false, true, 3, 2), "can_promote: SENTE zone does not apply to GOTE");
-	check(MoveGenerator::can_promote(S, false, false, 3, 2), "can_promote: silver can promote in zone");
-	check(!MoveGenerator::can_promote(P, true, false, 3, 2), "can_promote: promoted piece cannot promote");
-	check(!MoveGenerator::can_promote(K, false, false, 3, 2), "can_promote: king cannot promote");
-	check(!MoveGenerator::can_promote(G, false, false, 3, 2), "can_promote: gold cannot promote");
-	check(!MoveGenerator::can_promote(P, false, false, -1, 9), "can_promote: both rows out of range");
-	check(MoveGenerator::can_promote(P, false, false, -1, 2), "can_promote: one row out of range, other in zone");
+	check(MoveGenerator::can_promote(P, false, Turn::SENTE, 3, 2), "can_promote: SENTE to-square in zone");
+	check(MoveGenerator::can_promote(P, false, Turn::SENTE, 2, 3), "can_promote: SENTE from-square in zone");
+	check(!MoveGenerator::can_promote(P, false, Turn::SENTE, 4, 3), "can_promote: SENTE both squares outside zone");
+	check(MoveGenerator::can_promote(P, false, Turn::GOTE, 5, 6), "can_promote: GOTE to-square in zone");
+	check(MoveGenerator::can_promote(P, false, Turn::GOTE, 6, 5), "can_promote: GOTE from-square in zone");
+	check(!MoveGenerator::can_promote(P, false, Turn::GOTE, 4, 5), "can_promote: GOTE both squares outside zone");
+	check(!MoveGenerator::can_promote(P, false, Turn::GOTE, 3, 2), "can_promote: SENTE zone does not apply to GOTE");
+	check(MoveGenerator::can_promote(S, false, Turn::SENTE, 3, 2), "can_promote: silver can promote in zone");
+	check(!MoveGenerator::can_promote(P, true, Turn::SENTE, 3, 2), "can_promote: promoted piece cannot promote");
+	check(!MoveGenerator::can_promote(K, false, Turn::SENTE, 3, 2), "can_promote: king cannot promote");
+	check(!MoveGenerator::can_promote(G, false, Turn::SENTE, 3, 2), "can_promote: gold cannot promote");
+	check(!MoveGenerator::can_promote(P, false, Turn::SENTE, -1, 9), "can_promote: both rows out of range");
+	check(MoveGenerator::can_promote(P, false, Turn::SENTE, -1, 2), "can_promote: one row out of range, other in zone");
 }
 
 void run_king_move_tests() {

@@ -20,8 +20,8 @@ private:
 	[[nodiscard]] static bool is_uchifuzume(BoardState &board, Shogi::Coord to);
 
 public:
-	[[nodiscard]] static bool is_dead_end(Shogi::PieceType piece_type, bool is_gote, int to_row);
-	[[nodiscard]] static bool can_promote(Shogi::PieceType piece_type, bool is_promoted, bool is_gote, int from_row, int to_row);
+	[[nodiscard]] static bool is_dead_end(Shogi::PieceType piece_type, Shogi::Turn turn, int to_row);
+	[[nodiscard]] static bool can_promote(Shogi::PieceType piece_type, bool is_promoted, Shogi::Turn turn, int from_row, int to_row);
 	[[nodiscard]] static bool is_king_in_check(const BoardState &board, Shogi::Turn turn);
 	[[nodiscard]] static int see(const BoardState &board, const Shogi::Move &move);
 	static void get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures = false);

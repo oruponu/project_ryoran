@@ -85,8 +85,8 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 	return pin_masks;
 }
 
-bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_gote, int to_row) {
-	int relative_row = is_gote ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
+bool MoveGenerator::is_dead_end(PieceType piece_type, Turn turn, int to_row) {
+	int relative_row = turn == Turn::GOTE ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
 	using enum PieceType;
 	switch (piece_type) {
 		case PAWN:
@@ -99,13 +99,13 @@ bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_gote, int to_row) 
 	}
 }
 
-bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, bool is_gote, int from_row, int to_row) {
+bool MoveGenerator::can_promote(PieceType piece_type, bool is_promoted, Turn turn, int from_row, int to_row) {
 	if (is_promoted || piece_type == PieceType::KING || piece_type == PieceType::GOLD) {
 		return false;
 	}
 
-	auto in_zone = [is_gote](int row) {
-		const int relative_row = is_gote ? (Shogi::BOARD_ROWS - 1 - row) : row;
+	auto in_zone = [turn](int row) {
+		const int relative_row = turn == Turn::GOTE ? (Shogi::BOARD_ROWS - 1 - row) : row;
 		return 0 <= relative_row && relative_row < Shogi::PROMOTION_ZONE_ROWS;
 	};
 	return in_zone(from_row) || in_zone(to_row);
@@ -230,8 +230,8 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 				}
 
 				// 成り判定
-				bool promotable = can_promote(piece_type, is_promoted, turn == Turn::GOTE, from.row, to.row);
-				bool must_promote = !is_promoted && is_dead_end(piece_type, turn == Turn::GOTE, to.row);
+				bool promotable = can_promote(piece_type, is_promoted, turn, from.row, to.row);
+				bool must_promote = !is_promoted && is_dead_end(piece_type, turn, to.row);
 
 				if (!must_promote) {
 					move_list.push(Shogi::Move(from.col, from.row, to.col, to.row, piece_type, false, false, is_capture));
@@ -266,7 +266,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 
 					Coord to = Coord::from_index(to_index);
 
-					if (is_dead_end(piece_type, turn == Turn::GOTE, to.row)) {
+					if (is_dead_end(piece_type, turn, to.row)) {
 						continue;
 					}
 					if (piece_type == PieceType::PAWN && is_nifu(board, piece_type, turn, to.col)) {
