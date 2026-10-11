@@ -15,7 +15,6 @@
 using namespace godot;
 using Shogi::Coord;
 using Shogi::Move;
-using Shogi::PieceType;
 using Shogi::Turn;
 
 namespace {
@@ -90,6 +89,15 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 	ClassDB::bind_method(D_METHOD("search_top_moves", "count"), &ShogiEngine::search_top_moves);
 	ClassDB::bind_method(D_METHOD("set_time_limit_msec", "msec"), &ShogiEngine::set_time_limit_msec);
+
+	BIND_ENUM_CONSTANT(PIECE_KING);
+	BIND_ENUM_CONSTANT(PIECE_ROOK);
+	BIND_ENUM_CONSTANT(PIECE_BISHOP);
+	BIND_ENUM_CONSTANT(PIECE_GOLD);
+	BIND_ENUM_CONSTANT(PIECE_SILVER);
+	BIND_ENUM_CONSTANT(PIECE_KNIGHT);
+	BIND_ENUM_CONSTANT(PIECE_LANCE);
+	BIND_ENUM_CONSTANT(PIECE_PAWN);
 }
 
 void ShogiEngine::load_book_from_file(const String &path) {
@@ -120,7 +128,7 @@ void ShogiEngine::load_book_from_file(const String &path) {
 			bool is_drop = file->get_8() != 0;
 			bool is_capture = file->get_8() != 0;
 
-			Move move(from_col, from_row, to_col, to_row, static_cast<PieceType>(piece_type), is_promotion, is_drop,
+			Move move(from_col, from_row, to_col, to_row, static_cast<Shogi::PieceType>(piece_type), is_promotion, is_drop,
 					is_capture);
 			book_[hash].push_back(move);
 		}
@@ -166,7 +174,7 @@ TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_
 	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
 		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
 			Coord to{ col, row };
-			if (MoveGenerator::is_legal_drop(board, static_cast<PieceType>(piece_type), is_gote, to)) {
+			if (MoveGenerator::is_legal_drop(board, static_cast<Shogi::PieceType>(piece_type), is_gote, to)) {
 				result.append(Vector2i(col, row));
 			}
 		}
@@ -203,7 +211,7 @@ bool ShogiEngine::is_dead_end(int piece_type, bool is_gote, int to_row) {
 		return false;
 	}
 
-	return MoveGenerator::is_dead_end(static_cast<PieceType>(piece_type), is_gote, to_row);
+	return MoveGenerator::is_dead_end(static_cast<Shogi::PieceType>(piece_type), is_gote, to_row);
 }
 
 bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_gote, int from_row, int to_row) {
@@ -212,7 +220,7 @@ bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_gote, in
 		return false;
 	}
 
-	return MoveGenerator::can_promote(static_cast<PieceType>(piece_type), is_promoted, is_gote, from_row, to_row);
+	return MoveGenerator::can_promote(static_cast<Shogi::PieceType>(piece_type), is_promoted, is_gote, from_row, to_row);
 }
 
 void ShogiEngine::update_state_from_sfen(const String &sfen) {

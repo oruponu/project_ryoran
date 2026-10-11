@@ -11,6 +11,7 @@ func _initialize() -> void:
 	var engine := ShogiEngine.new()
 
 	_test_serializer()
+	_test_piece_type_values()
 	_test_initial_position(engine)
 	_test_hash_turn_bit(engine)
 	_test_pinned_gold(engine)
@@ -64,6 +65,21 @@ func _test_serializer() -> void:
 	var serializer := SfenSerializer.new(game_state)
 	var expected := "4k4/9/3+r5/9/9/9/4P4/9/+S3K4 w 2Pg 2"
 	_check("シリアライザー: 盤・成駒・持ち駒・後手番・手数", serializer.to_sfen() == expected)
+
+
+func _test_piece_type_values() -> void:
+	var pairs := {
+		PieceState.Type.KING: ShogiEngine.PIECE_KING,
+		PieceState.Type.ROOK: ShogiEngine.PIECE_ROOK,
+		PieceState.Type.BISHOP: ShogiEngine.PIECE_BISHOP,
+		PieceState.Type.GOLD: ShogiEngine.PIECE_GOLD,
+		PieceState.Type.SILVER: ShogiEngine.PIECE_SILVER,
+		PieceState.Type.KNIGHT: ShogiEngine.PIECE_KNIGHT,
+		PieceState.Type.LANCE: ShogiEngine.PIECE_LANCE,
+		PieceState.Type.PAWN: ShogiEngine.PIECE_PAWN,
+	}
+	for piece_type in pairs:
+		_check("駒種の値: %s" % PieceState.Type.keys()[piece_type], piece_type == pairs[piece_type])
 
 
 func _piece_state(piece_type: PieceState.Type, is_gote: bool, is_promoted: bool, col: int, row: int) -> PieceState:
