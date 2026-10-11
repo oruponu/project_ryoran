@@ -395,10 +395,6 @@ void BoardState::update_pawn_columns_cache() {
 	}
 }
 
-const Cell &BoardState::get_cell(Coord coord) const {
-	return board_[coord.to_index()];
-}
-
 void BoardState::set_cell(Coord coord, PieceType piece_type, Turn turn, bool is_promoted) {
 	if (!coord.is_valid()) {
 		return;

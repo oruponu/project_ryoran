@@ -114,7 +114,7 @@ public:
 	}
 
 	// 盤面の操作
-	[[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const;
+	[[nodiscard]] const Cell &get_cell(Shogi::Coord coord) const { return board_[coord.to_index()]; }
 	void set_cell(Shogi::Coord coord, Shogi::PieceType piece_type, Shogi::Turn turn, bool is_promoted);
 	void clear_cell(Shogi::Coord coord);
 	[[nodiscard]] int get_hand_count(Shogi::Turn turn, Shogi::PieceType piece_type) const;
