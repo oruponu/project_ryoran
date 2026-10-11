@@ -55,7 +55,6 @@ func _ready() -> void:
 		board_view,
 		audio_stream_player,
 		engine_worker,
-		_shogi_engine,
 		game_dialogs.request_promotion
 	)
 
@@ -144,17 +143,10 @@ func _on_piece_clicked(piece: Piece) -> void:
 	input_controller.handle_click(piece)
 
 
-func _on_move_submitted(piece: Piece, col: int, row: int) -> void:
+func _on_move_submitted(piece: Piece, col: int, row: int, mode: PromotionMode.Type) -> void:
 	_clear_hint()
 
-	var state := piece.state
-	var mode: PromotionMode.Type
-	if _shogi_engine.is_dead_end(state.piece_type, state.is_gote, row):
-		mode = PromotionMode.Type.FORCE_PROMOTE
-	else:
-		mode = PromotionMode.Type.ASK_USER
-
-	var record: MoveRecord = await move_executor.execute(state, col, row, mode)
+	var record: MoveRecord = await move_executor.execute(piece.state, col, row, mode)
 	_finish_turn(record)
 
 

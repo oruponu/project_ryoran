@@ -115,35 +115,6 @@ bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to)
 			.is_set(to_index);
 }
 
-bool MoveGenerator::is_valid_drop(const BoardState &board, PieceType piece_type, bool is_gote, Coord to) {
-	// 盤面の範囲外には配置不可
-	if (!to.is_valid()) {
-		return false;
-	}
-
-	// すでに駒がある場所には配置不可
-	if (!board.get_cell(to).is_empty()) {
-		return false;
-	}
-
-	Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
-	if (board.get_hand_count(turn, piece_type) <= 0) {
-		return false;
-	}
-
-	// 行き所のない場所には配置不可
-	if (is_dead_end(piece_type, is_gote, to.row)) {
-		return false;
-	}
-
-	// 二歩になる場所には配置不可
-	if (is_nifu(board, piece_type, turn, to.col)) {
-		return false;
-	}
-
-	return true;
-}
-
 bool MoveGenerator::is_legal_move(BoardState &board, Coord from, Coord to) {
 	if (!is_valid_move(board, from, to)) {
 		return false;
@@ -182,36 +153,6 @@ bool MoveGenerator::is_legal_move(BoardState &board, Coord from, Coord to) {
 	board.add_piece_to_bitboard(from_index, from_cell.turn, from_cell.piece_type, from_cell.is_promoted);
 
 	return !in_check;
-}
-
-bool MoveGenerator::is_legal_drop(BoardState &board, PieceType piece_type, bool is_gote, Coord to) {
-	if (!is_valid_drop(board, piece_type, is_gote, to)) {
-		return false;
-	}
-
-	const Turn turn = is_gote ? Turn::GOTE : Turn::SENTE;
-	const int to_index = to.to_index();
-
-	board.board_[to_index] = Cell(piece_type, turn, false);
-
-	board.add_piece_to_bitboard(to_index, turn, piece_type, false);
-
-	// 王手放置になる手を除外
-	const bool in_check = is_king_in_check(board, turn);
-
-	board.board_[to_index] = Cell();
-
-	board.remove_piece_from_bitboard(to_index, turn, piece_type, false);
-
-	if (in_check) {
-		return false;
-	}
-
-	if (piece_type == PieceType::PAWN && is_uchifuzume(board, turn, to)) {
-		return false;
-	}
-
-	return true;
 }
 
 bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_gote, int to_row) {

@@ -7,7 +7,6 @@ var _game_state: GameState
 var _board_view: BoardView
 var _audio_stream_player: GameAudioPlayer
 var _engine_worker: EngineWorker
-var _shogi_engine: ShogiEngine
 var _promotion_decider: Callable
 
 
@@ -16,14 +15,12 @@ func _init(
 	board_view: BoardView,
 	audio_stream_player: GameAudioPlayer,
 	engine_worker: EngineWorker,
-	shogi_engine: ShogiEngine,
 	promotion_decider: Callable
 ) -> void:
 	_game_state = game_state
 	_board_view = board_view
 	_audio_stream_player = audio_stream_player
 	_engine_worker = engine_worker
-	_shogi_engine = shogi_engine
 	_promotion_decider = promotion_decider
 
 
@@ -39,8 +36,6 @@ func execute(state: PieceState, col: int, row: int, mode: PromotionMode.Type) ->
 
 
 func _execute_move(state: PieceState, col: int, row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
-	var prev_row: int = state.current_row
-
 	var captured_state := _game_state.get_piece(col, row)
 	if captured_state != null:
 		move_record.captured_promoted = captured_state.is_promoted
@@ -53,7 +48,7 @@ func _execute_move(state: PieceState, col: int, row: int, move_record: MoveRecor
 
 	_audio_stream_player.play_place()
 
-	await _handle_promotion(state, prev_row, row, move_record, mode)
+	await _handle_promotion(state, move_record, mode)
 
 
 func _execute_drop(state: PieceState, col: int, row: int) -> void:
@@ -84,16 +79,12 @@ func undo(record: MoveRecord) -> void:
 		_board_view.revive_piece(record.captured_state)
 
 
-func _handle_promotion(state: PieceState, prev_row: int, current_row: int, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
-	if not _shogi_engine.can_promote(state.piece_type, state.is_promoted, state.is_gote, prev_row, current_row):
-		return
-
-	_board_view.node_for(state).is_held = false
-
+func _handle_promotion(state: PieceState, move_record: MoveRecord, mode: PromotionMode.Type) -> void:
 	var should_promote := false
 	var analysis_suspended := false
 	match mode:
 		PromotionMode.Type.ASK_USER:
+			_board_view.node_for(state).is_held = false
 			_engine_worker.suspend_analysis()
 			analysis_suspended = true
 			should_promote = await _promotion_decider.call()

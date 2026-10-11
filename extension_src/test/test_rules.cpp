@@ -71,13 +71,11 @@ void run_uchifuzume_tests() {
 			return false;
 		};
 
-		// 1) 単純な打ち歩詰め → 手生成から除外され、is_legal_drop も false
+		// 1) 単純な打ち歩詰め → 手生成から除外される
 		{
 			BoardState board = make_base();
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(!contains_pawn_drop_12(board), "uchifuzume: mating pawn drop not generated");
-			check(!MoveGenerator::is_legal_drop(board, P, false, { 0, 1 }),
-					"uchifuzume: is_legal_drop rejects mating pawn drop");
 		}
 
 		// 2) 2一香を除くと玉が2一へ逃げられる → 王手だが詰みではないので合法
@@ -86,8 +84,6 @@ void run_uchifuzume_tests() {
 			board.clear_cell({ 1, 0 });
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(contains_pawn_drop_12(board), "uchifuzume: checking drop with escape square stays legal");
-			check(MoveGenerator::is_legal_drop(board, P, false, { 0, 1 }),
-					"uchifuzume: is_legal_drop allows drop with escape");
 		}
 
 		// 3) 1六飛が1二に利いていて歩を取れる → 合法
@@ -163,26 +159,9 @@ void run_uchifuzume_tests() {
 				}
 			}
 			check(!found, "uchifuzume: GOTE mating pawn drop not generated (mirror)");
-			check(!MoveGenerator::is_legal_drop(board, P, true, { 8, 7 }),
-					"uchifuzume: is_legal_drop rejects GOTE mating drop (mirror)");
 		}
 
-		// 8) 手番が打つ側と異なる盤面での照会（GUI経路の再現）でも正しく判定される
-		{
-			BoardState board(Turn::GOTE); // 手番はGOTEのまま、先手の歩打ちを照会する
-			board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 1一玉
-			board.set_cell({ 1, 0 }, L, Turn::GOTE, false); // 2一香
-			board.set_cell({ 1, 1 }, N, Turn::GOTE, false); // 2二桂
-			board.set_cell({ 1, 2 }, G, Turn::SENTE, false); // 2三金
-			board.set_cell({ 4, 8 }, K, Turn::SENTE, false); // 5九玉
-			board.set_hand_count(Turn::SENTE, P, 1);
-			uint64_t hash = board.get_zobrist_hash();
-			check(!MoveGenerator::is_legal_drop(board, P, false, { 0, 1 }),
-					"uchifuzume: rejected even when board turn differs from dropping side");
-			check(board.get_zobrist_hash() == hash, "uchifuzume: mismatched-turn probe restores hash");
-		}
-
-		// 9) 紐のない歩は玉で取れる → 王手でも合法（打ち歩詰めにならない、よくある形）
+		// 8) 紐のない歩は玉で取れる → 王手でも合法（打ち歩詰めにならない、よくある形）
 		{
 			BoardState board = make_base();
 			board.clear_cell({ 1, 2 }); // 2三金を除去 → 1二の歩に紐がなくなる
@@ -190,6 +169,27 @@ void run_uchifuzume_tests() {
 			check(contains_pawn_drop_12(board), "uchifuzume: undefended pawn capturable by king stays legal");
 		}
 	}
+}
+
+void run_promotion_rule_tests() {
+	check(MoveGenerator::is_dead_end(P, false, 0), "dead_end: SENTE pawn on rank 1");
+	check(!MoveGenerator::is_dead_end(P, false, 1), "dead_end: SENTE pawn on rank 2 is allowed");
+	check(MoveGenerator::is_dead_end(N, false, 1), "dead_end: SENTE knight on rank 2");
+	check(MoveGenerator::is_dead_end(P, true, 8), "dead_end: GOTE pawn on rank 9");
+
+	check(MoveGenerator::can_promote(P, false, false, 3, 2), "can_promote: SENTE to-square in zone");
+	check(MoveGenerator::can_promote(P, false, false, 2, 3), "can_promote: SENTE from-square in zone");
+	check(!MoveGenerator::can_promote(P, false, false, 4, 3), "can_promote: SENTE both squares outside zone");
+	check(MoveGenerator::can_promote(P, false, true, 5, 6), "can_promote: GOTE to-square in zone");
+	check(MoveGenerator::can_promote(P, false, true, 6, 5), "can_promote: GOTE from-square in zone");
+	check(!MoveGenerator::can_promote(P, false, true, 4, 5), "can_promote: GOTE both squares outside zone");
+	check(!MoveGenerator::can_promote(P, false, true, 3, 2), "can_promote: SENTE zone does not apply to GOTE");
+	check(MoveGenerator::can_promote(S, false, false, 3, 2), "can_promote: silver can promote in zone");
+	check(!MoveGenerator::can_promote(P, true, false, 3, 2), "can_promote: promoted piece cannot promote");
+	check(!MoveGenerator::can_promote(K, false, false, 3, 2), "can_promote: king cannot promote");
+	check(!MoveGenerator::can_promote(G, false, false, 3, 2), "can_promote: gold cannot promote");
+	check(!MoveGenerator::can_promote(P, false, false, -1, 9), "can_promote: both rows out of range");
+	check(MoveGenerator::can_promote(P, false, false, -1, 2), "can_promote: one row out of range, other in zone");
 }
 
 } // namespace
@@ -215,4 +215,5 @@ void run_rules_tests() {
 	run_from_sfen_tests();
 	run_set_hand_count_tests();
 	run_uchifuzume_tests();
+	run_promotion_rule_tests();
 }

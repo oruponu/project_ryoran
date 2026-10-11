@@ -9,8 +9,6 @@
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_int64_array.hpp>
 #include <godot_cpp/variant/string.hpp>
-#include <godot_cpp/variant/typed_array.hpp>
-#include <godot_cpp/variant/vector2i.hpp>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -44,11 +42,8 @@ public:
 
 	ShogiEngine();
 
-	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_moves(const godot::String &sfen, int col, int row);
-	[[nodiscard]] godot::TypedArray<godot::Vector2i> get_legal_drops(const godot::String &sfen, int piece_type);
+	[[nodiscard]] godot::Array get_legal_moves(const godot::String &sfen);
 	[[nodiscard]] godot::Dictionary inspect_position(const godot::String &sfen);
-	[[nodiscard]] bool is_dead_end(int piece_type, bool is_gote, int to_row);
-	[[nodiscard]] bool can_promote(int piece_type, bool is_promoted, bool is_gote, int from_row, int to_row);
 
 	void set_game_history(const godot::PackedInt64Array &hashes, const godot::PackedByteArray &in_checks);
 	void update_state_from_sfen(const godot::String &sfen);

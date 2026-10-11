@@ -13,13 +13,12 @@
 #include <utility>
 
 using namespace godot;
-using Shogi::Coord;
 using Shogi::Move;
 using Shogi::Turn;
 
 namespace {
 
-Dictionary make_move_dictionary(const Move &move, int score, double win_rate) {
+Dictionary make_move_dictionary(const Move &move) {
 	Dictionary result;
 	result["from_col"] = move.is_drop ? -1 : move.from_col;
 	result["from_row"] = move.is_drop ? -1 : move.from_row;
@@ -28,6 +27,11 @@ Dictionary make_move_dictionary(const Move &move, int score, double win_rate) {
 	result["piece_type"] = std::to_underlying(move.piece_type);
 	result["is_promotion"] = move.is_promotion;
 	result["is_drop"] = move.is_drop;
+	return result;
+}
+
+Dictionary make_scored_move_dictionary(const Move &move, int score, double win_rate) {
+	Dictionary result = make_move_dictionary(move);
 	result["score"] = score;
 	result["win_rate"] = win_rate;
 	return result;
@@ -76,11 +80,8 @@ ShogiEngine::ShogiEngine() {
 }
 
 void ShogiEngine::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_legal_moves", "sfen", "col", "row"), &ShogiEngine::get_legal_moves);
-	ClassDB::bind_method(D_METHOD("get_legal_drops", "sfen", "piece_type"), &ShogiEngine::get_legal_drops);
+	ClassDB::bind_method(D_METHOD("get_legal_moves", "sfen"), &ShogiEngine::get_legal_moves);
 	ClassDB::bind_method(D_METHOD("inspect_position", "sfen"), &ShogiEngine::inspect_position);
-	ClassDB::bind_method(D_METHOD("is_dead_end", "piece_type", "is_gote", "to_row"), &ShogiEngine::is_dead_end);
-	ClassDB::bind_method(D_METHOD("can_promote", "piece_type", "is_promoted", "is_gote", "from_row", "to_row"), &ShogiEngine::can_promote);
 
 	ClassDB::bind_method(D_METHOD("set_game_history", "hashes", "in_checks"), &ShogiEngine::set_game_history);
 	ClassDB::bind_method(D_METHOD("update_state_from_sfen", "sfen"), &ShogiEngine::update_state_from_sfen);
@@ -135,49 +136,16 @@ void ShogiEngine::load_book_from_file(const String &path) {
 	UtilityFunctions::print("Book loaded. Total positions: ", total_hashes);
 }
 
-TypedArray<Vector2i> ShogiEngine::get_legal_moves(const String &sfen, int col, int row) {
-	TypedArray<Vector2i> result;
-
-	Coord from{ col, row };
-	if (!from.is_valid()) {
-		UtilityFunctions::push_error("get_legal_moves: invalid coord (", col, ", ", row, ")");
-		return result;
-	}
-
+Array ShogiEngine::get_legal_moves(const String &sfen) {
 	BoardState board = board_from_sfen(sfen);
 
-	for (int to_col = 0; to_col < Shogi::BOARD_COLS; ++to_col) {
-		for (int to_row = 0; to_row < Shogi::BOARD_ROWS; ++to_row) {
-			Coord to{ to_col, to_row };
-			if (MoveGenerator::is_legal_move(board, from, to)) {
-				result.append(Vector2i(to_col, to_row));
-			}
-		}
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list);
+
+	Array result;
+	for (const Move &move : move_list) {
+		result.append(make_move_dictionary(move));
 	}
-
-	return result;
-}
-
-TypedArray<Vector2i> ShogiEngine::get_legal_drops(const String &sfen, int piece_type) {
-	TypedArray<Vector2i> result;
-
-	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
-		UtilityFunctions::push_error("get_legal_drops: invalid piece_type (", piece_type, ")");
-		return result;
-	}
-
-	BoardState board = board_from_sfen(sfen);
-	bool is_gote = (board.get_turn_to_move() == Turn::GOTE);
-
-	for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
-		for (int row = 0; row < Shogi::BOARD_ROWS; ++row) {
-			Coord to{ col, row };
-			if (MoveGenerator::is_legal_drop(board, static_cast<Shogi::PieceType>(piece_type), is_gote, to)) {
-				result.append(Vector2i(col, row));
-			}
-		}
-	}
-
 	return result;
 }
 
@@ -192,24 +160,6 @@ Dictionary ShogiEngine::inspect_position(const String &sfen) {
 	result["in_check"] = MoveGenerator::is_king_in_check(board, board.get_turn_to_move());
 	result["has_legal_move"] = !move_list.is_empty();
 	return result;
-}
-
-bool ShogiEngine::is_dead_end(int piece_type, bool is_gote, int to_row) {
-	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
-		UtilityFunctions::push_error("is_dead_end: invalid piece_type (", piece_type, ")");
-		return false;
-	}
-
-	return MoveGenerator::is_dead_end(static_cast<Shogi::PieceType>(piece_type), is_gote, to_row);
-}
-
-bool ShogiEngine::can_promote(int piece_type, bool is_promoted, bool is_gote, int from_row, int to_row) {
-	if (piece_type < 0 || piece_type >= Shogi::PIECE_TYPE_COUNT) {
-		UtilityFunctions::push_error("can_promote: invalid piece_type (", piece_type, ")");
-		return false;
-	}
-
-	return MoveGenerator::can_promote(static_cast<Shogi::PieceType>(piece_type), is_promoted, is_gote, from_row, to_row);
 }
 
 void ShogiEngine::update_state_from_sfen(const String &sfen) {
@@ -249,14 +199,14 @@ Array ShogiEngine::search_top_moves(int count) {
 
 		Array result;
 		for (const Move &move : book_moves | std::views::take(std::max(count, 0))) {
-			result.append(make_move_dictionary(move, 0, 0.5));
+			result.append(make_scored_move_dictionary(move, 0, 0.5));
 		}
 		return result;
 	}
 
 	Array result;
 	for (const ScoredMove &entry : ai_player_.search_top_moves(current_state_, count)) {
-		result.append(make_move_dictionary(entry.move, entry.score, entry.win_rate));
+		result.append(make_scored_move_dictionary(entry.move, entry.score, entry.win_rate));
 	}
 	return result;
 }
