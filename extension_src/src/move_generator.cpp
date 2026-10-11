@@ -189,7 +189,8 @@ bool MoveGenerator::is_nifu(const BoardState &board, PieceType piece_type, Turn 
 	return (board.pawn_columns_[std::to_underlying(turn)] & (1 << col)) != 0;
 }
 
-bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
+bool MoveGenerator::is_uchifuzume(BoardState &board, Coord to) {
+	const Turn turn = board.get_turn_to_move();
 	const Turn opponent_turn = Shogi::opponent(turn);
 	auto king_position = board.get_king_position(opponent_turn);
 	if (!king_position.has_value()) {
@@ -202,22 +203,12 @@ bool MoveGenerator::is_uchifuzume(BoardState &board, Turn turn, Coord to) {
 		return false;
 	}
 
-	const bool need_null_move = (board.get_turn_to_move() != turn);
-	uint64_t null_move_hash = 0;
-	if (need_null_move) {
-		null_move_hash = board.make_null_move();
-	}
-
 	Shogi::Move drop_move(0, 0, to.col, to.row, PieceType::PAWN, false, true, false);
 	Shogi::UndoInfo undo = board.apply_move(drop_move);
 	Shogi::MoveList responses;
 	get_legal_moves(board, responses);
 	const bool is_mate = responses.is_empty();
 	board.undo_move(undo);
-
-	if (need_null_move) {
-		board.undo_null_move(null_move_hash);
-	}
 
 	return is_mate;
 }
@@ -349,7 +340,7 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 					if (piece_type == PieceType::PAWN && is_nifu(board, piece_type, turn, to.col)) {
 						continue;
 					}
-					if (piece_type == PieceType::PAWN && is_uchifuzume(board, turn, to)) {
+					if (piece_type == PieceType::PAWN && is_uchifuzume(board, to)) {
 						continue;
 					}
 
