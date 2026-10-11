@@ -66,14 +66,10 @@ func _draw_coordinates() -> void:
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 
 
-func clear_pieces() -> void:
+func clear_overlays() -> void:
 	clear_guides()
 	clear_last_move_highlight()
 	clear_hint_arrows()
-
-	for child in get_children():
-		if child is Piece:
-			child.queue_free()
 
 
 func show_guides(coords_list: Array[Vector2i]) -> void:

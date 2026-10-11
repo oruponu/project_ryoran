@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_check_board_hold_release(main)
 	_check_place_ends_holding(main)
 	_check_hand_hold_release(main)
+	await _check_rebuild(main)
 
 	main.queue_free()
 	await process_frame
@@ -97,3 +98,25 @@ func _check_hand_hold_release(main: Node2D) -> void:
 	_expect("release: 持ち駒の持ち上げを終える", not piece.is_held and piece.z_index == 0)
 	_expect("release: 持ち駒は駒台に残る", piece.get_parent() == main.sente_piece_stand)
 	_expect("position_of: 持ち駒は駒ノードの位置を盤の座標で返す", board_view.position_of(state) == main.board.to_local(piece.global_position))
+
+
+func _check_rebuild(main: Node2D) -> void:
+	var board_view = main.board_view
+	var stand: PieceStand = main.sente_piece_stand
+
+	for col in [5, 6]:
+		var state: PieceState = main.game_state.get_piece(col, 2)
+		main.game_state.capture(state)
+		board_view.capture_piece(state)
+	stand.update_layout(true)
+	main.board.update_last_move_highlight(0, 0)
+	_expect("作り直し前: 駒台の歩の枚数を表示している", stand._labels[PieceState.Type.PAWN].visible)
+
+	var old_pieces: Array = board_view._nodes.values()
+	main._reset_game()
+	await process_frame
+
+	_expect("作り直し: 元の駒ノードをすべて解放する", old_pieces.all(func(piece): return not is_instance_valid(piece)))
+	_expect("作り直し: 40枚の駒ノードを作る", board_view._nodes.size() == 40)
+	_expect("作り直し: 駒台の歩の枚数を表示しない", not stand._labels[PieceState.Type.PAWN].visible)
+	_expect("作り直し: 最終手のハイライトを消す", main.board.last_move_rect == null)

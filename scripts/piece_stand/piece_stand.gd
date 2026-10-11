@@ -41,11 +41,7 @@ func add_piece(piece: Piece, immediate: bool = false) -> void:
 	update_layout(immediate)
 
 
-func clear_pieces() -> void:
-	for child in get_children():
-		if child is Piece:
-			child.queue_free()
-
+func hide_count_labels() -> void:
 	for label in _labels.values():
 		label.visible = false
 

@@ -66,10 +66,13 @@ func _spawn_piece_for(state: PieceState) -> void:
 
 
 func rebuild() -> void:
-	_board.clear_pieces()
-	_sente_piece_stand.clear_pieces()
-	_gote_piece_stand.clear_pieces()
+	for piece in _nodes.values():
+		piece.queue_free()
 	_nodes.clear()
+
+	_board.clear_overlays()
+	_sente_piece_stand.hide_count_labels()
+	_gote_piece_stand.hide_count_labels()
 
 	if not _game_state.sente_hand.is_empty() or not _game_state.gote_hand.is_empty():
 		push_error("BoardView.rebuild: 持ち駒ありの再構築は未対応です")
