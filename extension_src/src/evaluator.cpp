@@ -249,7 +249,7 @@ int Evaluator::calculate_score(const BoardState &board) {
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		int sign = (turn == Turn::SENTE) ? 1 : -1;
 		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
-			int count = board.hand_[std::to_underlying(turn)][piece_type_index];
+			int count = board.get_hand_count(turn, static_cast<PieceType>(piece_type_index));
 			if (count > 0) {
 				int value = Shogi::PIECE_VALUES[piece_type_index][0];
 				score += count * value * sign;
@@ -274,14 +274,14 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 	Bitboard attacks_any[2];
 	Bitboard attacks_multi[2];
 
-	const Bitboard &occupancy = board.bitboard_all_;
+	const Bitboard &occupancy = board.get_occupancy();
 
 	for (int turn_index = 0; turn_index < 2; ++turn_index) {
 		Shogi::Turn turn = static_cast<Shogi::Turn>(turn_index);
-		const Bitboard promoted_pieces = board.bitboard_promoted_[turn_index];
+		const Bitboard promoted_pieces = board.get_promoted_pieces(turn);
 		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
 			Shogi::PieceType piece_type = static_cast<Shogi::PieceType>(piece_type_index);
-			Bitboard pieces = board.bitboard_piece_[turn_index][piece_type_index];
+			Bitboard pieces = board.get_pieces(turn, piece_type);
 			while (!pieces.is_empty()) {
 				int from_index = pieces.pop_lsb();
 
@@ -302,7 +302,7 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		int sente_attack_count = count_attacks(0);
 		int gote_attack_count = count_attacks(1);
 
-		int piece_index = get_kkpee_piece_index(board.board_[index]);
+		int piece_index = get_kkpee_piece_index(board.get_cell(Shogi::Coord::from_index(index)));
 		score += kkpee_table_[sente_king_index][gote_king_index][index][sente_attack_count][gote_attack_count][piece_index];
 	}
 
