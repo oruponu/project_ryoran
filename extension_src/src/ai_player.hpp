@@ -82,8 +82,8 @@ private:
 	}
 	void update_killer(int ply, const Shogi::Move &move);
 	void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);
-	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Shogi::Turn turn,
-			uint64_t end_time, bool &timeout, uint64_t &node_count, bool can_null = true);
+	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,
+			bool &timeout, uint64_t &node_count, bool can_null = true);
 	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);
 	void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
 			int depth, uint64_t &node_count, const uint64_t max_nodes);

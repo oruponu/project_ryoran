@@ -262,8 +262,8 @@ void run_lmr_and_extension_tests() {
 			AIPlayerTestAccess mate_ai_t{ mate_ai };
 			bool timeout = false;
 			uint64_t nodes = 0;
-			int score = mate_ai_t.alpha_beta(mate_board, 5, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, mate_board.get_turn_to_move(),
-					UINT64_MAX, timeout, nodes);
+			int score = mate_ai_t.alpha_beta(mate_board, 5, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX,
+					timeout, nodes);
 			check(score >= AIPlayer::MATE_BOUND, "depth-5 search finds mate at kif2-60");
 		} else {
 			check(false, "replay kif2-60 for LMR regression");
@@ -280,8 +280,8 @@ void run_lmr_and_extension_tests() {
 			AIPlayerTestAccess ext_ai_t{ ext_ai };
 			bool timeout = false;
 			uint64_t nodes = 0;
-			int score = ext_ai_t.alpha_beta(ext_board, 4, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, ext_board.get_turn_to_move(),
-					UINT64_MAX, timeout, nodes);
+			int score = ext_ai_t.alpha_beta(ext_board, 4, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX,
+					timeout, nodes);
 			check(score >= AIPlayer::MATE_BOUND, "check extension finds mate at kif2-60 at depth 4");
 		} else {
 			check(false, "replay kif2-60 for check extension");
@@ -410,7 +410,7 @@ void run_alpha_beta_repetition_tests() {
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に入る = ply0 と同一局面 → 反復を検出してすぐ 0 を返す（評価関数を呼ばない）
-		int score = ra_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, UINT64_MAX, timeout, nodes);
+		int score = ra_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: alpha_beta returns draw 0 on path repetition");
 		check(nodes == 1, "rep: alpha_beta stops immediately on repetition");
 	}
@@ -431,9 +431,60 @@ void run_alpha_beta_repetition_tests() {
 		bool timeout = false;
 		uint64_t nodes = 0;
 		// ply=2 で現局面に戻る = 反復。検出は TT probe より前なので 5000 ではなく 0 を返す
-		int score = ra_t.alpha_beta(b, 1, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, Turn::SENTE, UINT64_MAX, timeout, nodes);
+		int score = ra_t.alpha_beta(b, 1, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 		check(score == 0, "rep: detection precedes TT probe (draw not TT score)");
 		check(nodes == 1, "rep: detection-before-TT stops immediately");
+	}
+}
+
+void run_gote_search_tests() {
+	// 頭金で詰んでいる後手番: 手番側の負け
+	{
+		BoardState b(Turn::GOTE);
+		b.set_cell({ 0, 0 }, K, Turn::GOTE, false);
+		b.set_cell({ 0, 1 }, G, Turn::SENTE, false);
+		b.set_cell({ 0, 2 }, P, Turn::SENTE, false);
+		AIPlayer ga;
+		AIPlayerTestAccess ga_t{ ga };
+		bool timeout = false;
+		uint64_t nodes = 0;
+		int score = ga_t.alpha_beta(b, 1, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		check(score == -AIPlayer::MATE_SCORE, "GOTE mated: alpha_beta returns loss for side to move");
+	}
+
+	// 後手番の千日手（後手が連続王手をかけている）: 手番側の負け
+	{
+		BoardState b(Turn::GOTE);
+		b.set_cell({ 4, 4 }, K, Turn::GOTE, false);
+		b.set_cell({ 4, 0 }, K, Turn::SENTE, false);
+		AIPlayer ga;
+		AIPlayerTestAccess ga_t{ ga };
+		std::ranges::fill(ga_t.path_hashes(), 0);
+		std::ranges::fill(ga_t.path_in_check(), false);
+		ga_t.path_hashes()[0] = b.get_zobrist_hash();
+		ga_t.path_in_check()[1] = true; // ply1（先手の手番）で王手を受けている = 後手が王手をかけ続けている
+		bool timeout = false;
+		uint64_t nodes = 0;
+		int score = ga_t.alpha_beta(b, 3, 2, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+		check(score == -(AIPlayer::MATE_SCORE - 2), "GOTE perpetual check: alpha_beta returns loss for side to move");
+	}
+
+	// 後手番のルート探索: 飛車得の後手から見た評価値と勝率で候補手を良い順に返す
+	{
+		std::optional<BoardState> board = BoardState::from_sfen("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B7/LNSGKGSNL w - 1");
+		check(board.has_value(), "GOTE root: test position parses");
+		if (board.has_value()) {
+			AIPlayer ga;
+			ga.set_time_limit_usec(300000);
+			std::vector<ScoredMove> moves = ga.search_top_moves(*board, 3);
+			bool ordered = true;
+			for (size_t i = 1; i < moves.size(); ++i) {
+				ordered = ordered && moves[i - 1].score >= moves[i].score;
+			}
+			check(!moves.empty() && moves[0].score > 0 && moves[0].win_rate > 0.5,
+					"GOTE root: score and win rate are from side to move");
+			check(ordered, "GOTE root: best move first");
+		}
 	}
 }
 
@@ -479,5 +530,6 @@ void run_search_tests() {
 	run_path_repetition_tests();
 	run_history_repetition_tests();
 	run_alpha_beta_repetition_tests();
+	run_gote_search_tests();
 	run_dfpn_repetition_tests();
 }

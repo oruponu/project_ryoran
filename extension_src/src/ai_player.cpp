@@ -205,8 +205,8 @@ void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int dep
 	value = std::min(value + depth * depth, HISTORY_CAP);
 }
 
-int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
-		bool &timeout, uint64_t &node_count, bool can_null) {
+int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
+		uint64_t &node_count, bool can_null) {
 	++node_count;
 
 	if (now_usec() > end_time) {
@@ -222,7 +222,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	if (ply < MAX_PLY) {
 		path_in_check_[ply] = in_check;
 		if (auto rep = detect_path_repetition(ply, hash, turn_to_move); rep.has_value()) {
-			return rep.value();
+			return (turn_to_move == Turn::SENTE) ? rep.value() : -rep.value();
 		}
 		path_hashes_[ply] = hash;
 	}
@@ -253,10 +253,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	if (depth <= 0) {
 		// 静止探索を実行
-		if (turn == Turn::SENTE) {
-			return quiescence_search(board, alpha, beta, ply, node_count);
-		}
-		return -quiescence_search(board, -beta, -alpha, ply, node_count);
+		return quiescence_search(board, alpha, beta, ply, node_count);
 	}
 
 	// 王手延長：王手を受けた側は深さを減らさず読む
@@ -266,30 +263,22 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	MoveGenerator::get_legal_moves(board, move_list);
 	if (move_list.is_empty()) {
 		// 投了（手番側の負け）
-		return (turn_to_move == Turn::SENTE) ? -(MATE_SCORE - ply) : (MATE_SCORE - ply);
+		return -(MATE_SCORE - ply);
 	}
 
 	// Null Move Pruning
 	constexpr int NULL_MOVE_R = 2;
-	if (can_null && depth >= 3 && !in_check) {
-		Turn null_next_side = Shogi::opponent(turn);
-		int static_eval = board.get_score();
+	if (can_null && depth >= 3 && !in_check && side_to_move_score(board) >= beta) {
+		uint64_t null_hash = board.make_null_move();
+		int null_score = -alpha_beta(board, depth - 1 - NULL_MOVE_R, ply + 1, -beta, -beta + 1, end_time, timeout,
+				node_count, false);
+		board.undo_null_move(null_hash);
 
-		if (turn == Turn::SENTE ? (static_eval >= beta) : (static_eval <= alpha)) {
-			int null_alpha = (turn == Turn::SENTE) ? beta - 1 : alpha;
-			int null_beta = (turn == Turn::SENTE) ? beta : alpha + 1;
-
-			uint64_t null_hash = board.make_null_move();
-			int null_score = alpha_beta(board, depth - 1 - NULL_MOVE_R, ply + 1, null_alpha, null_beta, null_next_side,
-					end_time, timeout, node_count, false);
-			board.undo_null_move(null_hash);
-
-			if (timeout) {
-				return 0;
-			}
-			if (turn == Turn::SENTE ? (null_score >= beta) : (null_score <= alpha)) {
-				return (turn == Turn::SENTE) ? beta : alpha;
-			}
+		if (timeout) {
+			return 0;
+		}
+		if (null_score >= beta) {
+			return beta;
 		}
 	}
 
@@ -308,126 +297,64 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == m) || (killer_valid_[ply][1] && killer_moves_[ply][1] == m));
 	};
 
-	Turn next_side = Shogi::opponent(turn);
+	Turn next_side = Shogi::opponent(turn_to_move);
 	Move best_move = move_list[0];
+	int max_eval = -INFINITE_SCORE;
+	int move_index = 0;
+	for (const Move &move : move_list) {
+		// Late Move Reductions
+		int reduction = 0;
+		if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
+				!is_killer_move(move)) {
+			reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
+		}
+		++move_index;
 
-	if (turn == Turn::SENTE) {
-		int max_eval = -INFINITE_SCORE;
-		int move_index = 0;
-		for (const Move &move : move_list) {
-			// Late Move Reductions
-			int reduction = 0;
-			if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
-					!is_killer_move(move)) {
-				reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
-			}
-			++move_index;
+		Shogi::UndoInfo undo = board.apply_move(move);
 
-			Shogi::UndoInfo undo = board.apply_move(move);
-
-			// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
-			if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
-				reduction = 0;
-			}
-
-			int eval = alpha_beta(board, depth - 1 + extension - reduction, ply + 1, alpha, beta, next_side, end_time,
-					timeout, node_count);
-
-			if (!timeout && reduction > 0 && eval > alpha) {
-				eval = alpha_beta(board, depth - 1 + extension, ply + 1, alpha, beta, next_side, end_time, timeout,
-						node_count);
-			}
-
-			board.undo_move(undo);
-
-			if (timeout) {
-				return 0;
-			}
-
-			if (eval > max_eval) {
-				max_eval = eval;
-				best_move = move;
-			}
-			alpha = std::max(alpha, eval);
-			if (beta <= alpha) {
-				if (!move.is_capture) {
-					update_killer(ply, move);
-					update_history(turn_to_move, move, depth);
-				}
-				break; // βカット
-			}
+		// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
+		if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
+			reduction = 0;
 		}
 
-		TTFlag flag;
-		if (max_eval <= original_alpha) {
-			flag = TTFlag::UPPER_BOUND;
-		} else if (max_eval >= original_beta) {
-			flag = TTFlag::LOWER_BOUND;
-		} else {
-			flag = TTFlag::EXACT;
-		}
-		store_tt(hash, score_to_tt(max_eval, ply), depth, flag, best_move);
+		int eval = -alpha_beta(board, depth - 1 + extension - reduction, ply + 1, -beta, -alpha, end_time, timeout,
+				node_count);
 
-		return max_eval;
-	} else {
-		int min_eval = INFINITE_SCORE;
-		int move_index = 0;
-		for (const Move &move : move_list) {
-			// Late Move Reductions
-			int reduction = 0;
-			if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
-					!is_killer_move(move)) {
-				reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
-			}
-			++move_index;
-
-			Shogi::UndoInfo undo = board.apply_move(move);
-
-			// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
-			if (reduction > 0 && MoveGenerator::is_king_in_check(board, next_side)) {
-				reduction = 0;
-			}
-
-			int eval = alpha_beta(board, depth - 1 + extension - reduction, ply + 1, alpha, beta, next_side, end_time,
-					timeout, node_count);
-
-			if (!timeout && reduction > 0 && eval < beta) {
-				eval = alpha_beta(board, depth - 1 + extension, ply + 1, alpha, beta, next_side, end_time, timeout,
-						node_count);
-			}
-
-			board.undo_move(undo);
-
-			if (timeout) {
-				return 0;
-			}
-
-			if (eval < min_eval) {
-				min_eval = eval;
-				best_move = move;
-			}
-			beta = std::min(beta, eval);
-			if (beta <= alpha) {
-				if (!move.is_capture) {
-					update_killer(ply, move);
-					update_history(turn_to_move, move, depth);
-				}
-				break; // αカット
-			}
+		if (!timeout && reduction > 0 && eval > alpha) {
+			eval = -alpha_beta(board, depth - 1 + extension, ply + 1, -beta, -alpha, end_time, timeout, node_count);
 		}
 
-		TTFlag flag;
-		if (min_eval >= original_beta) {
-			flag = TTFlag::LOWER_BOUND;
-		} else if (min_eval <= original_alpha) {
-			flag = TTFlag::UPPER_BOUND;
-		} else {
-			flag = TTFlag::EXACT;
-		}
-		store_tt(hash, score_to_tt(min_eval, ply), depth, flag, best_move);
+		board.undo_move(undo);
 
-		return min_eval;
+		if (timeout) {
+			return 0;
+		}
+
+		if (eval > max_eval) {
+			max_eval = eval;
+			best_move = move;
+		}
+		alpha = std::max(alpha, eval);
+		if (beta <= alpha) {
+			if (!move.is_capture) {
+				update_killer(ply, move);
+				update_history(turn_to_move, move, depth);
+			}
+			break; // βカット
+		}
 	}
+
+	TTFlag flag;
+	if (max_eval <= original_alpha) {
+		flag = TTFlag::UPPER_BOUND;
+	} else if (max_eval >= original_beta) {
+		flag = TTFlag::LOWER_BOUND;
+	} else {
+		flag = TTFlag::EXACT;
+	}
+	store_tt(hash, score_to_tt(max_eval, ply), depth, flag, best_move);
+
+	return max_eval;
 }
 
 std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth, uint64_t max_nodes) {
@@ -819,14 +746,9 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	int max_depth_limit = 12;
 
-	const int worst_score = (root_side == Turn::SENTE) ? -INFINITE_SCORE : INFINITE_SCORE;
-	auto is_better = [root_side](int a, int b) {
-		return (root_side == Turn::SENTE) ? (a > b) : (a < b);
-	};
-
 	std::vector<RootMove> global_top;
 	for (const Move &move : move_list | std::views::take(count)) {
-		global_top.push_back({ .move = move, .score = worst_score });
+		global_top.push_back({ .move = move, .score = -INFINITE_SCORE });
 	}
 
 	// TTから最善手を取得
@@ -861,7 +783,6 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		}
 
 		std::vector<RootMove> depth_top;
-		Turn next_turn_side = Shogi::opponent(root_side);
 
 		uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
 		bool timeout = false;
@@ -876,20 +797,15 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			int alpha = -INFINITE_SCORE;
 			int beta = INFINITE_SCORE;
 			if (std::ssize(depth_top) >= count) {
-				if (root_side == Turn::SENTE) {
-					alpha = depth_top.back().score;
-				} else {
-					beta = depth_top.back().score;
-				}
+				alpha = depth_top.back().score;
 			}
 
 			Shogi::UndoInfo undo = board.apply_move(move);
 
-			int score = alpha_beta(board, depth - 1, 1, alpha, beta, next_turn_side, search_cutoff_time, timeout,
-					total_node_count);
+			int score = -alpha_beta(board, depth - 1, 1, -beta, -alpha, search_cutoff_time, timeout, total_node_count);
 
 			// 全候補手の詰み検証は合法手の多い終盤で時間がかかりすぎるため、暫定上位に入る手のみ検証する
-			bool candidate = std::ssize(depth_top) < count || is_better(score, depth_top.back().score);
+			bool candidate = std::ssize(depth_top) < count || score > depth_top.back().score;
 			if (!timeout && candidate) {
 				uint64_t child_hash = board.get_zobrist_hash();
 				auto mate_it = root_mate_cache.find(child_hash);
@@ -903,7 +819,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 				if (is_mated) {
 					// 詰みまでの手数が不明なため、どの詰みよりも速い扱いにする
-					score = (root_side == Turn::SENTE) ? -(MATE_SCORE - 1) : (MATE_SCORE - 1);
+					score = -(MATE_SCORE - 1);
 				}
 			}
 
@@ -913,8 +829,8 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 				break;
 			}
 
-			if (std::ssize(depth_top) < count || is_better(score, depth_top.back().score)) {
-				auto pos = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return is_better(score, entry.score); });
+			if (std::ssize(depth_top) < count || score > depth_top.back().score) {
+				auto pos = std::ranges::find_if(depth_top, [&](const RootMove &entry) { return score > entry.score; });
 				depth_top.insert(pos, { .move = move, .score = score });
 				if (std::ssize(depth_top) > count) {
 					depth_top.pop_back();
@@ -931,8 +847,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		best_move_prev_iter = global_top[0].move;
 		has_prev_best = true;
 
-		int display_score = (root_side == Turn::SENTE) ? global_top[0].score : -global_top[0].score;
-		double win_prob = calculate_win_probability(display_score);
+		double win_prob = calculate_win_probability(global_top[0].score);
 		log(std::format("Depth {} completed. BestScore: {}, WinRate: {}%", depth, global_top[0].score,
 				format_percent(win_prob * 100.0)));
 
@@ -946,17 +861,14 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	log(std::format("Total nodes searched: {}, TT size: {}", total_node_count, transposition_table_.size()));
 
 	// 手番側が勝ちを読み切った局面では1手だけを返す
-	bool root_win_proven = (root_side == Turn::SENTE) ? (global_top[0].score >= MATE_BOUND)
-													  : (global_top[0].score <= -MATE_BOUND);
-	if (root_win_proven) {
+	if (global_top[0].score >= MATE_BOUND) {
 		global_top.resize(1);
 	}
 
 	std::vector<ScoredMove> result;
 	result.reserve(global_top.size());
 	for (const RootMove &entry : global_top) {
-		int display_score = (root_side == Turn::SENTE) ? entry.score : -entry.score;
-		result.push_back({ .move = entry.move, .score = display_score, .win_rate = calculate_win_probability(display_score) });
+		result.push_back({ .move = entry.move, .score = entry.score, .win_rate = calculate_win_probability(entry.score) });
 	}
 
 	return result;

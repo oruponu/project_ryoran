@@ -50,9 +50,9 @@ struct AIPlayerTestAccess {
 	int quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count, int qs_ply = 0) {
 		return ai.quiescence_search(board, alpha, beta, ply, node_count, qs_ply);
 	}
-	int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, Turn turn, uint64_t end_time,
-			bool &timeout, uint64_t &node_count) {
-		return ai.alpha_beta(board, depth, ply, alpha, beta, turn, end_time, timeout, node_count);
+	int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
+			uint64_t &node_count) {
+		return ai.alpha_beta(board, depth, ply, alpha, beta, end_time, timeout, node_count);
 	}
 	std::optional<int> detect_path_repetition(int ply, uint64_t hash, Turn stm) {
 		return ai.detect_path_repetition(ply, hash, stm);
