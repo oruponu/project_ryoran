@@ -25,3 +25,7 @@ func _init(
 	from_row = _from_row
 	to_col = _to_col
 	to_row = _to_row
+
+
+func is_drop() -> bool:
+	return from_col == -1 and from_row == -1

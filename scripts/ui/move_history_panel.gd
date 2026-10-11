@@ -26,7 +26,7 @@ func add_ending(move_count: int, ending: GameEnding.Type, is_sente_win: bool) ->
 
 
 func add_move(move_count: int, record: MoveRecord, prev_record: MoveRecord) -> void:
-	var move_text := _format_move_notation(move_count, record, prev_record)
+	var move_text := _format_move_notation(record, prev_record)
 	_append_entry_row(move_count, move_text)
 
 
@@ -65,12 +65,11 @@ func _append_entry_row(move_count: int, move_text: String) -> void:
 	history_scroll.scroll_vertical = history_scroll.get_v_scroll_bar().max_value
 
 
-func _format_move_notation(move_count: int, record: MoveRecord, prev_record: MoveRecord) -> String:
-	var is_sente_turn := (move_count - 1) % 2 == 0
-	var marker := "▲" if is_sente_turn else "△"
+func _format_move_notation(record: MoveRecord, prev_record: MoveRecord) -> String:
+	var marker := "△" if record.state.is_gote else "▲"
 
-	var to_col_text := GameConfig.ARABIC_NUMS[9 - record.to_col - 1]
-	var to_row_text := GameConfig.KANJI_NUMS[record.to_row]
+	var to_col_text := GameConfig.COL_LABELS[record.to_col]
+	var to_row_text := GameConfig.ROW_LABELS[record.to_row]
 	var coord_text := to_col_text + to_row_text
 
 	if prev_record != null:
@@ -82,7 +81,7 @@ func _format_move_notation(move_count: int, record: MoveRecord, prev_record: Mov
 	var action_text := ""
 	if record.is_promotion:
 		action_text = "成"
-	elif record.from_col == -1 and record.from_row == -1:
+	elif record.is_drop():
 		action_text = "打"
 
 	return "%s%s%s%s" % [marker, coord_text, piece_name, action_text]

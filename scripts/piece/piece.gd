@@ -83,7 +83,4 @@ func _update_display() -> void:
 	else:
 		label.modulate = Color.BLACK
 
-	if state.is_gote:
-		rotation_degrees = 180
-	else:
-		rotation_degrees = 0
+	rotation_degrees = 180 if state.is_gote else 0

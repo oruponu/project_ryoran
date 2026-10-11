@@ -53,13 +53,13 @@ func _draw_coordinates() -> void:
 	var offset_x := 3
 
 	for col in range(GameConfig.BOARD_COLS):
-		var text := GameConfig.ARABIC_NUMS[9 - col - 1]
+		var text := GameConfig.COL_LABELS[col]
 		var pos_x := col * GameConfig.GRID_SIZE
 		var pos := Vector2(pos_x, offset_y)
 		draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, GameConfig.GRID_SIZE, font_size, TEXT_COLOR)
 
 	for row in range(GameConfig.BOARD_ROWS):
-		var text := GameConfig.KANJI_NUMS[row]
+		var text := GameConfig.ROW_LABELS[row]
 		var pos_x := GameConfig.BOARD_COLS * GameConfig.GRID_SIZE + offset_x
 		var cell_center_y := row * GameConfig.GRID_SIZE + (GameConfig.GRID_SIZE / 2.0) + (font_size / 3.0)
 		var pos := Vector2(pos_x, cell_center_y)

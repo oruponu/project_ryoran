@@ -104,8 +104,6 @@ func update_layout(immediate: bool = false) -> void:
 					pieces[i].visible = false
 					pieces[i].position = target_pos
 
-		representative.rotation_degrees = 180 if is_gote else 0
-
 		if pieces.size() > 1:
 			var label := _get_label(piece_type)
 			label.text = str(pieces.size())

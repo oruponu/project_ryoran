@@ -58,7 +58,7 @@ func _execute_drop(state: PieceState, col: int, row: int) -> void:
 func undo(record: MoveRecord) -> void:
 	var state := record.state
 
-	if record.from_col == -1 and record.from_row == -1:
+	if record.is_drop():
 		# 持ち駒から打った
 		_game_state.return_to_hand(state)
 		_board_view.return_to_stand(state)
