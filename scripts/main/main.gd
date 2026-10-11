@@ -239,6 +239,12 @@ func _on_search_completed(move: Dictionary) -> void:
 	else:
 		state = game_state.get_piece(move.from_col, move.from_row)
 
+	if state == null:
+		push_error("AIの着手を実行できません（対象の駒が見つかりません）")
+		is_ai_thinking = false
+		_update_button_states()
+		return
+
 	var mode: PromotionMode.Type = PromotionMode.Type.FORCE_PROMOTE if move.is_promotion else PromotionMode.Type.FORCE_STAY
 	var record: MoveRecord = await move_executor.execute(state, move.to_col, move.to_row, mode)
 
