@@ -87,75 +87,6 @@ PinMasks MoveGenerator::calculate_pin_masks(const BoardState &board, Turn turn) 
 	return pin_masks;
 }
 
-bool MoveGenerator::is_valid_move(const BoardState &board, Coord from, Coord to) {
-	const Cell &piece = board.get_cell(from);
-	if (piece.is_empty()) {
-		return false;
-	}
-
-	// 盤面の範囲外には移動不可
-	if (!to.is_valid()) {
-		return false;
-	}
-
-	// 現在地と同じ場所には移動不可
-	if (from == to) {
-		return false;
-	}
-
-	// 味方の駒がある場所には移動不可
-	const Cell &target = board.get_cell(to);
-	if (!target.is_empty() && target.turn == piece.turn) {
-		return false;
-	}
-
-	int from_index = from.to_index();
-	int to_index = to.to_index();
-
-	return AttackTable::get_attacks(piece.piece_type, piece.is_promoted, from_index, piece.turn, board.bitboard_all_)
-			.is_set(to_index);
-}
-
-bool MoveGenerator::is_legal_move(BoardState &board, Coord from, Coord to) {
-	if (!is_valid_move(board, from, to)) {
-		return false;
-	}
-
-	const Cell from_cell = board.get_cell(from);
-	const Cell to_cell = board.get_cell(to);
-	const int from_index = from.to_index();
-	const int to_index = to.to_index();
-	const auto old_king_position = board.king_position_[std::to_underlying(from_cell.turn)];
-
-	board.board_[to_index] = from_cell;
-	board.board_[from_index] = Cell();
-
-	board.remove_piece_from_bitboard(from_index, from_cell.turn, from_cell.piece_type, from_cell.is_promoted);
-	if (!to_cell.is_empty()) {
-		board.remove_piece_from_bitboard(to_index, to_cell.turn, to_cell.piece_type, to_cell.is_promoted);
-	}
-	board.add_piece_to_bitboard(to_index, from_cell.turn, from_cell.piece_type, from_cell.is_promoted);
-
-	if (from_cell.piece_type == PieceType::KING) {
-		board.king_position_[std::to_underlying(from_cell.turn)] = to;
-	}
-
-	// 王手放置になる手を除外
-	const bool in_check = is_king_in_check(board, from_cell.turn);
-
-	board.board_[from_index] = from_cell;
-	board.board_[to_index] = to_cell;
-	board.king_position_[std::to_underlying(from_cell.turn)] = old_king_position;
-
-	board.remove_piece_from_bitboard(to_index, from_cell.turn, from_cell.piece_type, from_cell.is_promoted);
-	if (!to_cell.is_empty()) {
-		board.add_piece_to_bitboard(to_index, to_cell.turn, to_cell.piece_type, to_cell.is_promoted);
-	}
-	board.add_piece_to_bitboard(from_index, from_cell.turn, from_cell.piece_type, from_cell.is_promoted);
-
-	return !in_check;
-}
-
 bool MoveGenerator::is_dead_end(PieceType piece_type, bool is_gote, int to_row) {
 	int relative_row = is_gote ? (Shogi::BOARD_ROWS - 1 - to_row) : to_row;
 	using enum PieceType;
@@ -293,7 +224,9 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 				}
 
 				if (piece_type == PieceType::KING) {
-					if (!is_legal_move(board, from, to)) {
+					Bitboard occupancy_without_king = occupancy;
+					occupancy_without_king.clear(from_index);
+					if (!attackers_to(board, to_index, opponent_turn, occupancy_without_king).is_empty()) {
 						continue;
 					}
 				}
