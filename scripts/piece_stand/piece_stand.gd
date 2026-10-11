@@ -99,7 +99,7 @@ func update_layout(immediate: bool = false) -> void:
 				tween.tween_callback(update_layout)
 
 			for i in range(1, pieces.size()):
-				if !is_capturing:
+				if not is_capturing:
 					pieces[i].visible = false
 					pieces[i].position = target_pos
 
