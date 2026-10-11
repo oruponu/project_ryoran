@@ -3,9 +3,6 @@ class_name EngineWorker
 extends Node
 
 
-const AI_IS_GOTE := true
-
-
 signal search_completed(move: Dictionary)
 signal analysis_completed(moves: Array)
 

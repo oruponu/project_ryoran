@@ -195,7 +195,7 @@ func _finish_turn(piece: Piece) -> void:
 
 	if in_check:
 		if not _shogi_engine.has_any_legal_move(sfen):
-			if is_gote_turn == EngineWorker.AI_IS_GOTE:
+			if is_gote_turn == GameConfig.AI_IS_GOTE:
 				await _finish_game(is_gote_turn)
 				return
 
@@ -212,7 +212,7 @@ func _finish_turn(piece: Piece) -> void:
 			audio_stream_player.play_check()
 
 	var next_is_gote := game_state.is_gote_turn()
-	if is_game_active and next_is_gote == EngineWorker.AI_IS_GOTE:
+	if is_game_active and next_is_gote == GameConfig.AI_IS_GOTE:
 		_play_ai_turn()
 	else:
 		engine_worker.request_analysis()
@@ -248,13 +248,13 @@ func _on_analysis_completed(moves: Array) -> void:
 func _on_search_completed(move: Dictionary) -> void:
 	# 投了かどうか
 	if move.is_empty():
-		await _finish_game(!EngineWorker.AI_IS_GOTE)
+		await _finish_game(!GameConfig.AI_IS_GOTE)
 		is_ai_thinking = false
 		return
 
 	var state: PieceState = null
 	if move.is_drop:
-		state = game_state.find_hand_piece(EngineWorker.AI_IS_GOTE, move.piece_type)
+		state = game_state.find_hand_piece(GameConfig.AI_IS_GOTE, move.piece_type)
 	else:
 		state = game_state.get_piece(move.from_col, move.from_row)
 
