@@ -80,7 +80,6 @@ func _handle_promotion(state: PieceState, move_record: MoveRecord, mode: Promoti
 	var should_promote := false
 	match mode:
 		PromotionMode.Type.ASK_USER:
-			_board_view.node_for(state).is_held = false
 			should_promote = await _promotion_decider.call()
 		PromotionMode.Type.FORCE_PROMOTE:
 			should_promote = true

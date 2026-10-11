@@ -3,21 +3,29 @@ class_name InputController
 extends RefCounted
 
 
-signal move_submitted(piece: Piece, col: int, row: int, mode: PromotionMode.Type)
+signal move_submitted(state: PieceState, col: int, row: int, mode: PromotionMode.Type)
 
 
-var holding_piece: Piece = null
-
+var _holding_state: PieceState = null
 var _piece_moves: Array[Dictionary] = []
+
 var _game_state: GameState
 var _board: Board
+var _board_view: BoardView
 var _shogi_engine: ShogiEngine
 var _sfen_serializer: SfenSerializer
 
 
-func _init(game_state: GameState, board: Board, shogi_engine: ShogiEngine, sfen_serializer: SfenSerializer) -> void:
+func _init(
+	game_state: GameState,
+	board: Board,
+	board_view: BoardView,
+	shogi_engine: ShogiEngine,
+	sfen_serializer: SfenSerializer
+) -> void:
 	_game_state = game_state
 	_board = board
+	_board_view = board_view
 	_shogi_engine = shogi_engine
 	_sfen_serializer = sfen_serializer
 
@@ -50,74 +58,57 @@ static func destinations_of(moves: Array[Dictionary]) -> Array[Vector2i]:
 	return result
 
 
-func handle_click(piece: Piece) -> void:
-	if holding_piece == null:
-		_pick_up(piece)
+func handle_click(state: PieceState) -> void:
+	if _holding_state == null:
+		_pick_up(state)
 	else:
-		_attempt_place(holding_piece)
-
-
-func release_holding(piece: Piece) -> void:
-	piece.is_held = false
-	piece.z_index = 0
-
-	_board.clear_guides()
-
-	holding_piece = null
+		_attempt_place()
 
 
 func cancel_holding() -> void:
-	if holding_piece == null:
+	if _holding_state == null:
 		return
 
-	_cancel_move(holding_piece, true)
+	_cancel_move(true)
 
 
 func reset() -> void:
-	holding_piece = null
+	_holding_state = null
 	_piece_moves = []
 
 
-func _pick_up(piece: Piece) -> void:
-	if piece.state.is_gote != _game_state.is_gote_turn():
+func _pick_up(state: PieceState) -> void:
+	if state.is_gote != _game_state.is_gote_turn():
 		return
 
-	holding_piece = piece
-	piece.is_held = true
-	piece.z_index = 10
+	_holding_state = state
+	_board_view.hold(state)
 
-	if piece.state.is_in_hand():
-		var stand := piece.get_parent()
-		if stand is PieceStand:
-			stand.update_layout()
-
-	_piece_moves = moves_for(_shogi_engine.get_legal_moves(_sfen_serializer.to_sfen()), piece.state)
+	_piece_moves = moves_for(_shogi_engine.get_legal_moves(_sfen_serializer.to_sfen()), state)
 	_board.show_guides(destinations_of(_piece_moves))
 
 
-func _attempt_place(piece: Piece) -> void:
-	var target_coord := GameConfig.position_to_cell(_board.to_local(piece.global_position))
+func _attempt_place() -> void:
+	var target_coord := GameConfig.position_to_cell(_board.get_local_mouse_position())
 	var moves := moves_to(_piece_moves, target_coord)
 
 	# 合法手でないならキャンセル
 	if moves.is_empty():
-		_cancel_move(piece)
+		_cancel_move()
 		return
 
-	move_submitted.emit(piece, target_coord.x, target_coord.y, PromotionMode.from_moves(moves))
+	var state := _holding_state
+	_clear_holding()
+	move_submitted.emit(state, target_coord.x, target_coord.y, PromotionMode.from_moves(moves))
 
 
-func _cancel_move(piece: Piece, immediate: bool = false) -> void:
-	piece.is_held = false
-	piece.z_index = 0
+func _cancel_move(immediate: bool = false) -> void:
+	var state := _holding_state
+	_clear_holding()
+	_board_view.release(state, immediate)
 
+
+func _clear_holding() -> void:
 	_board.clear_guides()
-
-	holding_piece = null
-
-	if piece.state.is_in_hand():
-		var stand := piece.get_parent()
-		if stand is PieceStand:
-			stand.update_layout(immediate)
-	else:
-		piece.position = GameConfig.cell_to_position(piece.state.current_col, piece.state.current_row)
+	_holding_state = null
+	_piece_moves = []

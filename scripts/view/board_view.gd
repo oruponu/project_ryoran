@@ -35,11 +35,20 @@ func _register(state: PieceState, piece: Piece) -> void:
 	_nodes[state] = piece
 
 
-func node_for(state: PieceState) -> Piece:
+func _node_for(state: PieceState) -> Piece:
 	var piece: Piece = _nodes.get(state)
 	if piece == null:
-		push_error("BoardView.node_for: 未登録のPieceStateです")
+		push_error("BoardView._node_for: 未登録のPieceStateです")
 	return piece
+
+
+func _stand_for(state: PieceState) -> PieceStand:
+	return _gote_piece_stand if state.is_gote else _sente_piece_stand
+
+
+func _set_held(piece: Piece, is_held: bool) -> void:
+	piece.is_held = is_held
+	piece.z_index = 10 if is_held else 0
 
 
 func _spawn_piece_for(state: PieceState) -> void:
@@ -72,21 +81,40 @@ func rebuild() -> void:
 				_spawn_piece_for(state)
 
 
+func hold(state: PieceState) -> void:
+	_set_held(_node_for(state), true)
+	if state.is_in_hand():
+		_stand_for(state).update_layout()
+
+
+func release(state: PieceState, immediate: bool = false) -> void:
+	var piece := _node_for(state)
+	_set_held(piece, false)
+	if state.is_in_hand():
+		_stand_for(state).update_layout(immediate)
+	else:
+		piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
+
+
+func position_of(state: PieceState) -> Vector2:
+	return _board.to_local(_node_for(state).global_position)
+
+
 func place_piece(state: PieceState) -> void:
-	var piece := node_for(state)
+	var piece := _node_for(state)
+	_set_held(piece, false)
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 
 
 func capture_piece(state: PieceState) -> void:
-	var piece := node_for(state)
-	var stand := _gote_piece_stand if state.is_gote else _sente_piece_stand
-	stand.add_piece(piece)
+	_stand_for(state).add_piece(_node_for(state))
 
 
 func drop_piece(state: PieceState) -> void:
-	var piece := node_for(state)
+	var piece := _node_for(state)
 	var source_stand := piece.get_parent()
 
+	_set_held(piece, false)
 	piece.reparent(_board)
 	piece.visible = true
 
@@ -97,16 +125,11 @@ func drop_piece(state: PieceState) -> void:
 
 
 func return_to_stand(state: PieceState) -> void:
-	var piece := node_for(state)
-
-	if state.is_gote:
-		_gote_piece_stand.add_piece(piece, true)
-	else:
-		_sente_piece_stand.add_piece(piece, true)
+	_stand_for(state).add_piece(_node_for(state), true)
 
 
 func revive_piece(state: PieceState) -> void:
-	var piece := node_for(state)
+	var piece := _node_for(state)
 	var source_stand := piece.get_parent()
 
 	piece.reparent(_board)
@@ -120,5 +143,5 @@ func revive_piece(state: PieceState) -> void:
 
 
 func refresh_display(state: PieceState) -> void:
-	var piece := node_for(state)
+	var piece := _node_for(state)
 	piece.refresh_display()

@@ -46,7 +46,7 @@ func _ready() -> void:
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.analysis_completed.connect(_on_analysis_completed)
 
-	input_controller = InputController.new(game_state, board, _shogi_engine, sfen_serializer)
+	input_controller = InputController.new(game_state, board, board_view, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
 
 	game_dialogs = GameDialogs.new(common_dialog)
@@ -139,19 +139,18 @@ func _on_piece_clicked(piece: Piece) -> void:
 	if not is_game_active or is_ai_thinking:
 		return
 
-	input_controller.handle_click(piece)
+	input_controller.handle_click(piece.state)
 
 
-func _on_move_submitted(piece: Piece, col: int, row: int, mode: PromotionMode.Type) -> void:
+func _on_move_submitted(state: PieceState, col: int, row: int, mode: PromotionMode.Type) -> void:
 	_clear_hint()
 
-	var record: MoveRecord = await move_executor.execute(piece.state, col, row, mode)
+	var record: MoveRecord = await move_executor.execute(state, col, row, mode)
 	_finish_turn(record)
 
 
 func _finish_turn(record: MoveRecord) -> void:
 	_clear_hint()
-	input_controller.release_holding(board_view.node_for(record.state))
 
 	var outcome := game_referee.commit(record)
 	_update_button_states()
@@ -335,11 +334,7 @@ func _hint_from_position(move: Dictionary) -> Variant:
 	if state == null:
 		return null
 
-	var piece := board_view.node_for(state)
-	if piece == null:
-		return null
-
-	return board.to_local(piece.global_position)
+	return board_view.position_of(state)
 
 
 func _update_turn_display() -> void:
