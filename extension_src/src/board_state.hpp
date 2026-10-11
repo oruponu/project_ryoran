@@ -28,14 +28,6 @@ struct Cell {
 	}
 };
 
-struct PinMasks {
-	// ピンされている味方駒
-	Bitboard pinned;
-
-	// ピンされた駒の移動可能範囲
-	Bitboard valid_ray_masks[Shogi::BOARD_SIZE];
-};
-
 class BoardState {
 	friend class MoveGenerator;
 	friend class Evaluator;
