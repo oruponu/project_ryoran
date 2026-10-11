@@ -52,7 +52,11 @@ private:
 	uint64_t time_limit_usec_ = TIME_LIMIT_USEC;
 	static constexpr uint32_t INFINITY_PN = 10000000;
 	static constexpr int MAX_PLY = 128;
-	static constexpr int HISTORY_CAP = 700000; // Killer2（800000）を超えさせない上限
+	static constexpr int CAPTURE_ORDERING_BASE = 1000000;
+	static constexpr int KILLER1_ORDERING_SCORE = 900000;
+	static constexpr int KILLER2_ORDERING_SCORE = 800000;
+	static constexpr int PROMOTION_ORDERING_BONUS = 20000;
+	static constexpr int HISTORY_CAP = 700000; // Killer2を超えさせない上限
 	// 静止探索を打ち切る深さ
 	static constexpr int QS_PLY_LIMIT = 16;
 

@@ -155,17 +155,17 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(target_cell.piece_type)][target_cell.is_promoted ? 1 : 0];
 			int aggressor_value = Shogi::PIECE_VALUES[std::to_underlying(move.piece_type)][0];
 			// 高い駒を安い駒で取るほど高得点
-			score = 1000000 + victim_value - aggressor_value;
+			score = CAPTURE_ORDERING_BASE + victim_value - aggressor_value;
 		}
 	} else {
 		// 駒を取らない手：Killer / History
 		bool is_killer = false;
 		if (ply < MAX_PLY) {
 			if (killer_valid_[ply][0] && move == killer_moves_[ply][0]) {
-				score = 900000;
+				score = KILLER1_ORDERING_SCORE;
 				is_killer = true;
 			} else if (killer_valid_[ply][1] && move == killer_moves_[ply][1]) {
-				score = 800000;
+				score = KILLER2_ORDERING_SCORE;
 				is_killer = true;
 			}
 		}
@@ -178,7 +178,7 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 
 	// 成る手
 	if (move.is_promotion) {
-		score += 20000;
+		score += PROMOTION_ORDERING_BONUS;
 	}
 
 	return score;
