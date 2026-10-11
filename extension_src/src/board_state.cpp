@@ -15,10 +15,19 @@ using Shogi::Turn;
 
 namespace {
 
+constexpr int ZOBRIST_HAND_SLOTS = 20;
+
 uint64_t g_zobrist_board[2][Shogi::PIECE_TYPE_COUNT][2][Shogi::BOARD_COLS][Shogi::BOARD_ROWS];
-uint64_t g_zobrist_hand[2][Shogi::PIECE_TYPE_COUNT][20];
+uint64_t g_zobrist_hand[2][Shogi::PIECE_TYPE_COUNT][ZOBRIST_HAND_SLOTS];
 uint64_t g_zobrist_gote_to_move;
 bool g_zobrist_initialized = false;
+
+uint64_t zobrist_hand(Turn turn, PieceType piece_type, int count) {
+	if (count <= 0) {
+		return 0;
+	}
+	return g_zobrist_hand[std::to_underlying(turn)][std::to_underlying(piece_type)][std::min(count, ZOBRIST_HAND_SLOTS - 1)];
+}
 
 std::optional<Shogi::PieceType> piece_type_from_char(char c) {
 	using enum Shogi::PieceType;
@@ -258,7 +267,7 @@ bool BoardState::load_zobrist_params(std::span<const uint8_t> data) {
 	// 持ち駒
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
-			for (int n = 0; n < 20; ++n) {
+			for (int n = 0; n < ZOBRIST_HAND_SLOTS; ++n) {
 				g_zobrist_hand[std::to_underlying(turn)][piece_type_index][n] = next();
 			}
 		}
@@ -339,10 +348,7 @@ uint64_t BoardState::calculate_zobrist_hash() const {
 	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
 		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
 			int count = hand_[std::to_underlying(turn)][piece_type_index];
-			if (count > 0) {
-				int hand_index = (count >= 20) ? 19 : count;
-				hash ^= g_zobrist_hand[std::to_underlying(turn)][piece_type_index][hand_index];
-			}
+			hash ^= zobrist_hand(turn, static_cast<PieceType>(piece_type_index), count);
 		}
 	}
 
@@ -478,10 +484,8 @@ void BoardState::set_hand_count(Turn turn, PieceType piece_type, int count) {
 		return;
 	}
 
-	int old_hand_index = std::clamp(old_count, 0, 19);
-	int new_hand_index = std::clamp(count, 0, 19);
-	zobrist_hash_ ^= g_zobrist_hand[turn_index][piece_type_index][old_hand_index];
-	zobrist_hash_ ^= g_zobrist_hand[turn_index][piece_type_index][new_hand_index];
+	zobrist_hash_ ^= zobrist_hand(turn, piece_type, old_count);
+	zobrist_hash_ ^= zobrist_hand(turn, piece_type, count);
 	hand_[turn_index][piece_type_index] = count;
 }
 
@@ -518,10 +522,8 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 		board_score = Shogi::apply_board_discount(board_score);
 		score_ += sign * (board_score - hand_value);
 
-		int old_hand_index = std::clamp(count, 0, 19);
-		int new_hand_index = std::clamp(count - 1, 0, 19);
-		zobrist_hash_ ^= g_zobrist_hand[std::to_underlying(turn)][std::to_underlying(piece_type)][old_hand_index];
-		zobrist_hash_ ^= g_zobrist_hand[std::to_underlying(turn)][std::to_underlying(piece_type)][new_hand_index];
+		zobrist_hash_ ^= zobrist_hand(turn, piece_type, count);
+		zobrist_hash_ ^= zobrist_hand(turn, piece_type, count - 1);
 		if (hand_[std::to_underlying(turn)][std::to_underlying(move.piece_type)] > 0) {
 			hand_[std::to_underlying(turn)][std::to_underlying(move.piece_type)]--;
 		}
@@ -560,10 +562,8 @@ Shogi::UndoInfo BoardState::apply_move(const Move &move) {
 
 			PieceType captured_type = target.piece_type;
 			int count = hand_[std::to_underlying(turn)][std::to_underlying(captured_type)];
-			int old_hand_index = std::clamp(count, 0, 19);
-			int new_hand_index = std::clamp(count + 1, 0, 19);
-			zobrist_hash_ ^= g_zobrist_hand[std::to_underlying(turn)][std::to_underlying(captured_type)][old_hand_index];
-			zobrist_hash_ ^= g_zobrist_hand[std::to_underlying(turn)][std::to_underlying(captured_type)][new_hand_index];
+			zobrist_hash_ ^= zobrist_hand(turn, captured_type, count);
+			zobrist_hash_ ^= zobrist_hand(turn, captured_type, count + 1);
 			hand_[std::to_underlying(turn)][std::to_underlying(captured_type)]++;
 		}
 

@@ -48,6 +48,29 @@ void run_set_hand_count_tests() {
 	}
 }
 
+void run_incremental_hash_tests() {
+	{
+		std::optional<BoardState> board = BoardState::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b P 1");
+		std::optional<BoardState> expected = BoardState::from_sfen("4k4/9/9/9/4P4/9/9/9/4K4 w - 2");
+		check(board.has_value() && expected.has_value(), "incremental hash: drop positions parse");
+		if (board.has_value() && expected.has_value()) {
+			(void)board->apply_move(Move(0, 0, 4, 4, P, false, true, false));
+			check(board->get_zobrist_hash() == expected->get_zobrist_hash(),
+					"incremental hash: drop emptying the hand matches from_sfen");
+		}
+	}
+	{
+		std::optional<BoardState> board = BoardState::from_sfen("4k4/9/9/9/4p4/4P4/9/9/4K4 b - 1");
+		std::optional<BoardState> expected = BoardState::from_sfen("4k4/9/9/9/4P4/9/9/9/4K4 w P 2");
+		check(board.has_value() && expected.has_value(), "incremental hash: capture positions parse");
+		if (board.has_value() && expected.has_value()) {
+			(void)board->apply_move(Move(4, 5, 4, 4, P, false, false, true));
+			check(board->get_zobrist_hash() == expected->get_zobrist_hash(),
+					"incremental hash: capture into an empty hand matches from_sfen");
+		}
+	}
+}
+
 void run_uchifuzume_tests() {
 	{
 		// 共通形: 1二への歩打ちが打ち歩詰めになる局面（玉は2三金の紐で取れず、2一香/2二桂が逃げ場を塞ぐ）
@@ -214,6 +237,7 @@ void run_zobrist_tests(const std::vector<uint8_t> &data) {
 void run_rules_tests() {
 	run_from_sfen_tests();
 	run_set_hand_count_tests();
+	run_incremental_hash_tests();
 	run_uchifuzume_tests();
 	run_promotion_rule_tests();
 }
