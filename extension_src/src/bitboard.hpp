@@ -5,8 +5,8 @@
 
 struct Bitboard {
 private:
-	// lower_: 0～63番目のマス（1筋から7筋の途中まで）
-	// upper_: 64～80番目のマス（7筋の途中から9筋まで）
+	// lower_: 0～63番目のマス（9筋から2筋の途中まで）
+	// upper_: 64～80番目のマス（2筋の途中から1筋まで）
 	uint64_t lower_;
 	uint64_t upper_;
 
