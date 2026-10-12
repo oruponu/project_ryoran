@@ -20,6 +20,7 @@ func _initialize() -> void:
 	_check_stand_routing(main)
 	_check_touch_hand(main)
 	_check_horizontal_stand(main)
+	await _check_flip_during_tween(main)
 	await _check_rebuild(main)
 
 	main.queue_free()
@@ -344,3 +345,22 @@ func _check_horizontal_stand(main: Node2D) -> void:
 	gote_stand.set_horizontal(false)
 	_expect("縦並びに戻す: 先手の歩は下端", sente_pawn.position == Vector2(35, 490 - 35))
 	_expect("縦並びに戻す: 後手の歩は上端", gote_pawn.position == Vector2(55, 35))
+
+
+func _check_flip_during_tween(main: Node2D) -> void:
+	var stand: PieceStand = main.sente_piece_stand
+	var visible_piece: Piece = null
+	for child in stand.get_children():
+		if child is Piece and child.visible:
+			visible_piece = child
+
+	var vertical_position := visible_piece.position
+	visible_piece.position = vertical_position - Vector2(0, 30)
+	stand.update_layout()
+	stand.set_horizontal(true)
+	var horizontal_position := visible_piece.position
+	await create_timer(0.3).timeout
+	_expect("横並び: 並べ直しの途中で切り替えても横並びの位置にとどまる", visible_piece.position == horizontal_position and horizontal_position != vertical_position)
+
+	stand.set_horizontal(false)
+	_expect("縦並びに戻す: 並べ直しの途中で切り替えた駒も元の位置に来る", visible_piece.position == vertical_position)
