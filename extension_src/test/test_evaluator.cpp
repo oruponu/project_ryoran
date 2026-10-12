@@ -18,10 +18,10 @@ struct ScoreCase {
 
 const ScoreCase SCORE_CASES[] = {
 	{ "start", START_SFEN, 0, 0, 0 },
-	{ "kif2-30", nullptr, 30, -405, 54 },
-	{ "kif2-59", nullptr, 59, 676, 3260 },
-	{ "kif2-60", nullptr, 60, 752, 3336 },
-	{ "kif2-69", nullptr, 69, 946, 6896 },
+	{ "kif2-30", nullptr, 30, -525, -66 },
+	{ "kif2-59", nullptr, 59, 491, 3075 },
+	{ "kif2-60", nullptr, 60, 567, 3151 },
+	{ "kif2-69", nullptr, 69, 916, 6866 },
 	{ "edge-kings", EDGE_KINGS_SFEN, 0, 858, 1978 },
 };
 

@@ -78,10 +78,10 @@ void run_uchifuzume_tests() {
 		// 共通形: 1二への歩打ちが打ち歩詰めになる局面（玉は2三金の紐で取れず、2一香/2二桂が逃げ場を塞ぐ）
 		auto make_base = [] {
 			BoardState board(Turn::SENTE);
-			board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 1一玉
-			board.set_cell({ 1, 0 }, L, Turn::GOTE, false); // 2一香
-			board.set_cell({ 1, 1 }, N, Turn::GOTE, false); // 2二桂
-			board.set_cell({ 1, 2 }, G, Turn::SENTE, false); // 2三金（1二の歩に紐を付ける）
+			board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 1一玉
+			board.set_cell({ 7, 0 }, L, Turn::GOTE, false); // 2一香
+			board.set_cell({ 7, 1 }, N, Turn::GOTE, false); // 2二桂
+			board.set_cell({ 7, 2 }, G, Turn::SENTE, false); // 2三金（1二の歩に紐を付ける）
 			board.set_cell({ 4, 8 }, K, Turn::SENTE, false); // 5九玉
 			return board;
 		};
@@ -89,7 +89,7 @@ void run_uchifuzume_tests() {
 			Shogi::MoveList move_list;
 			MoveGenerator::get_legal_moves(board, move_list);
 			for (const Move &move : move_list) {
-				if (move.is_drop && move.piece_type == P && move.to_col == 0 && move.to_row == 1) {
+				if (move.is_drop && move.piece_type == P && move.to_col == 8 && move.to_row == 1) {
 					return true;
 				}
 			}
@@ -106,7 +106,7 @@ void run_uchifuzume_tests() {
 		// 2) 2一香を除くと玉が2一へ逃げられる → 王手だが詰みではないので合法
 		{
 			BoardState board = make_base();
-			board.clear_cell({ 1, 0 });
+			board.clear_cell({ 7, 0 });
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(contains_pawn_drop_12(board), "uchifuzume: checking drop with escape square stays legal");
 		}
@@ -114,7 +114,7 @@ void run_uchifuzume_tests() {
 		// 3) 1六飛が1二に利いていて歩を取れる → 合法
 		{
 			BoardState board = make_base();
-			board.set_cell({ 0, 5 }, R, Turn::GOTE, false); // 1六飛
+			board.set_cell({ 8, 5 }, R, Turn::GOTE, false); // 1六飛
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(contains_pawn_drop_12(board), "uchifuzume: capturable pawn drop stays legal");
 		}
@@ -122,11 +122,11 @@ void run_uchifuzume_tests() {
 		// 4) 歩を取れる唯一の駒(2二金)が5五角にピンされている → 取れないので打ち歩詰め
 		{
 			BoardState board(Turn::SENTE);
-			board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 1一玉
-			board.set_cell({ 1, 0 }, L, Turn::GOTE, false); // 2一香（逃げ場を塞ぐ）
-			board.set_cell({ 1, 1 }, G, Turn::GOTE, false); // 2二金（1二に利く）
+			board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 1一玉
+			board.set_cell({ 7, 0 }, L, Turn::GOTE, false); // 2一香（逃げ場を塞ぐ）
+			board.set_cell({ 7, 1 }, G, Turn::GOTE, false); // 2二金（1二に利く）
 			board.set_cell({ 4, 4 }, B, Turn::SENTE, false); // 5五角が2二金をピン
-			board.set_cell({ 1, 2 }, G, Turn::SENTE, false); // 2三金（1二の歩に紐）
+			board.set_cell({ 7, 2 }, G, Turn::SENTE, false); // 2三金（1二の歩に紐）
 			board.set_cell({ 4, 8 }, K, Turn::SENTE, false); // 5九玉
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(!contains_pawn_drop_12(board), "uchifuzume: pinned defender cannot capture -> drop is illegal");
@@ -139,13 +139,13 @@ void run_uchifuzume_tests() {
 		// 5) 突き歩詰め（盤上の1三歩を1二へ進める詰み）は合法のまま
 		{
 			BoardState board = make_base();
-			board.set_cell({ 0, 2 }, P, Turn::SENTE, false); // 1三歩（持ち歩なし）
+			board.set_cell({ 8, 2 }, P, Turn::SENTE, false); // 1三歩（持ち歩なし）
 			Shogi::MoveList move_list;
 			MoveGenerator::get_legal_moves(board, move_list);
 			bool found_push = false;
 			for (const Move &move : move_list) {
-				if (!move.is_drop && move.piece_type == P && move.from_col == 0 && move.from_row == 2 &&
-						move.to_col == 0 && move.to_row == 1 && !move.is_promotion) {
+				if (!move.is_drop && move.piece_type == P && move.from_col == 8 && move.from_row == 2 &&
+						move.to_col == 8 && move.to_row == 1 && !move.is_promotion) {
 					found_push = true;
 				}
 			}
@@ -169,17 +169,17 @@ void run_uchifuzume_tests() {
 		// 7) 後手番の打ち歩詰め（対称性の確認）: 先手 9九玉・8九香・8八桂 / 後手 8七金、後手持ち歩1
 		{
 			BoardState board(Turn::GOTE);
-			board.set_cell({ 8, 8 }, K, Turn::SENTE, false); // 9九玉
-			board.set_cell({ 7, 8 }, L, Turn::SENTE, false); // 8九香
-			board.set_cell({ 7, 7 }, N, Turn::SENTE, false); // 8八桂
-			board.set_cell({ 7, 6 }, G, Turn::GOTE, false); // 8七金（9八の歩に紐を付ける）
+			board.set_cell({ 0, 8 }, K, Turn::SENTE, false); // 9九玉
+			board.set_cell({ 1, 8 }, L, Turn::SENTE, false); // 8九香
+			board.set_cell({ 1, 7 }, N, Turn::SENTE, false); // 8八桂
+			board.set_cell({ 1, 6 }, G, Turn::GOTE, false); // 8七金（9八の歩に紐を付ける）
 			board.set_cell({ 4, 0 }, K, Turn::GOTE, false); // 5一玉
 			board.set_hand_count(Turn::GOTE, P, 1);
 			Shogi::MoveList move_list;
 			MoveGenerator::get_legal_moves(board, move_list);
 			bool found = false;
 			for (const Move &move : move_list) {
-				if (move.is_drop && move.piece_type == P && move.to_col == 8 && move.to_row == 7) {
+				if (move.is_drop && move.piece_type == P && move.to_col == 0 && move.to_row == 7) {
 					found = true;
 				}
 			}
@@ -189,7 +189,7 @@ void run_uchifuzume_tests() {
 		// 8) 紐のない歩は玉で取れる → 王手でも合法（打ち歩詰めにならない、よくある形）
 		{
 			BoardState board = make_base();
-			board.clear_cell({ 1, 2 }); // 2三金を除去 → 1二の歩に紐がなくなる
+			board.clear_cell({ 7, 2 }); // 2三金を除去 → 1二の歩に紐がなくなる
 			board.set_hand_count(Turn::SENTE, P, 1);
 			check(contains_pawn_drop_12(board), "uchifuzume: undefended pawn capturable by king stays legal");
 		}
@@ -238,7 +238,7 @@ void run_king_move_tests() {
 		BoardState board(Turn::SENTE);
 		board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
 		board.set_cell({ 4, 2 }, G, Turn::GOTE, false); // 5三金
-		board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
 		auto targets = king_targets(board);
 		check(targets.size() == 5, "king move: squares attacked by gold are excluded");
 		check(!has_target(targets, 3, 3) && !has_target(targets, 4, 3) && !has_target(targets, 5, 3),
@@ -261,7 +261,7 @@ void run_king_move_tests() {
 		BoardState board(Turn::SENTE);
 		board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
 		board.set_cell({ 4, 0 }, R, Turn::GOTE, false); // 5一飛
-		board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
 		auto targets = king_targets(board);
 		check(!has_target(targets, 4, 5), "king move: cannot retreat along rook check");
 		check(targets.size() == 6, "king move: rook check leaves six escapes");
@@ -269,17 +269,17 @@ void run_king_move_tests() {
 	{
 		BoardState board(Turn::SENTE);
 		board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
-		board.set_cell({ 0, 0 }, B, Turn::GOTE, false); // 1一角
-		board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
+		board.set_cell({ 8, 0 }, B, Turn::GOTE, false); // 1一角
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
 		auto targets = king_targets(board);
-		check(!has_target(targets, 5, 5), "king move: cannot retreat along bishop check");
+		check(!has_target(targets, 3, 5), "king move: cannot retreat along bishop check");
 		check(targets.size() == 6, "king move: bishop check leaves six escapes");
 	}
 	{
 		BoardState board(Turn::SENTE);
 		board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
 		board.set_cell({ 4, 0 }, L, Turn::GOTE, false); // 5一香
-		board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
 		auto targets = king_targets(board);
 		check(!has_target(targets, 4, 5), "king move: cannot retreat along lance check");
 		check(targets.size() == 6, "king move: lance check leaves six escapes");
@@ -290,15 +290,15 @@ void run_king_move_tests() {
 		BoardState board(Turn::SENTE);
 		board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
 		board.set_cell({ 4, 0 }, R, Turn::GOTE, false); // 5一飛
-		board.set_cell({ 0, 0 }, B, Turn::GOTE, false); // 1一角
-		board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
-		board.set_cell({ 6, 6 }, G, Turn::SENTE, false); // 7七金
+		board.set_cell({ 8, 0 }, B, Turn::GOTE, false); // 1一角
+		board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
+		board.set_cell({ 2, 6 }, G, Turn::SENTE, false); // 7七金
 		board.set_hand_count(Turn::SENTE, P, 1);
 		Shogi::MoveList move_list;
 		MoveGenerator::get_legal_moves(board, move_list);
 		auto targets = king_targets(board);
 		check(targets.size() == 4 && move_list.size() == 4, "king move: double check allows only four king moves");
-		check(!has_target(targets, 4, 5) && !has_target(targets, 5, 5), "king move: double check avoids both lines");
+		check(!has_target(targets, 4, 5) && !has_target(targets, 3, 5), "king move: double check avoids both lines");
 	}
 
 	// 紐のない王手駒は取れ、紐の付いた王手駒は取れない
@@ -307,7 +307,7 @@ void run_king_move_tests() {
 			BoardState board(Turn::SENTE);
 			board.set_cell({ 4, 4 }, K, Turn::SENTE, false); // 5五玉
 			board.set_cell({ 4, 3 }, G, Turn::GOTE, false); // 5四金
-			board.set_cell({ 8, 0 }, K, Turn::GOTE, false); // 9一玉
+			board.set_cell({ 0, 0 }, K, Turn::GOTE, false); // 9一玉
 			return board;
 		};
 		{
@@ -334,7 +334,7 @@ void run_king_move_tests() {
 		}
 		{
 			BoardState board = make_board();
-			board.set_cell({ 3, 2 }, R, Turn::GOTE, true); // 4三竜
+			board.set_cell({ 5, 2 }, R, Turn::GOTE, true); // 4三竜
 			check(!has_target(king_targets(board), 4, 3), "king move: cannot capture checker defended diagonally by dragon");
 		}
 		{
@@ -349,7 +349,7 @@ void run_king_move_tests() {
 		BoardState board(Turn::GOTE);
 		board.set_cell({ 4, 4 }, K, Turn::GOTE, false); // 5五玉
 		board.set_cell({ 4, 8 }, R, Turn::SENTE, false); // 5九飛
-		board.set_cell({ 0, 8 }, K, Turn::SENTE, false); // 1九玉
+		board.set_cell({ 8, 8 }, K, Turn::SENTE, false); // 1九玉
 		auto targets = king_targets(board);
 		check(!has_target(targets, 4, 3), "king move: GOTE cannot retreat along rook check");
 		check(targets.size() == 6, "king move: GOTE rook check leaves six escapes");
@@ -359,7 +359,7 @@ void run_king_move_tests() {
 		board.set_cell({ 4, 4 }, K, Turn::GOTE, false); // 5五玉
 		board.set_cell({ 4, 5 }, G, Turn::SENTE, false); // 5六金
 		board.set_cell({ 4, 6 }, S, Turn::SENTE, false); // 5七銀
-		board.set_cell({ 0, 8 }, K, Turn::SENTE, false); // 1九玉
+		board.set_cell({ 8, 8 }, K, Turn::SENTE, false); // 1九玉
 		check(!has_target(king_targets(board), 4, 5), "king move: GOTE cannot capture defended checker");
 	}
 }
@@ -379,15 +379,15 @@ void run_nifu_tests() {
 	BoardState board(Turn::SENTE);
 	board.set_cell({ 4, 8 }, K, Turn::SENTE, false); // 5九玉
 	board.set_cell({ 4, 0 }, K, Turn::GOTE, false); // 5一玉
-	board.set_cell({ 2, 6 }, P, Turn::SENTE, false); // 3七歩
-	board.set_cell({ 6, 6 }, P, Turn::SENTE, true); // 7七と
-	board.set_cell({ 7, 2 }, P, Turn::GOTE, false); // 8三歩（相手の歩）
+	board.set_cell({ 6, 6 }, P, Turn::SENTE, false); // 3七歩
+	board.set_cell({ 2, 6 }, P, Turn::SENTE, true); // 7七と
+	board.set_cell({ 1, 2 }, P, Turn::GOTE, false); // 8三歩（相手の歩）
 	board.set_hand_count(Turn::SENTE, P, 1);
 
-	check(!has_pawn_drop_on_col(board, 2), "nifu: no pawn drop on a file with own pawn");
-	check(has_pawn_drop_on_col(board, 3), "nifu: pawn drop allowed on an empty file");
-	check(has_pawn_drop_on_col(board, 6), "nifu: promoted pawn does not count");
-	check(has_pawn_drop_on_col(board, 7), "nifu: opponent pawn does not count");
+	check(!has_pawn_drop_on_col(board, 6), "nifu: no pawn drop on a file with own pawn");
+	check(has_pawn_drop_on_col(board, 5), "nifu: pawn drop allowed on an empty file");
+	check(has_pawn_drop_on_col(board, 2), "nifu: promoted pawn does not count");
+	check(has_pawn_drop_on_col(board, 1), "nifu: opponent pawn does not count");
 }
 
 } // namespace

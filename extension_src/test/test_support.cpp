@@ -17,7 +17,7 @@ void dump_board(const BoardState &board) {
 	for (int row = 0; row < 9; ++row) {
 		std::string line;
 		for (int file = 9; file >= 1; --file) {
-			const Cell &cell = board.get_cell({ file - 1, row });
+			const Cell &cell = board.get_cell({ 9 - file, row });
 			if (cell.is_empty()) {
 				line += " . ";
 			} else {
@@ -138,7 +138,7 @@ extern const KMove KIFU2[] = {
 
 void setup_initial_position(BoardState &board) {
 	auto put = [&](int file, int rank, PieceType piece_type, Turn turn) {
-		board.set_cell({ file - 1, rank - 1 }, piece_type, turn, false);
+		board.set_cell({ 9 - file, rank - 1 }, piece_type, turn, false);
 	};
 	for (int file = 1; file <= 9; ++file) {
 		put(file, 7, P, Turn::SENTE);
@@ -176,12 +176,12 @@ bool replay(BoardState &board, int move_count, const KMove *kifu) {
 		const Move *found = nullptr;
 		for (const Move &move : move_list) {
 			if (kifu_move.from_file == 0) {
-				if (move.is_drop && move.piece_type == kifu_move.piece_type && move.to_col == kifu_move.to_file - 1 && move.to_row == kifu_move.to_rank - 1) {
+				if (move.is_drop && move.piece_type == kifu_move.piece_type && move.to_col == 9 - kifu_move.to_file && move.to_row == kifu_move.to_rank - 1) {
 					found = &move;
 					break;
 				}
 			} else {
-				if (!move.is_drop && move.from_col == kifu_move.from_file - 1 && move.from_row == kifu_move.from_rank - 1 && move.to_col == kifu_move.to_file - 1 &&
+				if (!move.is_drop && move.from_col == 9 - kifu_move.from_file && move.from_row == kifu_move.from_rank - 1 && move.to_col == 9 - kifu_move.to_file &&
 						move.to_row == kifu_move.to_rank - 1 && move.is_promotion == kifu_move.is_promotion) {
 					found = &move;
 					break;
