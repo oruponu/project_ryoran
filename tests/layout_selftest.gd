@@ -22,6 +22,7 @@ func _initialize() -> void:
 		_check_fit(main, size)
 	_check_button_heights(main, 80.0)
 	_check_portrait_visibility(main)
+	_check_history(main)
 	_check_restore(main, snapshot)
 
 	main.queue_free()
@@ -117,8 +118,27 @@ func _check_button_heights(main: Node2D, height: float) -> void:
 
 func _check_portrait_visibility(main: Node2D) -> void:
 	_expect("縦: 駒台を横並びにする", main.sente_piece_stand.is_horizontal and main.gote_piece_stand.is_horizontal)
+	_expect("縦: 棋譜ボタンを表示する", main.history_button.visible)
 	_expect("縦: 直前の指し手を表示する", main.last_move_label.visible)
-	_expect("縦: 棋譜パネルを隠す", not main.move_history_panel.visible)
+	_expect("縦: 棋譜は閉じている", not main.move_history_panel.visible and not main.history_backdrop.visible)
+
+
+func _check_history(main: Node2D) -> void:
+	main.layout.set_history_open(true)
+	_expect("棋譜: 開くとパネルと背景を表示する", main.layout.is_history_open() and main.move_history_panel.visible and main.history_backdrop.visible)
+	_expect("棋譜: パネルを背景より前面に出す", main.move_history_panel.z_index > main.history_backdrop.z_index and main.history_backdrop.z_index >= 20)
+	_expect("棋譜: パネルを最後の子に移して入力を最前面で受ける", main.get_child(main.get_child_count() - 1) == main.move_history_panel)
+
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	main._on_history_backdrop_gui_input(click)
+	_expect("棋譜: 背景をクリックすると閉じる", not main.layout.is_history_open() and not main.history_backdrop.visible)
+
+	main._on_history_button_pressed()
+	_expect("棋譜: ボタンで開く", main.layout.is_history_open())
+	main.layout.apply(true, Vector2(720, 1280))
+	_expect("棋譜: レイアウトを適用し直すと閉じる", not main.layout.is_history_open())
 
 
 func _check_restore(main: Node2D, snapshot: Dictionary) -> void:
@@ -128,4 +148,7 @@ func _check_restore(main: Node2D, snapshot: Dictionary) -> void:
 		_expect("横に戻す: %s が元に戻る" % key, now[key] == snapshot[key])
 	_expect("横に戻す: 駒台を縦並びにする", not main.sente_piece_stand.is_horizontal and not main.gote_piece_stand.is_horizontal)
 	_expect("横に戻す: 棋譜パネルを表示する", main.move_history_panel.visible)
+	_expect("横に戻す: 棋譜ボタンを隠す", not main.history_button.visible)
 	_expect("横に戻す: 直前の指し手を隠す", not main.last_move_label.visible)
+	main.layout.set_history_open(false)
+	_expect("横に戻す: 横では棋譜を閉じる操作を無視する", main.move_history_panel.visible)
