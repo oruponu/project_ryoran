@@ -1,0 +1,103 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.7"
+  GODOT_STATUS: stable
+  EM_VERSION: 4.0.20
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Install SCons
+        run: python -m pip install scons==4.11.1
+
+      - uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: ${{ env.EM_VERSION }}
+
+      - name: Compute SCons cache key
+        id: scons-key
+        run: echo "godot-cpp=$(git rev-parse HEAD:extension_src/godot-cpp)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/scons-cache
+          key: scons-web-${{ env.EM_VERSION }}-${{ steps.scons-key.outputs.godot-cpp }}-${{ hashFiles('extension_src/src/**', 'extension_src/SConstruct', 'extension_src/build_options.py') }}
+          restore-keys: scons-web-${{ env.EM_VERSION }}-
+
+      - name: Build GDExtension
+        working-directory: extension_src
+        env:
+          SCONS_CACHE: ${{ runner.temp }}/scons-cache
+        run: scons platform=web target=template_release threads=yes -j"$(nproc)"
+
+      - id: cache-godot
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.${{ env.GODOT_STATUS }}
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_STATUS }}-web
+
+      - name: Install Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}"
+          templates="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$HOME/godot" "$templates"
+          curl -fsSL -o "$RUNNER_TEMP/godot.zip" "$base/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$HOME/godot"
+          curl -fsSL -o "$RUNNER_TEMP/templates.tpz" "$base/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          unzip -q -j "$RUNNER_TEMP/templates.tpz" 'templates/web_*' 'templates/version.txt' -d "$templates"
+          rm "$RUNNER_TEMP/godot.zip" "$RUNNER_TEMP/templates.tpz"
+
+      - name: Export
+        run: |
+          godot="$HOME/godot/Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64"
+          out="$RUNNER_TEMP/web"
+          mkdir -p "$out"
+          "$godot" --headless --import
+          "$godot" --headless --export-release Web "$out/index.html"
+          for f in index.html index.js index.wasm index.side.wasm index.pck shogi_engine.web.template_release.wasm32.wasm; do
+            test -s "$out/$f"
+          done
+          cp web/coi-serviceworker.js "$out/"
+          ls -la "$out"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
