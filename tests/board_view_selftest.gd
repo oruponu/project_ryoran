@@ -125,6 +125,7 @@ func _check_rebuild(main: Node2D) -> void:
 
 func _check_hold_in_place(main: Node2D) -> void:
 	var board_view = main.board_view
+	var board: Board = main.board
 
 	var state: PieceState = main.game_state.get_piece(8, 6)
 	var piece: Piece = board_view._node_for(state)
@@ -151,3 +152,12 @@ func _check_hold_in_place(main: Node2D) -> void:
 	_expect("その場で持つ: 持ち駒は駒台の同じ位置に残る", hand_piece.get_parent() == main.sente_piece_stand and hand_piece.position == hand_position and hand_piece.visible)
 	board_view.release(hand_state, true)
 	_expect("その場で持つ: 持ち駒を離すと元の大きさに戻る", hand_piece.scale.is_equal_approx(base_scale))
+
+	board.show_selection(Vector2i(3, 4))
+	_expect("選択枠: 表示する", board._selection_rect != null and board._selection_rect.visible)
+	_expect("選択枠: マスの位置に置く", board._selection_rect.position == Vector2(3 * 70, 4 * 70))
+	board.clear_selection()
+	_expect("選択枠: 消す", not board._selection_rect.visible)
+	board.show_selection(Vector2i(0, 0))
+	board.clear_overlays()
+	_expect("選択枠: clear_overlays で消す", not board._selection_rect.visible)
