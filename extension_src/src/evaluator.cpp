@@ -156,7 +156,7 @@ int Evaluator::get_square_score(int sente_king_index, int gote_king_index, int i
 	int total = sente_king_table_[sente_king_index][index][sente_attack_count][gote_attack_count][owner_index] +
 			gote_king_table_[gote_king_index][index][sente_attack_count][gote_attack_count][owner_index] +
 			piece_table_[index][sente_attack_count][gote_attack_count][piece_state_index];
-	return std::clamp(total / (TABLE_SCALE / EVAL_SCALE_FACTOR), INT16_MIN, INT16_MAX);
+	return total / (TABLE_SCALE / EVAL_SCALE_FACTOR);
 }
 
 int Evaluator::get_relative_direction(int from_index, int to_index) {
