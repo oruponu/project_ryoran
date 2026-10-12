@@ -22,6 +22,7 @@ const COUNT_LABEL_FONT_SIZE = 24
 
 var is_horizontal: bool = false
 var _labels: Dictionary[PieceState.Type, Label] = {}
+var _layout_tweens: Array[Tween] = []
 
 
 func _ready() -> void:
@@ -76,6 +77,10 @@ func piece_at(local_pos: Vector2) -> PieceState:
 
 
 func update_layout(immediate: bool = false) -> void:
+	for tween in _layout_tweens:
+		tween.kill()
+	_layout_tweens.clear()
+
 	var groups: Dictionary[PieceState.Type, Array] = {}
 	for piece_type in DISPLAY_ORDER:
 		groups[piece_type] = []
@@ -109,6 +114,7 @@ func update_layout(immediate: bool = false) -> void:
 			var is_capturing := distance > GameConfig.GRID_SIZE
 
 			var tween := create_tween()
+			_layout_tweens.append(tween)
 			tween.tween_property(representative, "position", target_pos, 0.2)
 
 			if is_capturing:
