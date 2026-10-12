@@ -1,6 +1,6 @@
 class_name Piece
 
-extends Area2D
+extends Node2D
 
 
 const SELECTED_SCALE = 1.15
