@@ -137,8 +137,11 @@ func _check_history(main: Node2D) -> void:
 
 	main._on_history_button_pressed()
 	_expect("棋譜: ボタンで開く", main.layout.is_history_open())
+	main.layout.apply(true, Vector2(720, 1558))
+	_expect("棋譜: 縦のまま画面の大きさが変わっても閉じない", main.layout.is_history_open() and main.history_backdrop.visible)
+	main.layout.apply(false, Vector2(1600, 900))
 	main.layout.apply(true, Vector2(720, 1280))
-	_expect("棋譜: レイアウトを適用し直すと閉じる", not main.layout.is_history_open())
+	_expect("棋譜: 向きが変わると閉じる", not main.layout.is_history_open() and not main.history_backdrop.visible)
 
 
 func _check_restore(main: Node2D, snapshot: Dictionary) -> void:
