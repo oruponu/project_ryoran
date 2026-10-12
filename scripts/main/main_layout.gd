@@ -15,6 +15,8 @@ const PORTRAIT_STAND_GAP = 20.0
 const PORTRAIT_WIN_RATE_GAP = 24.0
 const PORTRAIT_LAST_MOVE_TOP = 96.0
 const PORTRAIT_LAST_MOVE_SIZE = Vector2(400, 34)
+const PORTRAIT_HISTORY_SIZE = Vector2(400, 900)
+const OVERLAY_Z_INDEX = 20
 
 
 var is_portrait_layout: bool = false
@@ -27,6 +29,8 @@ var _move_history_panel: MoveHistoryPanel
 var _button_container: HBoxContainer
 var _win_rate_bar: WinRateBar
 var _last_move_label: Label
+var _history_button: Button
+var _history_backdrop: ColorRect
 var _common_dialog: CommonDialog
 
 var _landscape: Dictionary = {}
@@ -42,6 +46,8 @@ func _init(
 	button_container: HBoxContainer,
 	win_rate_bar: WinRateBar,
 	last_move_label: Label,
+	history_button: Button,
+	history_backdrop: ColorRect,
 	common_dialog: CommonDialog
 ) -> void:
 	_root = root
@@ -52,12 +58,16 @@ func _init(
 	_button_container = button_container
 	_win_rate_bar = win_rate_bar
 	_last_move_label = last_move_label
+	_history_button = history_button
+	_history_backdrop = history_backdrop
 	_common_dialog = common_dialog
 
 	_landscape = {
 		"board": board.position,
 		"sente_stand": sente_stand.position,
 		"gote_stand": gote_stand.position,
+		"history_position": move_history_panel.position,
+		"history_size": move_history_panel.size,
 		"buttons_position": button_container.position,
 		"buttons_size": button_container.size,
 		"win_rate_bar": win_rate_bar.position,
@@ -98,7 +108,9 @@ func apply(portrait: bool, visible_size: Vector2) -> void:
 	is_portrait_layout = portrait
 
 	_set_button_height(PORTRAIT_BUTTON_HEIGHT if portrait else 0.0)
+	_history_button.visible = portrait
 	_last_move_label.visible = portrait
+	_history_backdrop.visible = false
 	_move_history_panel.visible = not portrait
 	_sente_stand.set_horizontal(portrait)
 	_gote_stand.set_horizontal(portrait)
@@ -110,6 +122,22 @@ func apply(portrait: bool, visible_size: Vector2) -> void:
 
 	if changed:
 		layout_changed.emit(portrait)
+
+
+func set_history_open(open: bool) -> void:
+	if not is_portrait_layout:
+		return
+
+	_history_backdrop.visible = open
+	_move_history_panel.visible = open
+	if open:
+		_root.move_child(_history_backdrop, -1)
+		_root.move_child(_move_history_panel, -1)
+		_move_history_panel.scroll_to_latest()
+
+
+func is_history_open() -> bool:
+	return is_portrait_layout and _move_history_panel.visible
 
 
 func _set_button_height(height: float) -> void:
@@ -142,6 +170,13 @@ func _apply_portrait(visible_size: Vector2) -> void:
 	_last_move_label.size = PORTRAIT_LAST_MOVE_SIZE
 	_last_move_label.position = Vector2((visible_size.x - PORTRAIT_LAST_MOVE_SIZE.x) / 2.0, PORTRAIT_LAST_MOVE_TOP)
 
+	_history_backdrop.position = Vector2.ZERO
+	_history_backdrop.size = visible_size
+	_history_backdrop.z_index = OVERLAY_Z_INDEX
+	_move_history_panel.size = PORTRAIT_HISTORY_SIZE
+	_move_history_panel.position = (visible_size - PORTRAIT_HISTORY_SIZE) / 2.0
+	_move_history_panel.z_index = OVERLAY_Z_INDEX + 1
+
 
 func _apply_landscape() -> void:
 	_board.position = _landscape.board
@@ -150,3 +185,6 @@ func _apply_landscape() -> void:
 	_win_rate_bar.position = _landscape.win_rate_bar
 	_button_container.position = _landscape.buttons_position
 	_button_container.size = _landscape.buttons_size
+	_move_history_panel.position = _landscape.history_position
+	_move_history_panel.size = _landscape.history_size
+	_move_history_panel.z_index = 0

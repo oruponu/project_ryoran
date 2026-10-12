@@ -10,6 +10,8 @@ extends Node2D
 @onready var hint_button: Button = $HBoxContainer/HintButton
 @onready var resign_button: Button = $HBoxContainer/ResignButton
 @onready var button_container: HBoxContainer = $HBoxContainer
+@onready var history_button: Button = $HBoxContainer/HistoryButton
+@onready var history_backdrop: ColorRect = $HistoryBackdrop
 @onready var turn_label: Label = $CanvasLayer/TurnLabel
 @onready var check_label: CheckLabel = $CanvasLayer/CheckLabel
 @onready var last_move_label: Label = $CanvasLayer/LastMoveLabel
@@ -38,6 +40,8 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	hint_button.pressed.connect(_on_hint_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
+	history_button.pressed.connect(_on_history_button_pressed)
+	history_backdrop.gui_input.connect(_on_history_backdrop_gui_input)
 	move_history_panel.entries_changed.connect(_on_history_entries_changed)
 
 	sfen_serializer = SfenSerializer.new(game_state)
@@ -68,6 +72,8 @@ func _ready() -> void:
 		button_container,
 		win_rate_bar,
 		last_move_label,
+		history_button,
+		history_backdrop,
 		common_dialog
 	)
 	layout.layout_changed.connect(_on_layout_changed)
@@ -106,6 +112,17 @@ func _on_resign_button_pressed() -> void:
 
 	var is_sente_win := game_state.is_gote_turn()
 	await _end_game(GameEnding.Type.RESIGNATION, is_sente_win)
+
+
+func _on_history_button_pressed() -> void:
+	input_controller.cancel_holding()
+	layout.set_history_open(not layout.is_history_open())
+
+
+func _on_history_backdrop_gui_input(event: InputEvent) -> void:
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button != null and mouse_button.pressed:
+		layout.set_history_open(false)
 
 
 func _on_layout_changed(_is_portrait: bool) -> void:

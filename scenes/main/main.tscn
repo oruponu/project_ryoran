@@ -39,6 +39,12 @@ offset_top = 112.5
 offset_right = 1525.0
 offset_bottom = 787.5
 
+[node name="HistoryBackdrop" type="ColorRect" parent="." unique_id=1360369668]
+visible = false
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0, 0, 0, 0.5019608)
+
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1114594735]
 offset_left = 32.0
 offset_top = 32.0
@@ -65,6 +71,12 @@ text = "ヒント"
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "投了"
+
+[node name="HistoryButton" type="Button" parent="HBoxContainer" unique_id=763771647]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "棋譜"
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=932890470]
 
