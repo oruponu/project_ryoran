@@ -11,10 +11,12 @@ func _initialize() -> void:
 	await process_frame
 
 	_check_input_controller(main)
+	_check_tap_routing(main)
 	_check_board_hold_release(main)
 	_check_place_ends_holding(main)
 	_check_hand_hold_release(main)
 	_check_hold_in_place(main)
+	_check_stand_routing(main)
 	await _check_rebuild(main)
 
 	main.queue_free()
@@ -46,16 +48,31 @@ func _check_input_controller(main: Node2D) -> void:
 	_expect("入力: 手番でない駒は持ち上げない", not board_view._node_for(gote_state).is_held)
 	_expect("入力: 手番でない駒をクリックしてもガイドを出さない", board._active_guides.is_empty())
 
+	input.handle_tap(Vector2i(4, 4), null)
+	_expect("入力: 空きマスをクリックしても駒を持たない", input._holding_state == null)
+
 	var state: PieceState = main.game_state.get_piece(2, 6)
 	var piece: Piece = board_view._node_for(state)
 	input.handle_tap(Vector2i(2, 6), state)
 	_expect("入力: 手番の駒を持ち上げる", piece.is_held and piece.z_index == 10)
+	_expect("入力: マウスで持った駒は追従する", piece.follows_mouse)
 	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board._active_guides.size() == 1)
 
 	input.cancel_holding()
 	_expect("入力: キャンセルで持ち上げを終える", not piece.is_held and piece.z_index == 0)
 	_expect("入力: キャンセルでガイドを消す", board._active_guides.is_empty())
 	_expect("入力: キャンセルで元のマスに戻す", piece.position == _cell_position(2, 6))
+
+	var other_state: PieceState = main.game_state.get_piece(6, 6)
+	input.handle_tap(Vector2i(2, 6), state)
+	input.handle_tap(Vector2i(6, 6), other_state)
+	_expect("入力: マウスでは自分の別の駒をクリックするとキャンセルする", not piece.is_held and not board_view._node_for(other_state).is_held)
+	_expect("入力: マウスのキャンセルでガイドを消す", board._active_guides.is_empty())
+
+	input.handle_tap(Vector2i(2, 6), state)
+	input.handle_tap(Vector2i(-1, -1), null)
+	_expect("入力: マウスで盤の外をクリックするとキャンセルする", not piece.is_held)
+	_expect("入力: マウスのキャンセルで元のマスに戻す", piece.position == _cell_position(2, 6))
 
 
 func _check_board_hold_release(main: Node2D) -> void:
@@ -161,3 +178,55 @@ func _check_hold_in_place(main: Node2D) -> void:
 	board.show_selection(Vector2i(0, 0))
 	board.clear_overlays()
 	_expect("選択枠: clear_overlays で消す", not board._selection_rect.visible)
+
+
+func _check_tap_routing(main: Node2D) -> void:
+	var board: Board = main.board
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+
+	event.position = board.to_global(_cell_position(2, 6))
+	_expect("振り分け: 盤のマスを求める", main._tap_coord(event) == Vector2i(2, 6))
+	_expect("振り分け: 盤のマスの駒を求める", main._tap_state(event, Vector2i(2, 6)) == main.game_state.get_piece(2, 6))
+
+	event.position = board.to_global(Vector2(-30, 100))
+	_expect("振り分け: 盤の外は OUTSIDE", main._tap_coord(event) == Vector2i(-1, -1))
+
+	event.position = board.to_global(_cell_position(2, 6))
+	main.is_ai_thinking = true
+	main._unhandled_input(event)
+	_expect("振り分け: AI の思考中はクリックを無視する", main.input_controller._holding_state == null)
+	main.is_ai_thinking = false
+
+	main.is_game_active = false
+	main._unhandled_input(event)
+	_expect("振り分け: 終局後はクリックを無視する", main.input_controller._holding_state == null)
+	main.is_game_active = true
+
+
+func _check_stand_routing(main: Node2D) -> void:
+	var board_view = main.board_view
+	var stand: PieceStand = main.sente_piece_stand
+
+	var second: PieceState = main.game_state.get_piece(1, 2)
+	main.game_state.capture(second)
+	board_view.capture_piece(second)
+	stand.update_layout(true)
+
+	var visible_pieces: Array[Piece] = []
+	for child in stand.get_children():
+		if child is Piece and child.visible:
+			visible_pieces.append(child)
+	_expect("駒台: 歩が2枚でも表示している駒は1枚", visible_pieces.size() == 1)
+
+	var visible_piece: Piece = visible_pieces[0]
+	var visible_position := visible_piece.position
+	_expect("駒台: piece_at は表示中の代表の駒を返す", stand.piece_at(visible_position) == visible_piece.state)
+	_expect("駒台: piece_at は駒のない場所で null", stand.piece_at(visible_position + Vector2(0, -70 * 3)) == null)
+
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = true
+	event.position = stand.to_global(visible_position)
+	_expect("振り分け: 駒台の駒を求める", main._tap_state(event, main._tap_coord(event)) == visible_piece.state)
