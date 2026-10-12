@@ -19,6 +19,7 @@ func _initialize() -> void:
 	_check_hold_in_place(main)
 	_check_stand_routing(main)
 	_check_touch_hand(main)
+	_check_horizontal_stand(main)
 	await _check_rebuild(main)
 
 	main.queue_free()
@@ -314,3 +315,32 @@ func _check_touch_hand(main: Node2D) -> void:
 	input.handle_tap(Vector2i(-1, -1), null, true)
 	_expect("タッチ: 盤の外をタップすると持ち駒の選択を解除する", not visible_piece.is_held)
 	_expect("タッチ: 解除後も代表の駒を表示している", visible_piece.visible and visible_piece.position == visible_position)
+
+
+func _check_horizontal_stand(main: Node2D) -> void:
+	var sente_stand: PieceStand = main.sente_piece_stand
+	var gote_stand: PieceStand = main.gote_piece_stand
+
+	_expect("駒台: 縦並びの大きさを返す", sente_stand.get_stand_size() == Vector2(90, 490))
+
+	var gote_hand: PieceState = main.game_state.get_piece(6, 6)
+	main.game_state.capture(gote_hand)
+	main.board_view.capture_piece(gote_hand)
+
+	sente_stand.set_horizontal(true)
+	gote_stand.set_horizontal(true)
+	_expect("駒台: 横並びの大きさを返す", sente_stand.get_stand_size() == Vector2(630, 70))
+
+	var sente_pawn: Piece = main.board_view._node_for(main.game_state.find_hand_piece(false, PieceState.Type.PAWN))
+	var sente_label: Label = sente_stand._labels[PieceState.Type.PAWN]
+	_expect("横並び: 先手の歩は右端の枠", sente_pawn.position == Vector2(630 - 90 + 35, 35))
+	_expect("横並び: 先手の枚数ラベルは駒の右", sente_label.visible and sente_label.position == sente_pawn.position + Vector2(35, 0))
+	_expect("横並び: piece_at は先手の歩の位置で駒を返す", sente_stand.piece_at(sente_pawn.position) != null)
+
+	var gote_pawn: Piece = main.board_view._node_for(gote_hand)
+	_expect("横並び: 後手の歩は左端の枠", gote_pawn.position == Vector2(55, 35))
+
+	sente_stand.set_horizontal(false)
+	gote_stand.set_horizontal(false)
+	_expect("縦並びに戻す: 先手の歩は下端", sente_pawn.position == Vector2(35, 490 - 35))
+	_expect("縦並びに戻す: 後手の歩は上端", gote_pawn.position == Vector2(55, 35))
