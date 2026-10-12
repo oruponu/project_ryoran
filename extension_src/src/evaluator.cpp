@@ -144,11 +144,8 @@ int Evaluator::get_piece_state_index(const Cell &cell) {
 	return 1 + piece_type_index + promoted_offset + turn_offset;
 }
 
-int Evaluator::get_owner_index(const Cell &cell) {
-	if (cell.is_empty()) {
-		return 0;
-	}
-	return (cell.turn == Turn::SENTE) ? OWNER_SENTE : OWNER_GOTE;
+int Evaluator::get_owner_index(int piece_state_index) {
+	return (piece_state_index + 15) / 16;
 }
 
 int Evaluator::get_square_score(int sente_king_index, int gote_king_index, int index, int sente_attack_count,
@@ -293,9 +290,9 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		int sente_attack_count = count_attacks(0);
 		int gote_attack_count = count_attacks(1);
 
-		const Cell &cell = board.get_cell(index);
+		int piece_state_index = get_piece_state_index(board.get_cell(index));
 		score += get_square_score(sente_king_index, gote_king_index, index, sente_attack_count, gote_attack_count,
-				get_owner_index(cell), get_piece_state_index(cell));
+				get_owner_index(piece_state_index), piece_state_index);
 	}
 
 	return static_cast<int>(score / EVAL_SCALE_FACTOR);
