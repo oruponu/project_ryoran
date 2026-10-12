@@ -77,7 +77,7 @@ func _ready() -> void:
 		common_dialog
 	)
 	layout.layout_changed.connect(_on_layout_changed)
-	get_tree().root.size_changed.connect(layout.update)
+	get_tree().root.size_changed.connect(layout.update, CONNECT_DEFERRED)
 	layout.update()
 
 	_reset_game()
