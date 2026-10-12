@@ -20,6 +20,11 @@ void run_from_sfen_tests() {
 	check(sente.has_value() && gote.has_value() && sente->get_zobrist_hash() != gote->get_zobrist_hash(),
 			"from_sfen: side to move changes hash");
 
+	BoardState initial(Turn::SENTE);
+	setup_initial_position(initial);
+	check(sente.has_value() && initial.get_zobrist_hash() == sente->get_zobrist_hash(),
+			"setup_initial_position: matches the starting position SFEN");
+
 	std::optional<BoardState> hand = BoardState::from_sfen("4k4/9/9/9/9/9/9/9/4K4 b 18P 1");
 	check(hand.has_value() && hand->get_hand_count(Turn::SENTE, P) == 18, "from_sfen: multi-digit hand count");
 }
