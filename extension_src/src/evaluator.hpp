@@ -12,8 +12,12 @@ class Evaluator {
 private:
 	static constexpr int KING_DEFENSE_WEIGHTS[9] = { 84992, 42496, 28330, 21248, 16998, 14165, 12141, 10624, 9443 };
 	static constexpr int KING_THREAT_WEIGHTS[9] = { 94208, 47104, 31402, 23552, 18841, 15701, 13458, 11776, 10467 };
-	static constexpr int KKPEE_PIECE_STATE_COUNT = 40;
+	static constexpr int PIECE_STATE_COUNT = 33;
+	static constexpr int OWNER_COUNT = 3;
+	static constexpr int OWNER_SENTE = 1;
+	static constexpr int OWNER_GOTE = 2;
 	static constexpr int EVAL_SCALE_FACTOR = 16;
+	static constexpr int TABLE_SCALE = 4096;
 
 	inline static const int KING_POSITION_BONUS[Shogi::BOARD_SIZE] = {
 		875, 655, 830, 680, 770, 815, 720, 945, 755, 605, 455, 610, 595, 730, 610, 600, 590, 615, 565, 640, 555,
@@ -27,12 +31,17 @@ private:
 
 	inline static bool is_initialized_;
 
-	static int16_t kkpee_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][KKPEE_PIECE_STATE_COUNT];
+	static int32_t sente_king_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][OWNER_COUNT];
+	static int32_t gote_king_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE][3][3][OWNER_COUNT];
+	static int32_t piece_table_[Shogi::BOARD_SIZE][3][3][PIECE_STATE_COUNT];
 	inline static int defense_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
 	inline static int threat_weight_table_[Shogi::BOARD_SIZE][Shogi::BOARD_SIZE];
 	inline static int multi_effect_weight_table_[11];
 
-	static int get_kkpee_piece_index(const Cell &cell);
+	static int get_piece_state_index(const Cell &cell);
+	static int get_owner_index(const Cell &cell);
+	static int get_square_score(int sente_king_index, int gote_king_index, int index, int sente_attack_count,
+			int gote_attack_count, int owner_index, int piece_state_index);
 	static int get_relative_direction(int from_index, int to_index);
 
 	static int distance(int lhs, int rhs) {
