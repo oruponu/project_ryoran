@@ -9,6 +9,8 @@ extends Node2D
 const TEXT_COLOR = Color(0.0, 0.0, 0.0)
 const GUIDE_COLOR = Color(0.0, 0.7, 1.0, 0.4)
 const LAST_MOVE_COLOR = Color(1.0, 0.4, 0.0, 0.2)
+const SELECTION_COLOR = Color(1.0, 0.55, 0.0)
+const SELECTION_WIDTH = 4.0
 const MARGIN = 22.5
 
 
@@ -16,6 +18,7 @@ var _active_guides: Array[ColorRect] = []
 var _last_move_rect: ColorRect = null
 var _last_move_tween: Tween = null
 var _hint_arrows: Array[HintArrow] = []
+var _selection_rect: ReferenceRect = null
 
 
 func _ready() -> void:
@@ -67,6 +70,7 @@ func _draw_coordinates() -> void:
 
 func clear_overlays() -> void:
 	clear_guides()
+	clear_selection()
 	clear_last_move_highlight()
 	clear_hint_arrows()
 
@@ -88,6 +92,26 @@ func clear_guides() -> void:
 	for rect in _active_guides:
 		rect.queue_free()
 	_active_guides.clear()
+
+
+func show_selection(coord: Vector2i) -> void:
+	if _selection_rect == null:
+		_selection_rect = ReferenceRect.new()
+		_selection_rect.editor_only = false
+		_selection_rect.border_color = SELECTION_COLOR
+		_selection_rect.border_width = SELECTION_WIDTH
+		_selection_rect.size = Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
+		_selection_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_selection_rect.z_index = 11
+		add_child(_selection_rect)
+
+	_selection_rect.position = Vector2(coord * GameConfig.GRID_SIZE)
+	_selection_rect.visible = true
+
+
+func clear_selection() -> void:
+	if _selection_rect != null:
+		_selection_rect.visible = false
 
 
 func update_last_move_highlight(col: int, row: int) -> void:
