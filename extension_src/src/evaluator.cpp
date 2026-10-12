@@ -148,14 +148,6 @@ int Evaluator::get_owner_index(int piece_state_index) {
 	return (piece_state_index + 15) / 16;
 }
 
-int Evaluator::get_square_score(int sente_king_index, int gote_king_index, int index, int sente_attack_count,
-		int gote_attack_count, int owner_index, int piece_state_index) {
-	int total = sente_king_table_[sente_king_index][index][sente_attack_count][gote_attack_count][owner_index] +
-			gote_king_table_[gote_king_index][index][sente_attack_count][gote_attack_count][owner_index] +
-			piece_table_[index][sente_attack_count][gote_attack_count][piece_state_index];
-	return total / (TABLE_SCALE / EVAL_SCALE_FACTOR);
-}
-
 int Evaluator::get_relative_direction(int from_index, int to_index) {
 	auto [from_col, from_row] = Shogi::Coord::from_index(from_index);
 	auto [to_col, to_row] = Shogi::Coord::from_index(to_index);
@@ -282,7 +274,9 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		}
 	}
 
-	long long score = 0;
+	const auto &sente_king_scores = sente_king_table_[sente_king_index];
+	const auto &gote_king_scores = gote_king_table_[gote_king_index];
+	int score = 0;
 	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
 		auto count_attacks = [&](int turn_index) {
 			return attacks_any[turn_index].is_set(index) + attacks_multi[turn_index].is_set(index);
@@ -291,9 +285,12 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		int gote_attack_count = count_attacks(1);
 
 		int piece_state_index = get_piece_state_index(board.get_cell(index));
-		score += get_square_score(sente_king_index, gote_king_index, index, sente_attack_count, gote_attack_count,
-				get_owner_index(piece_state_index), piece_state_index);
+		int owner_index = get_owner_index(piece_state_index);
+		int total = sente_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
+				gote_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
+				piece_table_[index][sente_attack_count][gote_attack_count][piece_state_index];
+		score += total / (TABLE_SCALE / EVAL_SCALE_FACTOR);
 	}
 
-	return static_cast<int>(score / EVAL_SCALE_FACTOR);
+	return score / EVAL_SCALE_FACTOR;
 }

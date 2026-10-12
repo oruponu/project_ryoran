@@ -40,8 +40,6 @@ private:
 
 	static int get_piece_state_index(const Cell &cell);
 	static int get_owner_index(int piece_state_index);
-	static int get_square_score(int sente_king_index, int gote_king_index, int index, int sente_attack_count,
-			int gote_attack_count, int owner_index, int piece_state_index);
 	static int get_relative_direction(int from_index, int to_index);
 
 	static int distance(int lhs, int rhs) {
