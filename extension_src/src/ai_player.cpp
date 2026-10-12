@@ -1,6 +1,7 @@
 #include "ai_player.hpp"
 #include "move_generator.hpp"
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -185,8 +186,25 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 }
 
 void AIPlayer::sort_moves(const BoardState &board, Shogi::Move *first, Shogi::Move *last, int ply) {
-	std::ranges::sort(first, last, std::ranges::greater{},
-			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
+	struct ScoredIndex {
+		int score;
+		int index;
+	};
+	int count = static_cast<int>(last - first);
+	std::array<ScoredIndex, Shogi::MoveList::MAX_MOVES> scored_indices;
+	for (int i = 0; i < count; ++i) {
+		scored_indices[i] = { get_move_ordering_score(board, first[i], ply), i };
+	}
+	std::ranges::sort(scored_indices.begin(), scored_indices.begin() + count,
+			[](const ScoredIndex &lhs, const ScoredIndex &rhs) {
+				return lhs.score != rhs.score ? lhs.score > rhs.score : lhs.index < rhs.index;
+			});
+
+	std::array<Move, Shogi::MoveList::MAX_MOVES> sorted_moves;
+	for (int i = 0; i < count; ++i) {
+		sorted_moves[i] = first[scored_indices[i].index];
+	}
+	std::ranges::copy_n(sorted_moves.begin(), count, first);
 }
 
 void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
