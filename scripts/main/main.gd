@@ -11,6 +11,7 @@ extends Node2D
 @onready var resign_button: Button = $HBoxContainer/ResignButton
 @onready var turn_label: Label = $CanvasLayer/TurnLabel
 @onready var check_label: CheckLabel = $CanvasLayer/CheckLabel
+@onready var last_move_label: Label = $CanvasLayer/LastMoveLabel
 @onready var win_rate_bar: WinRateBar = $WinRateBar
 @onready var common_dialog: CommonDialog = $CommonDialog
 @onready var audio_stream_player: GameAudioPlayer = $AudioStreamPlayer
@@ -35,6 +36,7 @@ func _ready() -> void:
 	undo_button.pressed.connect(_on_undo_button_pressed)
 	hint_button.pressed.connect(_on_hint_button_pressed)
 	resign_button.pressed.connect(_on_resign_button_pressed)
+	move_history_panel.entries_changed.connect(_on_history_entries_changed)
 
 	sfen_serializer = SfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, sente_piece_stand, gote_piece_stand, board.piece_scene)
@@ -56,6 +58,10 @@ func _ready() -> void:
 	)
 
 	_reset_game()
+
+
+func _on_history_entries_changed() -> void:
+	last_move_label.text = move_history_panel.last_entry_text()
 
 
 func _on_new_game_button_pressed() -> void:
