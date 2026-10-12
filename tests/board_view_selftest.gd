@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_check_board_hold_release(main)
 	_check_place_ends_holding(main)
 	_check_hand_hold_release(main)
+	_check_hold_in_place(main)
 	await _check_rebuild(main)
 
 	main.queue_free()
@@ -120,3 +121,33 @@ func _check_rebuild(main: Node2D) -> void:
 	_expect("作り直し: 40枚の駒ノードを作る", board_view._nodes.size() == 40)
 	_expect("作り直し: 駒台の歩の枚数を表示しない", not stand._labels[PieceState.Type.PAWN].visible)
 	_expect("作り直し: 最終手のハイライトを消す", main.board._last_move_rect == null)
+
+
+func _check_hold_in_place(main: Node2D) -> void:
+	var board_view = main.board_view
+
+	var state: PieceState = main.game_state.get_piece(8, 6)
+	var piece: Piece = board_view._node_for(state)
+	var base_scale := piece.scale
+
+	board_view.hold(state, false)
+	_expect("その場で持つ: 駒を持ち上げる", piece.is_held and piece.z_index == 10)
+	_expect("その場で持つ: マウスに追従しない", not piece.follows_mouse)
+	_expect("その場で持つ: 拡大する", piece.scale.is_equal_approx(base_scale * Piece.SELECTED_SCALE))
+	board_view.release(state, true)
+	_expect("その場で持つ: 離すと元の大きさに戻る", piece.scale.is_equal_approx(base_scale))
+	_expect("その場で持つ: 離しても元のマスのまま", piece.position == _cell_position(8, 6))
+
+	board_view.hold(state)
+	_expect("追従して持つ: マウスに追従する", piece.follows_mouse)
+	_expect("追従して持つ: 大きさは変えない", piece.scale.is_equal_approx(base_scale))
+	board_view.release(state, true)
+	_expect("追従して持つ: 離すと追従をやめる", not piece.follows_mouse)
+
+	var hand_state: PieceState = main.game_state.find_hand_piece(false, PieceState.Type.PAWN)
+	var hand_piece: Piece = board_view._node_for(hand_state)
+	var hand_position := hand_piece.position
+	board_view.hold(hand_state, false)
+	_expect("その場で持つ: 持ち駒は駒台の同じ位置に残る", hand_piece.get_parent() == main.sente_piece_stand and hand_piece.position == hand_position and hand_piece.visible)
+	board_view.release(hand_state, true)
+	_expect("その場で持つ: 持ち駒を離すと元の大きさに戻る", hand_piece.scale.is_equal_approx(base_scale))
