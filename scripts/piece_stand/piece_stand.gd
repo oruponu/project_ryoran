@@ -48,6 +48,16 @@ func hide_count_labels() -> void:
 		label.visible = false
 
 
+func piece_at(local_pos: Vector2) -> PieceState:
+	var half := GameConfig.GRID_SIZE / 2.0
+	var cell_size := Vector2(GameConfig.GRID_SIZE, GameConfig.GRID_SIZE)
+	for child in get_children():
+		if child is Piece and child.visible and not child.follows_mouse:
+			if Rect2(child.position - Vector2(half, half), cell_size).has_point(local_pos):
+				return child.state
+	return null
+
+
 func update_layout(immediate: bool = false) -> void:
 	var groups: Dictionary[PieceState.Type, Array] = {}
 	for piece_type in DISPLAY_ORDER:

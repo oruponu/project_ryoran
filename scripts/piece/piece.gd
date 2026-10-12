@@ -3,9 +3,6 @@ class_name Piece
 extends Area2D
 
 
-signal clicked(piece: Piece)
-
-
 const SELECTED_SCALE = 1.15
 const PIECE_DATA = {
 	PieceState.Type.KING: {
@@ -58,13 +55,6 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if follows_mouse:
 		global_position = get_global_mouse_position()
-
-
-func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void:
-	if event is InputEventMouseButton:
-		if event.is_pressed():
-			clicked.emit(self)
-			viewport.set_input_as_handled()
 
 
 func set_held(held: bool, follows: bool) -> void:

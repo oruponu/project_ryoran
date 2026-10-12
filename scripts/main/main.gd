@@ -38,7 +38,6 @@ func _ready() -> void:
 
 	sfen_serializer = SfenSerializer.new(game_state)
 	board_view = BoardView.new(game_state, board, sente_piece_stand, gote_piece_stand, board.piece_scene)
-	board_view.piece_spawned.connect(_on_piece_spawned)
 	game_referee = GameReferee.new(game_state, sfen_serializer, _shogi_engine)
 
 	engine_worker.setup(sfen_serializer, game_referee.repetition_tracker)
@@ -57,10 +56,6 @@ func _ready() -> void:
 	)
 
 	_reset_game()
-
-
-func _on_piece_spawned(piece: Piece) -> void:
-	piece.clicked.connect(_on_piece_clicked)
 
 
 func _on_new_game_button_pressed() -> void:
@@ -133,11 +128,36 @@ func _reset_game() -> void:
 		engine_worker.request_analysis()
 
 
-func _on_piece_clicked(piece: Piece) -> void:
+func _unhandled_input(event: InputEvent) -> void:
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button == null or not mouse_button.pressed or mouse_button.button_index != MOUSE_BUTTON_LEFT:
+		return
 	if not is_game_active or is_ai_thinking:
 		return
 
-	input_controller.handle_click(piece.state)
+	var coord := _tap_coord(mouse_button)
+	input_controller.handle_tap(coord, _tap_state(mouse_button, coord))
+	get_viewport().set_input_as_handled()
+
+
+func _tap_coord(event: InputEventMouseButton) -> Vector2i:
+	var local_event := board.make_input_local(event) as InputEventMouseButton
+	var coord := GameConfig.position_to_cell(local_event.position)
+	if coord.x < 0 or coord.x >= GameConfig.BOARD_COLS or coord.y < 0 or coord.y >= GameConfig.BOARD_ROWS:
+		return InputController.OUTSIDE
+	return coord
+
+
+func _tap_state(event: InputEventMouseButton, coord: Vector2i) -> PieceState:
+	if coord != InputController.OUTSIDE:
+		return game_state.get_piece(coord.x, coord.y)
+
+	for stand: PieceStand in [sente_piece_stand, gote_piece_stand]:
+		var local_event := stand.make_input_local(event) as InputEventMouseButton
+		var state := stand.piece_at(local_event.position)
+		if state != null:
+			return state
+	return null
 
 
 func _on_move_submitted(state: PieceState, col: int, row: int, mode: PromotionMode.Type) -> void:

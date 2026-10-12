@@ -42,13 +42,13 @@ func _check_input_controller(main: Node2D) -> void:
 	var board: Board = main.board
 
 	var gote_state: PieceState = main.game_state.get_piece(2, 2)
-	input.handle_click(gote_state)
+	input.handle_tap(Vector2i(2, 2), gote_state)
 	_expect("入力: 手番でない駒は持ち上げない", not board_view._node_for(gote_state).is_held)
 	_expect("入力: 手番でない駒をクリックしてもガイドを出さない", board._active_guides.is_empty())
 
 	var state: PieceState = main.game_state.get_piece(2, 6)
 	var piece: Piece = board_view._node_for(state)
-	input.handle_click(state)
+	input.handle_tap(Vector2i(2, 6), state)
 	_expect("入力: 手番の駒を持ち上げる", piece.is_held and piece.z_index == 10)
 	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board._active_guides.size() == 1)
 

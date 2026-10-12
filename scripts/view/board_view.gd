@@ -3,9 +3,6 @@ class_name BoardView
 extends RefCounted
 
 
-signal piece_spawned(piece: Piece)
-
-
 var _game_state: GameState
 var _board: Board
 var _sente_piece_stand: PieceStand
@@ -57,7 +54,6 @@ func _spawn_piece_for(state: PieceState) -> void:
 	piece.refresh_display()
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 	_register(state, piece)
-	piece_spawned.emit(piece)
 
 
 func rebuild() -> void:

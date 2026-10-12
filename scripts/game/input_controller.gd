@@ -6,6 +6,9 @@ extends RefCounted
 signal move_submitted(state: PieceState, col: int, row: int, mode: PromotionMode.Type)
 
 
+const OUTSIDE = Vector2i(-1, -1)
+
+
 var _holding_state: PieceState = null
 var _piece_moves: Array[Dictionary] = []
 
@@ -58,11 +61,18 @@ static func destinations_of(moves: Array[Dictionary]) -> Array[Vector2i]:
 	return result
 
 
-func handle_click(state: PieceState) -> void:
+func handle_tap(coord: Vector2i, state: PieceState) -> void:
 	if _holding_state == null:
-		_pick_up(state)
-	else:
-		_attempt_place()
+		if state != null:
+			_pick_up(state)
+		return
+
+	var moves := moves_to(_piece_moves, coord)
+	if not moves.is_empty():
+		_submit(coord, moves)
+		return
+
+	_cancel_move()
 
 
 func cancel_holding() -> void:
@@ -88,18 +98,10 @@ func _pick_up(state: PieceState) -> void:
 	_board.show_guides(destinations_of(_piece_moves))
 
 
-func _attempt_place() -> void:
-	var target_coord := GameConfig.position_to_cell(_board.get_local_mouse_position())
-	var moves := moves_to(_piece_moves, target_coord)
-
-	# 合法手でないならキャンセル
-	if moves.is_empty():
-		_cancel_move()
-		return
-
+func _submit(coord: Vector2i, moves: Array[Dictionary]) -> void:
 	var state := _holding_state
 	_clear_holding()
-	move_submitted.emit(state, target_coord.x, target_coord.y, PromotionMode.from_moves(moves))
+	move_submitted.emit(state, coord.x, coord.y, PromotionMode.from_moves(moves))
 
 
 func _cancel_move(immediate: bool = false) -> void:
