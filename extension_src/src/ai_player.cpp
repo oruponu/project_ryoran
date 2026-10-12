@@ -184,6 +184,11 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 	return score;
 }
 
+void AIPlayer::sort_moves(const BoardState &board, Shogi::Move *first, Shogi::Move *last, int ply) {
+	std::ranges::sort(first, last, std::ranges::greater{},
+			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
+}
+
 void AIPlayer::update_killer(int ply, const Shogi::Move &move) {
 	if (ply >= MAX_PLY) {
 		return;
@@ -289,8 +294,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
-	std::ranges::sort(sort_start, move_list.end(), std::ranges::greater{},
-			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
+	sort_moves(board, sort_start, move_list.end(), ply);
 
 	auto is_killer_move = [&](const Move &move) {
 		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == move) || (killer_valid_[ply][1] && killer_moves_[ply][1] == move));
@@ -637,8 +641,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 		// 詰み（手番側の負け）
 		return -(MATE_SCORE - ply);
 	}
-	std::ranges::sort(move_list, std::ranges::greater{},
-			[&](const Move &move) { return get_move_ordering_score(board, move, ply); });
+	sort_moves(board, move_list.begin(), move_list.end(), ply);
 
 	int max_eval = in_check ? -INFINITE_SCORE : stand_pat;
 
@@ -771,8 +774,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			break;
 		}
 
-		std::ranges::sort(move_list, std::ranges::greater{},
-				[&](const Move &move) { return get_move_ordering_score(board, move, 0); });
+		sort_moves(board, move_list.begin(), move_list.end(), 0);
 
 		if (has_prev_best) {
 			auto it = std::ranges::find(move_list, best_move_prev_iter);

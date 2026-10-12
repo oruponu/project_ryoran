@@ -77,6 +77,7 @@ private:
 	int game_history_length_ = 0;
 
 	[[nodiscard]] int get_move_ordering_score(const BoardState &board, const Shogi::Move &move, int ply);
+	void sort_moves(const BoardState &board, Shogi::Move *first, Shogi::Move *last, int ply);
 	[[nodiscard]] std::optional<int> detect_path_repetition(int ply, uint64_t hash);
 	[[nodiscard]] uint64_t hash_at(int v) const {
 		return v >= game_history_length_ ? path_hashes_[v - game_history_length_] : game_history_hashes_[v];
