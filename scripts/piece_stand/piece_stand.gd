@@ -54,7 +54,7 @@ func update_layout(immediate: bool = false) -> void:
 		groups[piece_type] = []
 
 	for child in get_children():
-		if child is Piece and not child.is_held:
+		if child is Piece and not child.follows_mouse:
 			groups[child.state.piece_type].append(child)
 
 	for label in _labels.values():

@@ -6,6 +6,7 @@ extends Area2D
 signal clicked(piece: Piece)
 
 
+const SELECTED_SCALE = 1.15
 const PIECE_DATA = {
 	PieceState.Type.KING: {
 		"default": "玉",
@@ -46,10 +47,16 @@ const PIECE_DATA = {
 
 var state: PieceState = null
 var is_held: bool = false
+var follows_mouse: bool = false
+var _base_scale := Vector2.ONE
+
+
+func _ready() -> void:
+	_base_scale = scale
 
 
 func _process(_delta: float) -> void:
-	if is_held:
+	if follows_mouse:
 		global_position = get_global_mouse_position()
 
 
@@ -58,6 +65,13 @@ func _on_input_event(viewport: Node, event: InputEvent, _shape_idx: int) -> void
 		if event.is_pressed():
 			clicked.emit(self)
 			viewport.set_input_as_handled()
+
+
+func set_held(held: bool, follows: bool) -> void:
+	is_held = held
+	follows_mouse = held and follows
+	z_index = 10 if held else 0
+	scale = _base_scale * SELECTED_SCALE if held and not follows else _base_scale
 
 
 func refresh_display() -> void:

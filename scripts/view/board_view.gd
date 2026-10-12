@@ -46,11 +46,6 @@ func _stand_for(state: PieceState) -> PieceStand:
 	return _gote_piece_stand if state.is_gote else _sente_piece_stand
 
 
-func _set_held(piece: Piece, is_held: bool) -> void:
-	piece.is_held = is_held
-	piece.z_index = 10 if is_held else 0
-
-
 func _spawn_piece_for(state: PieceState) -> void:
 	if _piece_scene == null:
 		push_error("Piece Scene が設定されていません")
@@ -84,15 +79,15 @@ func rebuild() -> void:
 				_spawn_piece_for(state)
 
 
-func hold(state: PieceState) -> void:
-	_set_held(_node_for(state), true)
-	if state.is_in_hand():
+func hold(state: PieceState, follows: bool = true) -> void:
+	_node_for(state).set_held(true, follows)
+	if follows and state.is_in_hand():
 		_stand_for(state).update_layout()
 
 
 func release(state: PieceState, immediate: bool = false) -> void:
 	var piece := _node_for(state)
-	_set_held(piece, false)
+	piece.set_held(false, false)
 	if state.is_in_hand():
 		_stand_for(state).update_layout(immediate)
 	else:
@@ -105,7 +100,7 @@ func position_of(state: PieceState) -> Vector2:
 
 func place_piece(state: PieceState) -> void:
 	var piece := _node_for(state)
-	_set_held(piece, false)
+	piece.set_held(false, false)
 	piece.position = GameConfig.cell_to_position(state.current_col, state.current_row)
 
 
@@ -117,7 +112,7 @@ func drop_piece(state: PieceState) -> void:
 	var piece := _node_for(state)
 	var source_stand := piece.get_parent()
 
-	_set_held(piece, false)
+	piece.set_held(false, false)
 	piece.reparent(_board)
 	piece.visible = true
 
