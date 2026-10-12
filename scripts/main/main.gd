@@ -9,6 +9,7 @@ extends Node2D
 @onready var undo_button: Button = $HBoxContainer/UndoButton
 @onready var hint_button: Button = $HBoxContainer/HintButton
 @onready var resign_button: Button = $HBoxContainer/ResignButton
+@onready var button_container: HBoxContainer = $HBoxContainer
 @onready var turn_label: Label = $CanvasLayer/TurnLabel
 @onready var check_label: CheckLabel = $CanvasLayer/CheckLabel
 @onready var last_move_label: Label = $CanvasLayer/LastMoveLabel
@@ -25,6 +26,7 @@ var input_controller: InputController
 var move_executor: MoveExecutor
 var game_referee: GameReferee
 var game_dialogs: GameDialogs
+var layout: MainLayout
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _hint_moves: Array[Dictionary] = []
@@ -56,6 +58,21 @@ func _ready() -> void:
 		audio_stream_player,
 		_decide_promotion
 	)
+
+	layout = MainLayout.new(
+		self,
+		board,
+		sente_piece_stand,
+		gote_piece_stand,
+		move_history_panel,
+		button_container,
+		win_rate_bar,
+		last_move_label,
+		common_dialog
+	)
+	layout.layout_changed.connect(_on_layout_changed)
+	get_tree().root.size_changed.connect(layout.update)
+	layout.update()
 
 	_reset_game()
 
@@ -89,6 +106,11 @@ func _on_resign_button_pressed() -> void:
 
 	var is_sente_win := game_state.is_gote_turn()
 	await _end_game(GameEnding.Type.RESIGNATION, is_sente_win)
+
+
+func _on_layout_changed(_is_portrait: bool) -> void:
+	input_controller.cancel_holding()
+	board.clear_hint_arrows()
 
 
 func _update_button_states() -> void:
