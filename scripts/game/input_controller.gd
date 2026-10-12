@@ -10,6 +10,7 @@ const OUTSIDE = Vector2i(-1, -1)
 
 
 var _holding_state: PieceState = null
+var _follows_mouse: bool = false
 var _piece_moves: Array[Dictionary] = []
 
 var _game_state: GameState
@@ -61,10 +62,10 @@ static func destinations_of(moves: Array[Dictionary]) -> Array[Vector2i]:
 	return result
 
 
-func handle_tap(coord: Vector2i, state: PieceState) -> void:
+func handle_tap(coord: Vector2i, state: PieceState, is_touch: bool) -> void:
 	if _holding_state == null:
 		if state != null:
-			_pick_up(state)
+			_pick_up(state, not is_touch)
 		return
 
 	var moves := moves_to(_piece_moves, coord)
@@ -72,7 +73,14 @@ func handle_tap(coord: Vector2i, state: PieceState) -> void:
 		_submit(coord, moves)
 		return
 
-	_cancel_move()
+	if _follows_mouse:
+		_cancel_move()
+		return
+
+	var can_switch := state != null and state != _holding_state and state.is_gote == _game_state.is_gote_turn()
+	_cancel_move(true)
+	if can_switch:
+		_pick_up(state, false)
 
 
 func cancel_holding() -> void:
@@ -84,15 +92,19 @@ func cancel_holding() -> void:
 
 func reset() -> void:
 	_holding_state = null
+	_follows_mouse = false
 	_piece_moves = []
 
 
-func _pick_up(state: PieceState) -> void:
+func _pick_up(state: PieceState, follows: bool) -> void:
 	if state.is_gote != _game_state.is_gote_turn():
 		return
 
 	_holding_state = state
-	_board_view.hold(state)
+	_follows_mouse = follows
+	_board_view.hold(state, follows)
+	if not follows and not state.is_in_hand():
+		_board.show_selection(Vector2i(state.current_col, state.current_row))
 
 	_piece_moves = moves_for(_shogi_engine.get_legal_moves(_sfen_serializer.to_sfen()), state)
 	_board.show_guides(destinations_of(_piece_moves))
@@ -112,5 +124,7 @@ func _cancel_move(immediate: bool = false) -> void:
 
 func _clear_holding() -> void:
 	_board.clear_guides()
+	_board.clear_selection()
 	_holding_state = null
+	_follows_mouse = false
 	_piece_moves = []

@@ -44,16 +44,16 @@ func _check_input_controller(main: Node2D) -> void:
 	var board: Board = main.board
 
 	var gote_state: PieceState = main.game_state.get_piece(2, 2)
-	input.handle_tap(Vector2i(2, 2), gote_state)
+	input.handle_tap(Vector2i(2, 2), gote_state, false)
 	_expect("入力: 手番でない駒は持ち上げない", not board_view._node_for(gote_state).is_held)
 	_expect("入力: 手番でない駒をクリックしてもガイドを出さない", board._active_guides.is_empty())
 
-	input.handle_tap(Vector2i(4, 4), null)
+	input.handle_tap(Vector2i(4, 4), null, false)
 	_expect("入力: 空きマスをクリックしても駒を持たない", input._holding_state == null)
 
 	var state: PieceState = main.game_state.get_piece(2, 6)
 	var piece: Piece = board_view._node_for(state)
-	input.handle_tap(Vector2i(2, 6), state)
+	input.handle_tap(Vector2i(2, 6), state, false)
 	_expect("入力: 手番の駒を持ち上げる", piece.is_held and piece.z_index == 10)
 	_expect("入力: マウスで持った駒は追従する", piece.follows_mouse)
 	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board._active_guides.size() == 1)
@@ -64,13 +64,13 @@ func _check_input_controller(main: Node2D) -> void:
 	_expect("入力: キャンセルで元のマスに戻す", piece.position == _cell_position(2, 6))
 
 	var other_state: PieceState = main.game_state.get_piece(6, 6)
-	input.handle_tap(Vector2i(2, 6), state)
-	input.handle_tap(Vector2i(6, 6), other_state)
+	input.handle_tap(Vector2i(2, 6), state, false)
+	input.handle_tap(Vector2i(6, 6), other_state, false)
 	_expect("入力: マウスでは自分の別の駒をクリックするとキャンセルする", not piece.is_held and not board_view._node_for(other_state).is_held)
 	_expect("入力: マウスのキャンセルでガイドを消す", board._active_guides.is_empty())
 
-	input.handle_tap(Vector2i(2, 6), state)
-	input.handle_tap(Vector2i(-1, -1), null)
+	input.handle_tap(Vector2i(2, 6), state, false)
+	input.handle_tap(Vector2i(-1, -1), null, false)
 	_expect("入力: マウスで盤の外をクリックするとキャンセルする", not piece.is_held)
 	_expect("入力: マウスのキャンセルで元のマスに戻す", piece.position == _cell_position(2, 6))
 

@@ -135,8 +135,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not is_game_active or is_ai_thinking:
 		return
 
+	var is_touch := mouse_button.device == InputEvent.DEVICE_ID_EMULATION
 	var coord := _tap_coord(mouse_button)
-	input_controller.handle_tap(coord, _tap_state(mouse_button, coord))
+	input_controller.handle_tap(coord, _tap_state(mouse_button, coord), is_touch)
 	get_viewport().set_input_as_handled()
 
 
