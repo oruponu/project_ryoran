@@ -112,6 +112,32 @@ void run_move_ordering_tests() {
 	check(ai_t.get_move_ordering_score(board, kp, 5) == 920000, "killer + promotion = 920000");
 }
 
+void run_sort_moves_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "sort_moves: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	Shogi::MoveList generated;
+	MoveGenerator::get_legal_moves(*board, generated);
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+
+	Shogi::MoveList sorted = generated;
+	ai_t.sort_moves(*board, sorted.begin(), sorted.end(), 0);
+	check(std::ranges::equal(sorted, generated), "sort_moves: equal scores keep generation order");
+
+	ai_t.update_history(Turn::SENTE, generated[generated.size() / 2], 4);
+	ai_t.update_killer(0, generated[generated.size() - 1]);
+	Shogi::MoveList expected = generated;
+	std::ranges::stable_sort(expected, std::ranges::greater{},
+			[&](const Move &move) { return ai_t.get_move_ordering_score(*board, move, 0); });
+	sorted = generated;
+	ai_t.sort_moves(*board, sorted.begin(), sorted.end(), 0);
+	check(std::ranges::equal(sorted, expected), "sort_moves: higher scores first, ties in generation order");
+}
+
 void run_see_tests() {
 	{
 		// A: タダ取り（守りのない後手歩を先手飛で取る）
@@ -519,6 +545,7 @@ void run_search_tests() {
 	run_format_percent_tests();
 	run_logger_tests();
 	run_move_ordering_tests();
+	run_sort_moves_tests();
 	run_see_tests();
 	run_quiescence_tests();
 	run_lmr_and_extension_tests();

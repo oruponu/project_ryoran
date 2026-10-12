@@ -44,6 +44,7 @@ struct AIPlayerTestAccess {
 	int get_move_ordering_score(const BoardState &board, const Move &move, int ply) {
 		return ai.get_move_ordering_score(board, move, ply);
 	}
+	void sort_moves(const BoardState &board, Move *first, Move *last, int ply) { ai.sort_moves(board, first, last, ply); }
 	void update_killer(int ply, const Move &move) { ai.update_killer(ply, move); }
 	void update_history(Turn turn, const Move &move, int depth) { ai.update_history(turn, move, depth); }
 	int quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count, int qs_ply = 0) {
