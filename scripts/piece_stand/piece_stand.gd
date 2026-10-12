@@ -20,6 +20,7 @@ const COUNT_LABEL_OFFSET = Vector2(35, 0)
 const COUNT_LABEL_FONT_SIZE = 24
 
 
+var is_horizontal: bool = false
 var _labels: Dictionary[PieceState.Type, Label] = {}
 
 
@@ -28,9 +29,25 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	var rect := Rect2(0, 0, GameConfig.GRID_SIZE + COUNT_LABEL_SPACE, GameConfig.GRID_SIZE * DISPLAY_ORDER.size())
+	var rect := Rect2(Vector2.ZERO, get_stand_size())
 	draw_rect(rect, GameConfig.BOARD_COLOR)
 	draw_rect(rect, GameConfig.LINE_COLOR, false, 2.0)
+
+
+func get_stand_size() -> Vector2:
+	var slot_count := DISPLAY_ORDER.size()
+	if is_horizontal:
+		return Vector2((GameConfig.GRID_SIZE + COUNT_LABEL_SPACE) * slot_count, GameConfig.GRID_SIZE)
+	return Vector2(GameConfig.GRID_SIZE + COUNT_LABEL_SPACE, GameConfig.GRID_SIZE * slot_count)
+
+
+func set_horizontal(value: bool) -> void:
+	if is_horizontal == value:
+		return
+
+	is_horizontal = value
+	queue_redraw()
+	update_layout(true)
 
 
 func add_piece(piece: Piece, immediate: bool = false) -> void:
@@ -71,26 +88,12 @@ func update_layout(immediate: bool = false) -> void:
 		label.visible = false
 
 	var stack_index := 0
-	var total_height := GameConfig.GRID_SIZE * DISPLAY_ORDER.size()
-
-	var center_x := 0.0
-	if is_gote:
-		center_x = GameConfig.GRID_SIZE / 2.0 + COUNT_LABEL_SPACE
-	else:
-		center_x = GameConfig.GRID_SIZE / 2.0
-
 	for piece_type in DISPLAY_ORDER:
 		var pieces: Array = groups[piece_type]
 		if pieces.is_empty():
 			continue
 
-		var center_y := 0.0
-		if is_gote:
-			center_y = (stack_index * GameConfig.GRID_SIZE) + (GameConfig.GRID_SIZE / 2.0)
-		else:
-			center_y = total_height - (stack_index * GameConfig.GRID_SIZE) - (GameConfig.GRID_SIZE / 2.0)
-
-		var target_pos := Vector2(center_x, center_y)
+		var target_pos := _slot_center(stack_index)
 
 		var representative: Piece = pieces[0]
 		representative.visible = true
@@ -129,6 +132,18 @@ func update_layout(immediate: bool = false) -> void:
 				label.rotation_degrees = 0
 
 		stack_index += 1
+
+
+func _slot_center(stack_index: int) -> Vector2:
+	var half := GameConfig.GRID_SIZE / 2.0
+	var offset_x: float = half + COUNT_LABEL_SPACE if is_gote else half
+	if is_horizontal:
+		var slot_width: float = GameConfig.GRID_SIZE + COUNT_LABEL_SPACE
+		var slot_left: float = stack_index * slot_width if is_gote else get_stand_size().x - (stack_index + 1) * slot_width
+		return Vector2(slot_left + offset_x, half)
+
+	var center_y: float = stack_index * GameConfig.GRID_SIZE + half if is_gote else get_stand_size().y - stack_index * GameConfig.GRID_SIZE - half
+	return Vector2(offset_x, center_y)
 
 
 func _get_label(piece_type: PieceState.Type) -> Label:
