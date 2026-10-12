@@ -110,8 +110,9 @@ func apply(portrait: bool, visible_size: Vector2) -> void:
 	_set_button_height(PORTRAIT_BUTTON_HEIGHT if portrait else 0.0)
 	_history_button.visible = portrait
 	_last_move_label.visible = portrait
-	_history_backdrop.visible = false
-	_move_history_panel.visible = not portrait
+	if changed:
+		_history_backdrop.visible = false
+		_move_history_panel.visible = not portrait
 	_sente_stand.set_horizontal(portrait)
 	_gote_stand.set_horizontal(portrait)
 
