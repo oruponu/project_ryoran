@@ -293,7 +293,7 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 		int sente_attack_count = count_attacks(0);
 		int gote_attack_count = count_attacks(1);
 
-		const Cell &cell = board.get_cell(Shogi::Coord::from_index(index));
+		const Cell &cell = board.get_cell(index);
 		score += get_square_score(sente_king_index, gote_king_index, index, sente_attack_count, gote_attack_count,
 				get_owner_index(cell), get_piece_state_index(cell));
 	}
