@@ -12,11 +12,13 @@ func _initialize() -> void:
 
 	_check_input_controller(main)
 	_check_tap_routing(main)
+	_check_touch_input(main)
 	_check_board_hold_release(main)
 	_check_place_ends_holding(main)
 	_check_hand_hold_release(main)
 	_check_hold_in_place(main)
 	_check_stand_routing(main)
+	_check_touch_hand(main)
 	await _check_rebuild(main)
 
 	main.queue_free()
@@ -56,6 +58,7 @@ func _check_input_controller(main: Node2D) -> void:
 	input.handle_tap(Vector2i(2, 6), state, false)
 	_expect("入力: 手番の駒を持ち上げる", piece.is_held and piece.z_index == 10)
 	_expect("入力: マウスで持った駒は追従する", piece.follows_mouse)
+	_expect("入力: マウスで持っても選択枠は出さない", board._selection_rect == null or not board._selection_rect.visible)
 	_expect("入力: 7七歩を持ち上げるとガイドを1マス出す", board._active_guides.size() == 1)
 
 	input.cancel_holding()
@@ -230,3 +233,84 @@ func _check_stand_routing(main: Node2D) -> void:
 	event.pressed = true
 	event.position = stand.to_global(visible_position)
 	_expect("振り分け: 駒台の駒を求める", main._tap_state(event, main._tap_coord(event)) == visible_piece.state)
+
+
+func _check_touch_input(main: Node2D) -> void:
+	var input = main.input_controller
+	var board_view = main.board_view
+	var board: Board = main.board
+
+	var gote_state: PieceState = main.game_state.get_piece(2, 2)
+	input.handle_tap(Vector2i(2, 2), gote_state, true)
+	_expect("タッチ: 手番でない駒は選ばない", input._holding_state == null)
+
+	var state: PieceState = main.game_state.get_piece(2, 6)
+	var piece: Piece = board_view._node_for(state)
+	var base_scale := piece.scale
+	input.handle_tap(Vector2i(2, 6), state, true)
+	_expect("タッチ: 駒を選ぶ", piece.is_held and not piece.follows_mouse)
+	_expect("タッチ: 選んだ駒を拡大する", piece.scale.is_equal_approx(base_scale * Piece.SELECTED_SCALE))
+	_expect("タッチ: 選んだ駒のマスに選択枠を出す", board._selection_rect.visible and board._selection_rect.position == Vector2(2 * 70, 6 * 70))
+	_expect("タッチ: ガイドを出す", board._active_guides.size() == 1)
+
+	var other_state: PieceState = main.game_state.get_piece(6, 6)
+	var other_piece: Piece = board_view._node_for(other_state)
+	input.handle_tap(Vector2i(6, 6), other_state, true)
+	_expect("タッチ: 自分の別の駒をタップすると選択を切り替える", other_piece.is_held and not piece.is_held)
+	_expect("タッチ: 切り替え前の駒は元の大きさに戻る", piece.scale.is_equal_approx(base_scale))
+	_expect("タッチ: 選択枠も切り替えた駒のマスに移る", board._selection_rect.position == Vector2(6 * 70, 6 * 70))
+
+	input.handle_tap(Vector2i(6, 6), other_state, true)
+	_expect("タッチ: 選択中の駒をもう一度タップすると解除する", not other_piece.is_held and other_piece.scale.is_equal_approx(base_scale))
+	_expect("タッチ: 解除で選択枠を消す", not board._selection_rect.visible)
+	_expect("タッチ: 解除でガイドを消す", board._active_guides.is_empty())
+
+	input.handle_tap(Vector2i(2, 6), state, true)
+	input.handle_tap(Vector2i(4, 4), null, true)
+	_expect("タッチ: 行き先でないマスをタップすると解除する", not piece.is_held)
+
+	input.handle_tap(Vector2i(2, 6), state, true)
+	input.handle_tap(Vector2i(-1, -1), null, true)
+	_expect("タッチ: 盤の外をタップすると解除する", not piece.is_held)
+
+	input.handle_tap(Vector2i(2, 6), state, true)
+	input.cancel_holding()
+	_expect("タッチ: ボタンなどからのキャンセルで解除する", not piece.is_held and piece.scale.is_equal_approx(base_scale))
+	_expect("タッチ: ボタンなどからのキャンセルで選択枠を消す", not board._selection_rect.visible)
+
+	var submitted: Array = []
+	var on_submitted := func(s: PieceState, col: int, row: int, _mode: PromotionMode.Type) -> void:
+		submitted.append([s, col, row])
+	var main_handler := Callable(main, "_on_move_submitted")
+	input.move_submitted.disconnect(main_handler)
+	input.move_submitted.connect(on_submitted)
+
+	input.handle_tap(Vector2i(2, 6), state, true)
+	input.handle_tap(Vector2i(2, 5), null, true)
+	_expect("タッチ: 行き先をタップすると着手する", submitted.size() == 1 and submitted[0] == [state, 2, 5])
+	_expect("タッチ: 着手で選択を終える", input._holding_state == null and not board._selection_rect.visible)
+	_expect("タッチ: 着手でガイドを消す", board._active_guides.is_empty())
+
+	input.move_submitted.disconnect(on_submitted)
+	input.move_submitted.connect(main_handler)
+	board_view.release(state, true)
+
+
+func _check_touch_hand(main: Node2D) -> void:
+	var input = main.input_controller
+	var stand: PieceStand = main.sente_piece_stand
+
+	var visible_piece: Piece = null
+	for child in stand.get_children():
+		if child is Piece and child.visible:
+			visible_piece = child
+	var visible_position := visible_piece.position
+
+	input.handle_tap(Vector2i(-1, -1), visible_piece.state, true)
+	_expect("タッチ: 駒台の駒を選ぶ", visible_piece.is_held and not visible_piece.follows_mouse)
+	_expect("タッチ: 選んだ持ち駒は駒台の同じ位置に表示したまま", visible_piece.visible and visible_piece.position == visible_position)
+	_expect("タッチ: 持ち駒には選択枠を出さない", not main.board._selection_rect.visible)
+
+	input.handle_tap(Vector2i(-1, -1), null, true)
+	_expect("タッチ: 盤の外をタップすると持ち駒の選択を解除する", not visible_piece.is_held)
+	_expect("タッチ: 解除後も代表の駒を表示している", visible_piece.visible and visible_piece.position == visible_position)
