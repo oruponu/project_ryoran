@@ -3,6 +3,9 @@ class_name MoveHistoryPanel
 extends Panel
 
 
+signal entries_changed
+
+
 const FONT_SIZE = 24
 const MOVE_COUNT_WIDTH = 50
 const ROW_SEPARATION = 16
@@ -13,7 +16,7 @@ const ROW_SEPARATION = 16
 
 
 func add_game_start(move_count: int) -> void:
-	_append_entry_row(move_count, "開始局面")
+	_append_entry_row(move_count, "開始局面", "開始局面")
 
 
 func add_ending(move_count: int, ending: GameEnding.Type, is_sente_win: bool) -> void:
@@ -27,12 +30,12 @@ func add_ending(move_count: int, ending: GameEnding.Type, is_sente_win: bool) ->
 			ending_text = "千日手"
 		GameEnding.Type.PERPETUAL_CHECK:
 			ending_text = "%s反則勝ち" % winner_marker
-	_append_entry_row(move_count, ending_text)
+	_append_entry_row(move_count, ending_text, ending_text)
 
 
 func add_move(move_count: int, record: MoveRecord, prev_record: MoveRecord) -> void:
 	var move_text := _format_move_notation(record, prev_record)
-	_append_entry_row(move_count, move_text)
+	_append_entry_row(move_count, move_text, "%d %s" % [move_count, move_text])
 
 
 func remove_last_move() -> void:
@@ -41,14 +44,29 @@ func remove_last_move() -> void:
 		var last_row_container := history_list.get_child(count - 1)
 		history_list.remove_child(last_row_container)
 		last_row_container.queue_free()
+		entries_changed.emit()
 
 
 func clear() -> void:
 	for child in history_list.get_children():
+		history_list.remove_child(child)
 		child.queue_free()
+	entries_changed.emit()
 
 
-func _append_entry_row(move_count: int, move_text: String) -> void:
+func last_entry_text() -> String:
+	var count := history_list.get_child_count()
+	if count == 0:
+		return ""
+	return history_list.get_child(count - 1).get_meta("summary")
+
+
+func scroll_to_latest() -> void:
+	await get_tree().process_frame
+	history_scroll.scroll_vertical = history_scroll.get_v_scroll_bar().max_value
+
+
+func _append_entry_row(move_count: int, move_text: String, summary: String) -> void:
 	var move_count_label := Label.new()
 	move_count_label.text = str(move_count)
 	move_count_label.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -63,11 +81,11 @@ func _append_entry_row(move_count: int, move_text: String) -> void:
 	row_container.add_theme_constant_override("separation", ROW_SEPARATION)
 	row_container.add_child(move_count_label)
 	row_container.add_child(move_text_label)
+	row_container.set_meta("summary", summary)
 
 	history_list.add_child(row_container)
-
-	await get_tree().process_frame
-	history_scroll.scroll_vertical = history_scroll.get_v_scroll_bar().max_value
+	entries_changed.emit()
+	scroll_to_latest()
 
 
 func _format_move_notation(record: MoveRecord, prev_record: MoveRecord) -> String:
