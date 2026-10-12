@@ -703,6 +703,13 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 }
 
 double AIPlayer::calculate_win_probability(int score) {
+	if (score >= MATE_BOUND) {
+		return 1.0;
+	}
+	if (score <= -MATE_BOUND) {
+		return 0.0;
+	}
+
 	const double SCALING_FACTOR = 3333.0;
 	return 1.0 / (1.0 + std::pow(10.0, -static_cast<double>(score) / SCALING_FACTOR));
 }
