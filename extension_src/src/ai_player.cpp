@@ -24,6 +24,8 @@ constexpr uint64_t OWN_MATE_NODES = 30000;
 constexpr int MATE_CHECK_DEPTH = 9;
 constexpr uint64_t MATE_CHECK_NODES = 5000;
 
+constexpr int TIME_CHECK_INTERVAL = 1024;
+
 // 後方の駒を取らない手は最善である可能性が低いため、先頭の手を除いて探索深さを削減する
 constexpr int LMR_MOVE_THRESHOLD = 4;
 constexpr int LMR_DEEP_MOVE_THRESHOLD = 12;
@@ -231,9 +233,12 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		uint64_t &node_count, bool can_null) {
 	++node_count;
 
-	if (now_usec() > end_time) {
-		timeout = true;
-		return 0;
+	if (--time_check_countdown_ <= 0) {
+		time_check_countdown_ = TIME_CHECK_INTERVAL;
+		if (now_usec() > end_time) {
+			timeout = true;
+			return 0;
+		}
 	}
 
 	uint64_t hash = board.get_zobrist_hash();
