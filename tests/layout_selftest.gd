@@ -16,6 +16,7 @@ func _initialize() -> void:
 
 	var layout_script: GDScript = load("res://scripts/main/main_layout.gd")
 	_check_static(layout_script)
+	_check_deferred_update(main)
 	var snapshot := _snapshot(main)
 	_check_cancel_on_change(main)
 	for size in [Vector2(720, 1280), Vector2(720, 1558), Vector2(756, 1280)]:
@@ -155,3 +156,11 @@ func _check_restore(main: Node2D, snapshot: Dictionary) -> void:
 	_expect("横に戻す: 直前の指し手を隠す", not main.last_move_label.visible)
 	main.layout.set_history_open(false)
 	_expect("横に戻す: 横では棋譜を閉じる操作を無視する", main.move_history_panel.visible)
+
+
+func _check_deferred_update(main: Node2D) -> void:
+	var flags := -1
+	for connection in root.size_changed.get_connections():
+		if connection.callable == Callable(main.layout, "update"):
+			flags = connection.flags
+	_expect("切り替え: 画面の大きさの変化を遅延呼び出しで受ける", flags != -1 and flags & CONNECT_DEFERRED != 0)
