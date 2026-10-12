@@ -60,6 +60,7 @@ struct AIPlayerTestAccess {
 			uint64_t &node_count, uint64_t max_nodes) {
 		ai.dfpn_search(board, turn, threshold_pn, threshold_dn, pn, dn, depth, node_count, max_nodes);
 	}
+	double calculate_win_probability(int score) { return ai.calculate_win_probability(score); }
 	auto &path_hashes() { return ai.path_hashes_; }
 	auto &path_in_check() { return ai.path_in_check_; }
 	auto &transposition_table() { return ai.transposition_table_; }

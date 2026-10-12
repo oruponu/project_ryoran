@@ -64,6 +64,20 @@ void run_format_percent_tests() {
 	check(AIPlayerTestAccess::format_percent(0.0) == "0", "format_percent: 0.0 becomes 0");
 }
 
+void run_win_probability_tests() {
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	check(ai_t.calculate_win_probability(-AIPlayer::MATE_BOUND) == 0.0, "calculate_win_probability: being mated is exactly 0");
+	check(ai_t.calculate_win_probability(-(AIPlayer::MATE_SCORE - 1)) == 0.0,
+			"calculate_win_probability: mated in 1 is exactly 0");
+	check(ai_t.calculate_win_probability(AIPlayer::MATE_BOUND) == 1.0, "calculate_win_probability: mating is exactly 1");
+	check(ai_t.calculate_win_probability(AIPlayer::MATE_SCORE - 1) == 1.0,
+			"calculate_win_probability: mate in 1 is exactly 1");
+	check(ai_t.calculate_win_probability(-(AIPlayer::MATE_BOUND - 1)) > 0.0,
+			"calculate_win_probability: losing without mate stays above 0");
+	check(ai_t.calculate_win_probability(0) == 0.5, "calculate_win_probability: even score is 0.5");
+}
+
 void run_move_ordering_tests() {
 	BoardState board(Turn::SENTE);
 	AIPlayer ai;
@@ -543,6 +557,7 @@ void run_dfpn_repetition_tests() {
 
 void run_search_tests() {
 	run_format_percent_tests();
+	run_win_probability_tests();
 	run_logger_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
