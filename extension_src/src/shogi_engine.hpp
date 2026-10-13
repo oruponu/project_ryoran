@@ -50,6 +50,8 @@ public:
 	[[nodiscard]] godot::Dictionary search_best_move();
 	[[nodiscard]] godot::Array search_top_moves(int count);
 	void set_time_limit_msec(int msec);
+	void stop();
+	void clear_stop();
 };
 
 VARIANT_ENUM_CAST(ShogiEngine::PieceType);

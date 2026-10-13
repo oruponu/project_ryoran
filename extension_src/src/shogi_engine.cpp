@@ -100,6 +100,8 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 	ClassDB::bind_method(D_METHOD("search_top_moves", "count"), &ShogiEngine::search_top_moves);
 	ClassDB::bind_method(D_METHOD("set_time_limit_msec", "msec"), &ShogiEngine::set_time_limit_msec);
+	ClassDB::bind_method(D_METHOD("stop"), &ShogiEngine::stop);
+	ClassDB::bind_method(D_METHOD("clear_stop"), &ShogiEngine::clear_stop);
 
 	ADD_SIGNAL(MethodInfo("depth_completed", PropertyInfo(Variant::ARRAY, "moves"), PropertyInfo(Variant::INT, "depth")));
 
@@ -226,4 +228,12 @@ void ShogiEngine::set_time_limit_msec(int msec) {
 		return;
 	}
 	ai_player_.set_time_limit_usec(static_cast<uint64_t>(msec) * 1000);
+}
+
+void ShogiEngine::stop() {
+	ai_player_.request_stop();
+}
+
+void ShogiEngine::clear_stop() {
+	ai_player_.clear_stop();
 }

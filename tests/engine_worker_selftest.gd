@@ -11,6 +11,7 @@ var _failures := 0
 
 func _initialize() -> void:
 	await _check_engine_depth_signal()
+	await _check_engine_stop()
 
 	print("== engine_worker_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -51,3 +52,23 @@ func _check_engine_depth_signal() -> void:
 	result = engine.search_top_moves(3)
 	await _wait_frames(2)
 	_expect("depth_completed: 定跡の局面では届かない", depths.is_empty() and not result.is_empty())
+
+
+func _check_engine_stop() -> void:
+	var engine := ShogiEngine.new()
+	var depths := []
+	engine.depth_completed.connect(func(_moves: Array, depth: int) -> void: depths.append(depth))
+	engine.update_state_from_sfen(NON_BOOK_SENTE_SFEN)
+	engine.set_time_limit_msec(300)
+
+	engine.stop()
+	var result: Array = engine.search_top_moves(3)
+	await _wait_frames(2)
+	_expect("stop: 探索の前に止めても深さ1だけは読み切る", depths == [1])
+	_expect("stop: 深さ1の結果を返す", not result.is_empty())
+
+	depths.clear()
+	engine.clear_stop()
+	result = engine.search_top_moves(3)
+	await _wait_frames(2)
+	_expect("clear_stop: 深さ2以降も読む", depths.size() >= 2)
