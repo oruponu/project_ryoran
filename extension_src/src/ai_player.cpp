@@ -78,6 +78,10 @@ void AIPlayer::set_time_limit_usec(uint64_t usec) {
 	time_limit_usec_ = usec;
 }
 
+void AIPlayer::set_max_depth(int depth) {
+	max_depth_ = std::max(depth, 1);
+}
+
 void AIPlayer::set_logger(std::function<void(const std::string &)> logger) {
 	logger_ = std::move(logger);
 }
@@ -776,8 +780,6 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	uint64_t start_time = now_usec();
 	uint64_t strict_limit_time = start_time + time_limit_usec_;
 
-	int max_depth_limit = 12;
-
 	std::vector<RootMove> global_top;
 	for (const Move &move : move_list | std::views::take(count)) {
 		global_top.push_back({ .move = move, .score = -INFINITE_SCORE });
@@ -798,7 +800,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	path_hashes_[0] = board.get_zobrist_hash();
 	path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_turn);
 
-	for (int depth = 1; depth <= max_depth_limit; ++depth) {
+	for (int depth = 1; depth <= max_depth_; ++depth) {
 		if (depth > 1 && now_usec() > strict_limit_time) {
 			log(std::format("Time limit reached before depth {}", depth));
 			break;

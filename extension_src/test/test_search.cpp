@@ -56,6 +56,29 @@ void run_logger_tests() {
 	check(!silent.search_top_moves(*board, 1).empty(), "search_top_moves: works without logger");
 }
 
+void run_max_depth_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "max_depth: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	AIPlayer ai;
+	ai.set_max_depth(3);
+	ai.set_time_limit_usec(60'000'000);
+	std::vector<std::string> lines;
+	ai.set_logger([&lines](const std::string &line) { lines.push_back(line); });
+	static_cast<void>(ai.search_top_moves(*board, 1));
+
+	std::string last_depth_line;
+	for (const std::string &line : lines) {
+		if (line.starts_with("Depth ")) {
+			last_depth_line = line;
+		}
+	}
+	check(last_depth_line.starts_with("Depth 3 completed."), "max_depth: search stops after depth 3");
+}
+
 void run_format_percent_tests() {
 	check(AIPlayerTestAccess::format_percent(50.0) == "50", "format_percent: 50.0 drops trailing .0");
 	check(AIPlayerTestAccess::format_percent(49.96) == "50", "format_percent: rounds up to integer without .0");
@@ -559,6 +582,7 @@ void run_search_tests() {
 	run_format_percent_tests();
 	run_win_probability_tests();
 	run_logger_tests();
+	run_max_depth_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
 	run_see_tests();
