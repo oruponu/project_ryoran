@@ -278,4 +278,9 @@ func _check_search_progress_bar() -> void:
 	worker.search_progressed.emit([])
 	_expect("AIの途中経過: 結果が空ならバーは動かさない", main.win_rate_bar.sente_value_label.text == "75")
 
+	main.game_state.move_count = 1
+	worker.search_progressed.emit([_move(0.75)])
+	_expect("AIの途中経過: 後手番では先手側の勝率に直して表示する", main.win_rate_bar.sente_value_label.text == "25")
+	main.game_state.move_count = 0
+
 	main.queue_free()
