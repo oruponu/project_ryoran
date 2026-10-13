@@ -274,7 +274,7 @@ void run_quiescence_tests() {
 		int high_alpha = stand_pat + 90 + 540 + 1; // victim(90) + DELTA_MARGIN(540) でも届かない
 		score = ai_t.quiescence_search(board, high_alpha, high_alpha + 1, 0, nodes);
 		check(nodes == 1, "delta pruning skips hopeless capture");
-		check(score == stand_pat, "delta pruning returns stand_pat");
+		check(score == stand_pat + 90 + 540, "delta pruning returns the optimistic value of the skipped capture");
 	}
 	{
 		// SEE pruning: 負け取りしかない局面では手を読まず stand_pat を返す
@@ -362,6 +362,29 @@ void run_fail_low_tt_move_tests() {
 	const TTEntry &entry = ai_t.transposition_table().at(hash);
 	check(entry.flag == TTFlag::UPPER_BOUND, "tt move: fail-low node is stored as upper bound");
 	check(entry.best_move == king_move, "tt move: fail-low node keeps the previous best move");
+}
+
+bool is_board_move(const ScoredMove &scored, int from_col, int from_row, int to_col, int to_row) {
+	const Move &move = scored.move;
+	return !move.is_drop && move.from_col == from_col && move.from_row == from_row && move.to_col == to_col && move.to_row == to_row;
+}
+
+void run_hint_score_tests() {
+	// 期待値はPVS導入前の実装で求めた値
+	BoardState board(Turn::SENTE);
+	setup_capture_choice_position(board);
+	AIPlayer ai;
+	ai.set_max_depth(3);
+	ai.set_time_limit_usec(60'000'000);
+	std::vector<ScoredMove> moves = ai.search_top_moves(board, 3);
+	check(moves.size() == 3, "hint: returns 3 moves");
+	if (moves.size() != 3) {
+		return;
+	}
+	check(is_board_move(moves[0], 6, 7, 6, 4) && moves[0].score == 1871, "hint: 1st is rook takes gold (1871)");
+	check(is_board_move(moves[1], 2, 7, 2, 4) && moves[1].score == 1306, "hint: 2nd is rook takes bishop (1306)");
+	check(is_board_move(moves[2], 4, 7, 4, 2) && moves[2].move.is_promotion && moves[2].score == 1289,
+			"hint: 3rd is lance takes silver with promotion (1289)");
 }
 
 void run_lmr_and_extension_tests() {
@@ -638,6 +661,7 @@ void run_search_tests() {
 	run_quiescence_tests();
 	run_pvs_tests();
 	run_fail_low_tt_move_tests();
+	run_hint_score_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
 	run_history_repetition_tests();

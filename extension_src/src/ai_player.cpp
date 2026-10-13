@@ -692,7 +692,9 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 				int piece_type_index = std::to_underlying(move.piece_type);
 				promotion_gain = Shogi::PIECE_VALUES[piece_type_index][1] - Shogi::PIECE_VALUES[piece_type_index][0];
 			}
-			if (stand_pat + victim_value + promotion_gain + DELTA_MARGIN <= alpha) {
+			int optimistic_score = stand_pat + victim_value + promotion_gain + DELTA_MARGIN;
+			if (optimistic_score <= alpha) {
+				max_eval = std::max(max_eval, optimistic_score);
 				continue;
 			}
 			// Static Exchange Evaluation
