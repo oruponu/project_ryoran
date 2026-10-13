@@ -75,3 +75,4 @@ void run_zobrist_tests(const std::vector<uint8_t> &data);
 void run_rules_tests();
 void run_search_tests();
 void run_evaluator_tests();
+void run_transposition_table_tests();

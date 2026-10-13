@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	run_transposition_table_tests();
 	run_search_tests();
 	run_rules_tests();
 	run_evaluator_tests();
