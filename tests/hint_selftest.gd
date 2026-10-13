@@ -30,6 +30,7 @@ func _initialize() -> void:
 	await _check_search_failed()
 	await _check_arrows_follow_analysis()
 	await _check_search_progress_bar()
+	await _check_undo_requests_analysis_once()
 
 	print("== hint_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -284,3 +285,33 @@ func _check_search_progress_bar() -> void:
 	main.game_state.move_count = 0
 
 	main.queue_free()
+	await process_frame
+
+
+func _check_undo_requests_analysis_once() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	var state: PieceState = main.game_state.get_piece(2, 6)
+	main._on_move_submitted(state, 2, 5, PromotionMode.Type.FORCE_STAY)
+
+	var deadline := Time.get_ticks_msec() + 10000
+	while main.game_state.move_count < 2 and Time.get_ticks_msec() < deadline:
+		await process_frame
+	_expect("待った: 前提として2手進んでいる", main.game_state.move_count == 2)
+
+	worker.stop()
+	while worker._thread != null and Time.get_ticks_msec() < deadline:
+		await process_frame
+	_expect("待った: 前提としてワーカーが空いている", worker._thread == null)
+
+	main._undo_to_player_turn()
+	_expect("待った: 2手戻る", main.game_state.move_count == 0)
+	_expect("待った: 解析の依頼は1回だけ", worker._thread != null and not worker._has_next_request)
+
+	main.queue_free()
+	for i in 10:
+		await process_frame

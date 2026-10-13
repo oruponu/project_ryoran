@@ -342,9 +342,14 @@ func _end_game(ending: GameEnding.Type, is_sente_win: bool) -> void:
 
 
 func _undo_to_player_turn() -> void:
+	if game_state.move_history.is_empty():
+		return
+
 	_undo_last_move()
 	if _is_ai_turn():
 		_undo_last_move()
+
+	engine_worker.request_analysis()
 
 
 func _undo_last_move() -> void:
@@ -369,8 +374,6 @@ func _undo_last_move() -> void:
 	if game_state.move_count <= 0:
 		engine_worker.stop()
 		win_rate_bar.reset_bar(false)
-
-	engine_worker.request_analysis()
 
 
 func _update_last_move_highlight() -> void:
