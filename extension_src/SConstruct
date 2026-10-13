@@ -34,10 +34,13 @@ if env["platform"] == "windows":
     test_env.Replace(CPPPATH=["#src"], LIBS=["stdc++exp"], LIBPATH=[])
     test_env.VariantDir("build/test/src", "src", duplicate=0)
     test_env.VariantDir("build/test/test", "test", duplicate=0)
-    test_sources = [
+    engine_sources = [
         f for f in Glob("build/test/src/*.cpp")
         if f.name not in ("shogi_engine.cpp", "register_types.cpp")
-    ] + Glob("build/test/test/*.cpp")
+    ]
+    test_sources = engine_sources + [
+        f for f in Glob("build/test/test/*.cpp") if f.name != "bench_main.cpp"
+    ]
     test_program = test_env.Program("build/test/shogi_tests", test_sources)
     test_run = test_env.Command(
         "build/test/run",
@@ -46,6 +49,9 @@ if env["platform"] == "windows":
     )
     test_env.AlwaysBuild(test_run)
     Alias("tests", test_run)
+
+    bench_program = test_env.Program("build/test/shogi_bench", engine_sources + ["build/test/test/bench_main.cpp"])
+    Alias("bench", bench_program)
 
 if env["platform"] != "web":
     Default("compiledb")
