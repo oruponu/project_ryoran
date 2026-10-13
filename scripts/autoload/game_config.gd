@@ -13,7 +13,8 @@ const AI_IS_GOTE = true
 const MIN_AI_RESPONSE_TIME_SEC = 0.5
 const HINT_CANDIDATE_COUNT = 3
 const HINT_WIN_RATE_MARGIN = 0.01
-const HINT_ANALYSIS_TIME_MSEC = 2000
+const AI_SEARCH_TIME_MSEC = 1000
+const ANALYSIS_TIME_MSEC = 30000
 
 
 func cell_to_position(col: int, row: int) -> Vector2:

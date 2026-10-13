@@ -50,7 +50,8 @@ func _ready() -> void:
 
 	engine_worker.setup(sfen_serializer, game_referee.repetition_tracker)
 	engine_worker.search_completed.connect(_on_search_completed)
-	engine_worker.analysis_completed.connect(_on_analysis_completed)
+	engine_worker.search_failed.connect(_on_search_failed)
+	engine_worker.analysis_updated.connect(_on_analysis_updated)
 
 	input_controller = InputController.new(game_state, board, board_view, _shogi_engine, sfen_serializer)
 	input_controller.move_submitted.connect(_on_move_submitted)
@@ -159,7 +160,7 @@ func _reset_game() -> void:
 	_clear_hint()
 
 	_update_turn_display()
-	engine_worker.reset()
+	engine_worker.stop()
 	win_rate_bar.reset_bar(true)
 	game_state.setup_starting_position()
 	board_view.rebuild()
@@ -207,6 +208,7 @@ func _tap_state(event: InputEventMouseButton, coord: Vector2i) -> PieceState:
 
 
 func _on_move_submitted(state: PieceState, col: int, row: int, mode: PromotionMode.Type) -> void:
+	engine_worker.stop()
 	_clear_hint()
 
 	var record: MoveRecord = await move_executor.execute(state, col, row, mode)
@@ -255,22 +257,21 @@ func _finish_turn(record: MoveRecord) -> void:
 
 
 func _decide_promotion() -> bool:
-	engine_worker.suspend_analysis()
-	var should_promote: bool = await game_dialogs.request_promotion()
-	engine_worker.resume_analysis()
-	return should_promote
+	return await game_dialogs.request_promotion()
 
 
 func _play_ai_turn() -> void:
 	is_ai_thinking = true
 	_update_button_states()
-
-	if not engine_worker.request_search():
-		is_ai_thinking = false
-		_update_button_states()
+	engine_worker.request_search()
 
 
-func _on_analysis_completed(moves: Array) -> void:
+func _on_search_failed() -> void:
+	is_ai_thinking = false
+	_update_button_states()
+
+
+func _on_analysis_updated(moves: Array) -> void:
 	if moves.is_empty():
 		win_rate_bar.update_bar(_to_sente_win_rate(0.0))
 		_hint_moves = []
@@ -319,6 +320,7 @@ func _on_search_completed(move: Dictionary) -> void:
 
 
 func _end_game(ending: GameEnding.Type, is_sente_win: bool) -> void:
+	engine_worker.stop()
 	_clear_hint()
 	move_history_panel.add_ending(game_state.move_count + 1, ending, is_sente_win)
 	check_label.cancel_animation()
@@ -354,7 +356,7 @@ func _undo_last_move() -> void:
 	check_label.cancel_animation()
 
 	if game_state.move_count <= 0:
-		engine_worker.reset()
+		engine_worker.stop()
 		win_rate_bar.reset_bar(false)
 
 	engine_worker.request_analysis()

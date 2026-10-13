@@ -25,6 +25,9 @@ func _initialize() -> void:
 	_check_arrow_lifecycle()
 	await _check_filter()
 	await _check_promotion_decision()
+	await _check_move_submission_stops_analysis()
+	await _check_end_game_stops_analysis()
+	await _check_search_failed()
 
 	print("== hint_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -93,23 +96,23 @@ func _check_filter() -> void:
 	await process_frame
 
 	var worker: EngineWorker = main.engine_worker
-	worker.suspend_analysis()
-	_expect("シグナル: analysis_completed が main に接続されている",
-			worker.analysis_completed.is_connected(main._on_analysis_completed))
+	worker.stop()
+	_expect("シグナル: analysis_updated が main に接続されている",
+			worker.analysis_updated.is_connected(main._on_analysis_updated))
 
 	var margin: float = GameConfig.HINT_WIN_RATE_MARGIN
 
-	worker.analysis_completed.emit([_move(0.60), _move(0.60 - margin * 0.9), _move(0.60 - margin * 1.1)])
+	worker.analysis_updated.emit([_move(0.60), _move(0.60 - margin * 0.9), _move(0.60 - margin * 1.1)])
 	_expect("フィルター: 勝率差が閾値内の手だけを残す", main._hint_moves.size() == 2)
 
-	worker.analysis_completed.emit([_move(0.60), _move(0.60 - margin * 0.5), _move(0.60 - margin * 0.9)])
+	worker.analysis_updated.emit([_move(0.60), _move(0.60 - margin * 0.5), _move(0.60 - margin * 0.9)])
 	_expect("フィルター: すべて閾値内なら3件", main._hint_moves.size() == 3)
 
-	worker.analysis_completed.emit([_move(0.60), _move(0.10), _move(0.05)])
+	worker.analysis_updated.emit([_move(0.60), _move(0.10), _move(0.05)])
 	_expect("フィルター: 勝率の低い手を除いて1件", main._hint_moves.size() == 1)
 	_expect("フィルター: 1件でもヒントボタンは有効", not main.hint_button.disabled)
 
-	worker.analysis_completed.emit([])
+	worker.analysis_updated.emit([])
 	_expect("フィルター: 結果が空なら候補なし", main._hint_moves.is_empty())
 	_expect("フィルター: 結果が空ならヒントボタンは無効", main.hint_button.disabled)
 
@@ -147,16 +150,71 @@ func _check_promotion_decision() -> void:
 	root.add_child(main)
 	await process_frame
 
-	var worker: EngineWorker = main.engine_worker
-	var suspended_while_asking := [false]
-	var answer := func() -> void:
-		suspended_while_asking[0] = worker._analysis_suspended
-		main.common_dialog._on_yes_pressed()
+	var answer := func() -> void: main.common_dialog._on_yes_pressed()
 	answer.call_deferred()
 
 	var should_promote: bool = await main._decide_promotion()
-	_expect("成りの確認: ダイアログ中は解析を抑止する", suspended_while_asking[0])
-	_expect("成りの確認: ダイアログを閉じたら解析の抑止を解く", not worker._analysis_suspended)
 	_expect("成りの確認: 「成る」を選ぶと true", should_promote)
 
 	main.queue_free()
+
+
+func _check_move_submission_stops_analysis() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	worker.request_analysis()
+	_expect("着手: 前提として解析が走っている", worker._thread != null)
+
+	var state: PieceState = main.game_state.get_piece(2, 6)
+	var generation: int = worker._generation
+	main._on_move_submitted(state, 2, 5, PromotionMode.Type.FORCE_STAY)
+	_expect("着手: 受け付けた時点で解析を破棄する", worker._generation > generation)
+
+	var deadline := Time.get_ticks_msec() + 3000
+	while not main.is_ai_thinking and Time.get_ticks_msec() < deadline:
+		await process_frame
+	main.queue_free()
+	for i in 10:
+		await process_frame
+
+
+func _check_end_game_stops_analysis() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	worker.request_analysis()
+	_expect("対局の終了: 前提として解析が走っている", worker._thread != null)
+
+	var close_dialog := func() -> void: main.common_dialog._on_yes_pressed()
+	close_dialog.call_deferred()
+	main._end_game(GameEnding.Type.RESIGNATION, false)
+	_expect("対局の終了: 結果を出す前に解析を破棄する", worker._is_discarded and not worker._has_next_request)
+
+	var deadline := Time.get_ticks_msec() + 3000
+	while main.is_game_active and Time.get_ticks_msec() < deadline:
+		await process_frame
+	main.queue_free()
+	await process_frame
+
+
+func _check_search_failed() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	worker.stop()
+	main.is_ai_thinking = true
+	worker.search_failed.emit()
+	_expect("search_failed: AIの思考中の状態を解除する", not main.is_ai_thinking)
+
+	main.queue_free()
+	await process_frame
