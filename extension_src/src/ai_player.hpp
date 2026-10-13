@@ -65,6 +65,7 @@ private:
 	static constexpr int QS_PLY_LIMIT = 16;
 
 	std::function<void(const std::string &)> logger_;
+	std::function<void(const std::vector<ScoredMove> &, int)> depth_callback_;
 	std::atomic<bool> stop_requested_ = false;
 
 	std::unordered_map<uint64_t, TTEntry> transposition_table_;
@@ -117,4 +118,5 @@ public:
 	void set_logger(std::function<void(const std::string &)> logger);
 	void request_stop();
 	void clear_stop();
+	void set_depth_callback(std::function<void(const std::vector<ScoredMove> &, int)> callback);
 };

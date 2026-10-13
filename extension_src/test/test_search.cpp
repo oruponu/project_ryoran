@@ -120,6 +120,66 @@ void run_stop_tests() {
 	check(completed_depths(lines) == std::vector<int>{ 1, 2, 3 }, "clear_stop: search reaches max depth again");
 }
 
+bool same_moves(const std::vector<ScoredMove> &a, const std::vector<ScoredMove> &b) {
+	return std::ranges::equal(a, b, [](const ScoredMove &x, const ScoredMove &y) {
+		return x.move == y.move && x.score == y.score && x.win_rate == y.win_rate;
+	});
+}
+
+void run_depth_callback_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "depth_callback: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	{
+		AIPlayer ai;
+		ai.set_max_depth(4);
+		ai.set_time_limit_usec(60'000'000);
+		std::vector<int> depths;
+		std::vector<ScoredMove> last;
+		ai.set_depth_callback([&](const std::vector<ScoredMove> &moves, int depth) {
+			depths.push_back(depth);
+			last = moves;
+		});
+		std::vector<ScoredMove> result = ai.search_top_moves(*board, 3);
+		check(depths == std::vector<int>{ 1, 2, 3, 4 }, "depth_callback: called once per completed depth in order");
+		check(same_moves(last, result), "depth_callback: last call matches the returned moves");
+	}
+
+	{
+		AIPlayer ai;
+		ai.set_max_depth(6);
+		ai.set_time_limit_usec(60'000'000);
+		std::vector<int> depths;
+		std::vector<ScoredMove> at_depth2;
+		ai.set_depth_callback([&](const std::vector<ScoredMove> &moves, int depth) {
+			depths.push_back(depth);
+			if (depth == 2) {
+				at_depth2 = moves;
+				ai.request_stop();
+			}
+		});
+		std::vector<ScoredMove> result = ai.search_top_moves(*board, 3);
+		check(depths == std::vector<int>{ 1, 2 }, "depth_callback: stop requested at depth 2 ends the search");
+		check(same_moves(at_depth2, result), "depth_callback: stopped search returns the depth 2 moves");
+	}
+
+	{
+		std::optional<BoardState> mate = BoardState::from_sfen("4k4/9/4G4/9/9/9/9/9/4K4 b G 1");
+		check(mate.has_value(), "depth_callback: mate position parses");
+		if (!mate.has_value()) {
+			return;
+		}
+		AIPlayer ai;
+		int calls = 0;
+		ai.set_depth_callback([&](const std::vector<ScoredMove> &, int) { ++calls; });
+		std::vector<ScoredMove> result = ai.search_top_moves(*mate, 3);
+		check(result.size() == 1 && calls == 0, "depth_callback: root mate returns without depth calls");
+	}
+}
+
 void run_format_percent_tests() {
 	check(AIPlayerTestAccess::format_percent(50.0) == "50", "format_percent: 50.0 drops trailing .0");
 	check(AIPlayerTestAccess::format_percent(49.96) == "50", "format_percent: rounds up to integer without .0");
@@ -697,6 +757,7 @@ void run_search_tests() {
 	run_logger_tests();
 	run_max_depth_tests();
 	run_stop_tests();
+	run_depth_callback_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
 	run_see_tests();

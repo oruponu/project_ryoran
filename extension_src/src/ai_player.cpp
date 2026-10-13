@@ -95,6 +95,10 @@ void AIPlayer::clear_stop() {
 	stop_requested_.store(false, std::memory_order_relaxed);
 }
 
+void AIPlayer::set_depth_callback(std::function<void(const std::vector<ScoredMove> &, int)> callback) {
+	depth_callback_ = std::move(callback);
+}
+
 bool AIPlayer::should_stop(uint64_t end_time) const {
 	if (end_time == NO_TIME_LIMIT) {
 		return false;
@@ -808,6 +812,17 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	uint64_t start_time = now_usec();
 	uint64_t strict_limit_time = start_time + time_limit_usec_;
 
+	auto to_scored_moves = [this](const std::vector<RootMove> &top) {
+		// 手番側が勝ちを読み切った局面では1手だけを返す
+		auto size = top[0].score >= MATE_BOUND ? 1 : std::ssize(top);
+		std::vector<ScoredMove> result;
+		result.reserve(size);
+		for (const RootMove &entry : top | std::views::take(size)) {
+			result.push_back({ .move = entry.move, .score = entry.score, .win_rate = calculate_win_probability(entry.score) });
+		}
+		return result;
+	};
+
 	std::vector<RootMove> global_top;
 	for (const Move &move : move_list | std::views::take(count)) {
 		global_top.push_back({ .move = move, .score = -INFINITE_SCORE });
@@ -912,6 +927,10 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		log(std::format("Depth {} completed. BestScore: {}, WinRate: {}%", depth, global_top[0].score,
 				format_percent(win_prob * 100.0)));
 
+		if (depth_callback_) {
+			depth_callback_(to_scored_moves(global_top), depth);
+		}
+
 		// 詰み筋を見つけたら打ち切り
 		if (global_top[0].score >= MATE_BOUND || global_top[0].score <= -MATE_BOUND) {
 			log(std::format("Checkmate found at depth {}", depth));
@@ -921,16 +940,5 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	log(std::format("Total nodes searched: {}, TT size: {}", total_node_count, transposition_table_.size()));
 
-	// 手番側が勝ちを読み切った局面では1手だけを返す
-	if (global_top[0].score >= MATE_BOUND) {
-		global_top.resize(1);
-	}
-
-	std::vector<ScoredMove> result;
-	result.reserve(global_top.size());
-	for (const RootMove &entry : global_top) {
-		result.push_back({ .move = entry.move, .score = entry.score, .win_rate = calculate_win_probability(entry.score) });
-	}
-
-	return result;
+	return to_scored_moves(global_top);
 }
