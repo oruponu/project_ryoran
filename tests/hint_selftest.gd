@@ -29,6 +29,7 @@ func _initialize() -> void:
 	await _check_end_game_stops_analysis()
 	await _check_search_failed()
 	await _check_arrows_follow_analysis()
+	await _check_search_progress_bar()
 
 	print("== hint_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -256,3 +257,25 @@ func _check_arrows_follow_analysis() -> void:
 
 	main.queue_free()
 	await process_frame
+
+
+func _check_search_progress_bar() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	worker.stop()
+	_expect("AIの途中経過: search_progressed が main に接続されている",
+			worker.search_progressed.is_connected(main._on_search_progressed))
+
+	var hints_before: Array[Dictionary] = main._hint_moves.duplicate()
+	worker.search_progressed.emit([_move(0.75)])
+	_expect("AIの途中経過: バーが手番側の勝率で動く", main.win_rate_bar.sente_value_label.text == "75")
+	_expect("AIの途中経過: ヒントの候補は変えない", main._hint_moves == hints_before)
+
+	worker.search_progressed.emit([])
+	_expect("AIの途中経過: 結果が空ならバーは動かさない", main.win_rate_bar.sente_value_label.text == "75")
+
+	main.queue_free()

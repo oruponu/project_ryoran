@@ -50,6 +50,7 @@ func _ready() -> void:
 	game_referee = GameReferee.new(game_state, sfen_serializer, _shogi_engine)
 
 	engine_worker.setup(sfen_serializer, game_referee.repetition_tracker)
+	engine_worker.search_progressed.connect(_on_search_progressed)
 	engine_worker.search_completed.connect(_on_search_completed)
 	engine_worker.search_failed.connect(_on_search_failed)
 	engine_worker.analysis_updated.connect(_on_analysis_updated)
@@ -271,6 +272,12 @@ func _play_ai_turn() -> void:
 func _on_search_failed() -> void:
 	is_ai_thinking = false
 	_update_button_states()
+
+
+func _on_search_progressed(moves: Array) -> void:
+	if moves.is_empty():
+		return
+	win_rate_bar.update_bar(_to_sente_win_rate(moves[0].win_rate))
 
 
 func _on_analysis_updated(moves: Array) -> void:
