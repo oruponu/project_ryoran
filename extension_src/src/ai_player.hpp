@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board_state.hpp"
+#include <atomic>
 #include <functional>
 #include <optional>
 #include <string>
@@ -64,6 +65,7 @@ private:
 	static constexpr int QS_PLY_LIMIT = 16;
 
 	std::function<void(const std::string &)> logger_;
+	std::atomic<bool> stop_requested_ = false;
 
 	std::unordered_map<uint64_t, TTEntry> transposition_table_;
 	std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
@@ -103,6 +105,7 @@ private:
 	[[nodiscard]] TTEntry *probe_tt(uint64_t hash);
 	void store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Shogi::Move &best_move);
 	void clear_tt();
+	[[nodiscard]] bool should_stop(uint64_t end_time) const;
 	void log(const std::string &message) const;
 	[[nodiscard]] static std::string format_percent(double value);
 
@@ -112,4 +115,6 @@ public:
 	void set_time_limit_usec(uint64_t usec);
 	void set_max_depth(int depth);
 	void set_logger(std::function<void(const std::string &)> logger);
+	void request_stop();
+	void clear_stop();
 };

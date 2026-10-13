@@ -25,6 +25,7 @@ constexpr int MATE_CHECK_DEPTH = 9;
 constexpr uint64_t MATE_CHECK_NODES = 5000;
 
 constexpr int TIME_CHECK_INTERVAL = 1024;
+constexpr uint64_t NO_TIME_LIMIT = UINT64_MAX;
 
 // 後方の駒を取らない手は最善である可能性が低いため、先頭の手を除いて探索深さを削減する
 constexpr int LMR_MOVE_THRESHOLD = 4;
@@ -84,6 +85,21 @@ void AIPlayer::set_max_depth(int depth) {
 
 void AIPlayer::set_logger(std::function<void(const std::string &)> logger) {
 	logger_ = std::move(logger);
+}
+
+void AIPlayer::request_stop() {
+	stop_requested_.store(true, std::memory_order_relaxed);
+}
+
+void AIPlayer::clear_stop() {
+	stop_requested_.store(false, std::memory_order_relaxed);
+}
+
+bool AIPlayer::should_stop(uint64_t end_time) const {
+	if (end_time == NO_TIME_LIMIT) {
+		return false;
+	}
+	return now_usec() > end_time || stop_requested_.load(std::memory_order_relaxed);
 }
 
 void AIPlayer::log(const std::string &message) const {
@@ -239,7 +255,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	if (--time_check_countdown_ <= 0) {
 		time_check_countdown_ = TIME_CHECK_INTERVAL;
-		if (now_usec() > end_time) {
+		if (should_stop(end_time)) {
 			timeout = true;
 			return 0;
 		}
@@ -813,7 +829,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 	path_in_check_[0] = MoveGenerator::is_king_in_check(board, root_turn);
 
 	for (int depth = 1; depth <= max_depth_; ++depth) {
-		if (depth > 1 && now_usec() > strict_limit_time) {
+		if (depth > 1 && should_stop(strict_limit_time)) {
 			log(std::format("Time limit reached before depth {}", depth));
 			break;
 		}
@@ -829,11 +845,11 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 		std::vector<RootMove> depth_top;
 
-		uint64_t search_cutoff_time = (depth == 1) ? UINT64_MAX : strict_limit_time;
+		uint64_t search_cutoff_time = (depth == 1) ? NO_TIME_LIMIT : strict_limit_time;
 		bool timeout = false;
 
 		for (const auto &move : move_list) {
-			if (depth > 1 && now_usec() > strict_limit_time) {
+			if (depth > 1 && should_stop(strict_limit_time)) {
 				timeout = true;
 				break;
 			}

@@ -1,8 +1,10 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
 #include <algorithm>
+#include <cstdio>
 #include <regex>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -77,6 +79,45 @@ void run_max_depth_tests() {
 		}
 	}
 	check(last_depth_line.starts_with("Depth 3 completed."), "max_depth: search stops after depth 3");
+}
+
+std::vector<int> completed_depths(const std::vector<std::string> &lines) {
+	std::vector<int> depths;
+	for (const std::string &line : lines) {
+		int depth = 0;
+		if (std::sscanf(line.c_str(), "Depth %d completed.", &depth) == 1) {
+			depths.push_back(depth);
+		}
+	}
+	return depths;
+}
+
+void run_stop_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "stop: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	AIPlayer ai;
+	ai.set_max_depth(3);
+	ai.set_time_limit_usec(60'000'000);
+	std::vector<std::string> lines;
+	ai.set_logger([&lines](const std::string &line) { lines.push_back(line); });
+
+	ai.request_stop();
+	std::vector<ScoredMove> moves = ai.search_top_moves(*board, 3);
+	check(completed_depths(lines) == std::vector<int>{ 1 }, "stop: requested stop still completes depth 1 only");
+	check(!moves.empty(), "stop: returns depth 1 result");
+
+	lines.clear();
+	static_cast<void>(ai.search_top_moves(*board, 3));
+	check(completed_depths(lines) == std::vector<int>{ 1 }, "stop: search does not clear the stop flag");
+
+	lines.clear();
+	ai.clear_stop();
+	static_cast<void>(ai.search_top_moves(*board, 3));
+	check(completed_depths(lines) == std::vector<int>{ 1, 2, 3 }, "clear_stop: search reaches max depth again");
 }
 
 void run_format_percent_tests() {
@@ -655,6 +696,7 @@ void run_search_tests() {
 	run_win_probability_tests();
 	run_logger_tests();
 	run_max_depth_tests();
+	run_stop_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
 	run_see_tests();
