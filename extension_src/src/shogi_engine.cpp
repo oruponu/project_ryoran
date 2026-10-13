@@ -11,6 +11,7 @@
 #include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 using namespace godot;
 using Shogi::Move;
@@ -34,6 +35,14 @@ Dictionary make_scored_move_dictionary(const Move &move, int score, double win_r
 	Dictionary result = make_move_dictionary(move);
 	result["score"] = score;
 	result["win_rate"] = win_rate;
+	return result;
+}
+
+Array make_scored_moves_array(const std::vector<ScoredMove> &moves) {
+	Array result;
+	for (const ScoredMove &entry : moves) {
+		result.append(make_scored_move_dictionary(entry.move, entry.score, entry.win_rate));
+	}
 	return result;
 }
 
@@ -70,6 +79,9 @@ void load_zobrist_params_from_file(const String &path) {
 
 ShogiEngine::ShogiEngine() {
 	ai_player_.set_logger([](const std::string &message) { UtilityFunctions::print(message.c_str()); });
+	ai_player_.set_depth_callback([this](const std::vector<ScoredMove> &moves, int depth) {
+		call_deferred("emit_signal", "depth_completed", make_scored_moves_array(moves), depth);
+	});
 
 	if (!is_initialized_) {
 		load_zobrist_params_from_file("res://assets/data/zobrist_params.bin");
@@ -88,6 +100,8 @@ void ShogiEngine::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("search_best_move"), &ShogiEngine::search_best_move);
 	ClassDB::bind_method(D_METHOD("search_top_moves", "count"), &ShogiEngine::search_top_moves);
 	ClassDB::bind_method(D_METHOD("set_time_limit_msec", "msec"), &ShogiEngine::set_time_limit_msec);
+
+	ADD_SIGNAL(MethodInfo("depth_completed", PropertyInfo(Variant::ARRAY, "moves"), PropertyInfo(Variant::INT, "depth")));
 
 	BIND_ENUM_CONSTANT(PIECE_KING);
 	BIND_ENUM_CONSTANT(PIECE_ROOK);
@@ -204,11 +218,7 @@ Array ShogiEngine::search_top_moves(int count) {
 		return result;
 	}
 
-	Array result;
-	for (const ScoredMove &entry : ai_player_.search_top_moves(current_state_, count)) {
-		result.append(make_scored_move_dictionary(entry.move, entry.score, entry.win_rate));
-	}
-	return result;
+	return make_scored_moves_array(ai_player_.search_top_moves(current_state_, count));
 }
 
 void ShogiEngine::set_time_limit_msec(int msec) {

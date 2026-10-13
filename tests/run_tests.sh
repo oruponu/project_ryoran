@@ -31,6 +31,7 @@ run_scons || { echo "FAILED: DLL build (make sure the Godot editor is not holdin
 run_scons tests || { echo "FAILED: C++ unit tests" >&2; exit 1; }
 run_godot_test sfen_selftest || exit 1
 run_godot_test hint_selftest || exit 1
+run_godot_test engine_worker_selftest || exit 1
 run_godot_test referee_selftest || exit 1
 run_godot_test board_view_selftest || exit 1
 run_godot_test history_selftest || exit 1
