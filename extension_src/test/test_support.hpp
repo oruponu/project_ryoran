@@ -40,6 +40,8 @@ struct AIPlayerTestAccess {
 
 	static constexpr int QS_PLY_LIMIT = AIPlayer::QS_PLY_LIMIT;
 	static constexpr uint32_t INFINITY_PN = AIPlayer::INFINITY_PN;
+	static constexpr size_t TT_SIZE = AIPlayer::TT_SIZE;
+	static constexpr size_t TT_CLEAR_THRESHOLD = AIPlayer::TT_CLEAR_THRESHOLD;
 
 	int get_move_ordering_score(const BoardState &board, const Move &move, int ply) {
 		return ai.get_move_ordering_score(board, move, ply);

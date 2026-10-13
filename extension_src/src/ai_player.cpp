@@ -793,7 +793,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	transposition_table_.reserve(TT_SIZE);
 
-	if (transposition_table_.size() > TT_SIZE) {
+	if (transposition_table_.size() > TT_CLEAR_THRESHOLD) {
 		log(std::format("TT size exceeded limit, clearing. Size was: {}", transposition_table_.size()));
 		clear_tt();
 	}

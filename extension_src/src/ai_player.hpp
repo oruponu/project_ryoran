@@ -50,6 +50,7 @@ public:
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 	static constexpr size_t TT_SIZE = 1 << 20; // 約100万エントリ
+	static constexpr size_t TT_CLEAR_THRESHOLD = TT_SIZE * 2;
 	uint64_t time_limit_usec_ = TIME_LIMIT_USEC;
 	int max_depth_ = DEFAULT_MAX_DEPTH;
 	int time_check_countdown_ = 0;

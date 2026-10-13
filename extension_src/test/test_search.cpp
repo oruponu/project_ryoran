@@ -180,6 +180,34 @@ void run_depth_callback_tests() {
 	}
 }
 
+void run_tt_clear_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "tt_clear: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	check(AIPlayerTestAccess::TT_CLEAR_THRESHOLD > AIPlayerTestAccess::TT_SIZE, "tt_clear: threshold is above TT_SIZE");
+
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	ai.set_max_depth(1);
+	auto &table = ai_t.transposition_table();
+	auto fill = [&table](size_t count) {
+		for (uint64_t key = 1; table.size() < count; ++key) {
+			table[key] = TTEntry{ .score = 0, .depth = 0, .flag = TTFlag::EXACT, .best_move = Move() };
+		}
+	};
+
+	fill(AIPlayerTestAccess::TT_SIZE + 1);
+	static_cast<void>(ai.search_top_moves(*board, 1));
+	check(table.contains(1), "tt_clear: table above TT_SIZE but within threshold is kept");
+
+	fill(AIPlayerTestAccess::TT_CLEAR_THRESHOLD + 1);
+	static_cast<void>(ai.search_top_moves(*board, 1));
+	check(!table.contains(1), "tt_clear: table above threshold is cleared");
+}
+
 void run_format_percent_tests() {
 	check(AIPlayerTestAccess::format_percent(50.0) == "50", "format_percent: 50.0 drops trailing .0");
 	check(AIPlayerTestAccess::format_percent(49.96) == "50", "format_percent: rounds up to integer without .0");
@@ -758,6 +786,7 @@ void run_search_tests() {
 	run_max_depth_tests();
 	run_stop_tests();
 	run_depth_callback_tests();
+	run_tt_clear_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
 	run_see_tests();
