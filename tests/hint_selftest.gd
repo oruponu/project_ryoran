@@ -28,6 +28,7 @@ func _initialize() -> void:
 	await _check_move_submission_stops_analysis()
 	await _check_end_game_stops_analysis()
 	await _check_search_failed()
+	await _check_arrows_follow_analysis()
 
 	print("== hint_selftest: %s ==" % ("FAIL (%d)" % _failures if _failures > 0 else "ALL PASS"))
 	quit(1 if _failures > 0 else 0)
@@ -215,6 +216,43 @@ func _check_search_failed() -> void:
 	main.is_ai_thinking = true
 	worker.search_failed.emit()
 	_expect("search_failed: AIの思考中の状態を解除する", not main.is_ai_thinking)
+
+	main.queue_free()
+	await process_frame
+
+
+func _check_arrows_follow_analysis() -> void:
+	var scene: PackedScene = load("res://scenes/main/main.tscn")
+	var main: Node2D = scene.instantiate()
+	root.add_child(main)
+	await process_frame
+
+	var worker: EngineWorker = main.engine_worker
+	worker.stop()
+
+	worker.analysis_updated.emit([_move(0.60), _move(0.60), _move(0.60)])
+	_expect("矢印の追従: ボタンを押すまでは描かない", main.board._hint_arrows.is_empty())
+
+	main._on_hint_button_pressed()
+	_expect("矢印の追従: ボタンを押すと3本描く", main.board._hint_arrows.size() == 3)
+
+	worker.analysis_updated.emit([_move(0.60), _move(0.10)])
+	_expect("矢印の追従: 表示中は新しい候補で描き直す (1本)", main.board._hint_arrows.size() == 1)
+
+	worker.analysis_updated.emit([])
+	_expect("矢印の追従: 結果が空なら矢印を消す", main.board._hint_arrows.is_empty())
+	_expect("矢印の追従: 結果が空ならヒントボタンは無効", main.hint_button.disabled)
+
+	worker.analysis_updated.emit([_move(0.60)])
+	main._on_hint_button_pressed()
+	main._on_layout_changed(false)
+	worker.analysis_updated.emit([_move(0.60), _move(0.60)])
+	_expect("矢印の追従: レイアウトの変更で消した後は描き直さない", main.board._hint_arrows.is_empty())
+
+	main._on_hint_button_pressed()
+	main._clear_hint()
+	worker.analysis_updated.emit([_move(0.60)])
+	_expect("矢印の追従: ヒントを消した後は描き直さない", main.board._hint_arrows.is_empty())
 
 	main.queue_free()
 	await process_frame

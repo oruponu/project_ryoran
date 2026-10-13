@@ -32,6 +32,7 @@ var layout: MainLayout
 var is_game_active: bool = false
 var is_ai_thinking: bool = false
 var _hint_moves: Array[Dictionary] = []
+var _is_hint_shown: bool = false
 var _shogi_engine: ShogiEngine = ShogiEngine.new()
 
 
@@ -128,6 +129,7 @@ func _on_history_backdrop_gui_input(event: InputEvent) -> void:
 
 func _on_layout_changed(_is_portrait: bool) -> void:
 	input_controller.cancel_holding()
+	_is_hint_shown = false
 	board.clear_hint_arrows()
 
 
@@ -275,6 +277,7 @@ func _on_analysis_updated(moves: Array) -> void:
 	if moves.is_empty():
 		win_rate_bar.update_bar(_to_sente_win_rate(0.0))
 		_hint_moves = []
+		_refresh_hint_arrows()
 		_update_button_states()
 		return
 
@@ -286,6 +289,7 @@ func _on_analysis_updated(moves: Array) -> void:
 		if best_win_rate - move.win_rate <= GameConfig.HINT_WIN_RATE_MARGIN:
 			_hint_moves.append(move)
 
+	_refresh_hint_arrows()
 	_update_button_states()
 
 
@@ -372,6 +376,7 @@ func _update_last_move_highlight() -> void:
 
 func _clear_hint() -> void:
 	_hint_moves = []
+	_is_hint_shown = false
 	board.clear_hint_arrows()
 	_update_button_states()
 
@@ -381,7 +386,16 @@ func _on_hint_button_pressed() -> void:
 		return
 
 	input_controller.cancel_holding()
+	_is_hint_shown = true
+	_show_hint_arrows()
 
+
+func _refresh_hint_arrows() -> void:
+	if _is_hint_shown:
+		_show_hint_arrows()
+
+
+func _show_hint_arrows() -> void:
 	var entries: Array[Dictionary] = []
 	for move in _hint_moves:
 		var from_pos: Variant = _hint_from_position(move)
