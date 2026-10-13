@@ -384,6 +384,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	TTFlag flag;
 	if (max_eval <= original_alpha) {
 		flag = TTFlag::UPPER_BOUND;
+		if (has_tt_move) {
+			best_move = tt_best_move;
+		}
 	} else if (max_eval >= original_beta) {
 		flag = TTFlag::LOWER_BOUND;
 	} else {

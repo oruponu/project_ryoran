@@ -345,6 +345,25 @@ void run_pvs_tests() {
 			"pvs: depth-2 best move is rook takes gold");
 }
 
+void run_fail_low_tt_move_tests() {
+	// どの手もαを超えないノードでは置換表の最善手を残す
+	BoardState board(Turn::SENTE);
+	setup_capture_choice_position(board);
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	const Move king_move(8, 8, 7, 7, K, false, false, false);
+	uint64_t hash = board.get_zobrist_hash();
+	ai_t.transposition_table()[hash] = TTEntry{ .score = 0, .depth = 0, .flag = TTFlag::EXACT, .best_move = king_move };
+
+	bool timeout = false;
+	uint64_t nodes = 0;
+	constexpr int HIGH_ALPHA = 100000;
+	static_cast<void>(ai_t.alpha_beta(board, 2, 0, HIGH_ALPHA, HIGH_ALPHA + 1, UINT64_MAX, timeout, nodes));
+	const TTEntry &entry = ai_t.transposition_table().at(hash);
+	check(entry.flag == TTFlag::UPPER_BOUND, "tt move: fail-low node is stored as upper bound");
+	check(entry.best_move == king_move, "tt move: fail-low node keeps the previous best move");
+}
+
 void run_lmr_and_extension_tests() {
 	// LMR回帰: 深さ5の通常探索が kif2-60 の詰みを見逃さないこと
 	{
@@ -618,6 +637,7 @@ void run_search_tests() {
 	run_see_tests();
 	run_quiescence_tests();
 	run_pvs_tests();
+	run_fail_low_tt_move_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
 	run_history_repetition_tests();
