@@ -1,6 +1,7 @@
 #pragma once
 
 #include "board_state.hpp"
+#include "transposition_table.hpp"
 #include <atomic>
 #include <functional>
 #include <optional>
@@ -8,12 +9,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-enum class TTFlag : uint8_t {
-	EXACT,
-	LOWER_BOUND,
-	UPPER_BOUND
-};
 
 struct TTEntry {
 	int score;
