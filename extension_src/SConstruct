@@ -50,7 +50,10 @@ if env["platform"] == "windows":
     test_env.AlwaysBuild(test_run)
     Alias("tests", test_run)
 
-    bench_program = test_env.Program("build/test/shogi_bench", engine_sources + ["build/test/test/bench_main.cpp"])
+    bench_program = test_env.Program(
+        "build/test/shogi_bench",
+        engine_sources + ["build/test/test/bench_main.cpp", "build/test/test/test_support.cpp"],
+    )
     Alias("bench", bench_program)
 
 if env["platform"] != "web":

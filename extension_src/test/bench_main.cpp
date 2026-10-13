@@ -1,12 +1,11 @@
 #include "ai_player.hpp"
 #include "board_state.hpp"
+#include "test_support.hpp"
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <format>
-#include <fstream>
-#include <iterator>
 #include <optional>
 #include <print>
 #include <string>
@@ -36,20 +35,20 @@ constexpr int DEFAULT_DEPTH = 6;
 constexpr int DEFAULT_TIME_MSEC = 1000;
 constexpr uint64_t UNLIMITED_TIME_USEC = 3600ULL * 1000000;
 
+// gameモードで探索する局面 (KIFU2の指した手数)
+constexpr int GAME_FIRST_MOVE_COUNT = 10;
+constexpr int GAME_LAST_MOVE_COUNT = 39;
+
+constexpr int ANALYSIS_CANDIDATE_COUNT = 3;
+
 struct SearchLog {
 	int completed_depth = 0;
 	uint64_t nodes = 0;
 	int aspiration_fails = 0;
 	bool mate = false;
+	int tt_clears = 0;
+	std::string tt;
 };
-
-std::vector<uint8_t> read_file(const char *path) {
-	std::ifstream file(path, std::ios::binary);
-	if (!file) {
-		return {};
-	}
-	return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-}
 
 std::string format_square(int col, int row) {
 	return std::format("{}{}", 9 - col, static_cast<char>('a' + row));
@@ -65,31 +64,41 @@ std::string format_move(const Shogi::Move &move) {
 }
 
 void print_usage() {
-	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC]");
+	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC | game ANALYSIS_DEPTH AI_DEPTH]");
 }
 
-} // namespace
+void attach_logger(AIPlayer &ai, SearchLog &log) {
+	ai.set_logger([&log](const std::string &line) {
+		int depth = 0;
+		unsigned long long nodes = 0;
+		if (std::sscanf(line.c_str(), "Depth %d completed.", &depth) == 1) {
+			log.completed_depth = depth;
+		} else if (std::sscanf(line.c_str(), "Total nodes searched: %llu", &nodes) == 1) {
+			log.nodes = nodes;
+			if (size_t pos = line.find(", "); pos != std::string::npos) {
+				log.tt = line.substr(pos + 2);
+			}
+		} else if (line.starts_with("Aspiration fail")) {
+			++log.aspiration_fails;
+		} else if (line.starts_with("Checkmate")) {
+			log.mate = true;
+		} else if (line.starts_with("TT size exceeded limit")) {
+			++log.tt_clears;
+		}
+	});
+}
 
-int main(int argc, char **argv) {
-	if (argc < 2) {
-		print_usage();
-		return 2;
-	}
+bool is_complete(const SearchLog &log, int depth) {
+	return log.mate || log.completed_depth == depth;
+}
 
-	std::vector<uint8_t> zobrist = read_file(argv[1]);
-	if (!BoardState::load_zobrist_params(zobrist)) {
-		std::println("FAIL: zobrist params could not be loaded from {}", argv[1]);
-		return 1;
-	}
+void print_heap_size() {
+#ifdef __EMSCRIPTEN__
+	std::println("heap_bytes={}", __builtin_wasm_memory_size(0) * 65536);
+#endif
+}
 
-	std::string_view mode = argc >= 3 ? argv[2] : "depth";
-	bool depth_mode = mode == "depth";
-	if (!depth_mode && mode != "time") {
-		print_usage();
-		return 2;
-	}
-	int value = argc >= 4 ? std::atoi(argv[3]) : (depth_mode ? DEFAULT_DEPTH : DEFAULT_TIME_MSEC);
-
+int run_positions(bool depth_mode, int value) {
 	uint64_t total_nodes = 0;
 	double total_ms = 0.0;
 	int total_aspiration_fails = 0;
@@ -112,19 +121,7 @@ int main(int argc, char **argv) {
 		}
 
 		SearchLog log;
-		ai.set_logger([&log](const std::string &line) {
-			int depth = 0;
-			unsigned long long nodes = 0;
-			if (std::sscanf(line.c_str(), "Depth %d completed.", &depth) == 1) {
-				log.completed_depth = depth;
-			} else if (std::sscanf(line.c_str(), "Total nodes searched: %llu", &nodes) == 1) {
-				log.nodes = nodes;
-			} else if (line.starts_with("Aspiration fail")) {
-				++log.aspiration_fails;
-			} else if (line.starts_with("Checkmate")) {
-				log.mate = true;
-			}
-		});
+		attach_logger(ai, log);
 
 		auto start = std::chrono::steady_clock::now();
 		std::vector<ScoredMove> moves = ai.search_top_moves(*board, 1);
@@ -137,9 +134,9 @@ int main(int argc, char **argv) {
 			status = "INCOMPLETE";
 		}
 
-		std::println("{:8} best={:6} score={:8} depth={:2} nodes={:10} time_ms={:9.1f} asp_fail={} status={}", position.name,
-				moves.empty() ? "-" : format_move(moves[0].move), moves.empty() ? 0 : moves[0].score, log.completed_depth,
-				log.nodes, ms, log.aspiration_fails, status);
+		std::println("{:8} best={:6} score={:8} depth={:2} nodes={:10} time_ms={:9.1f} asp_fail={} status={} tt=[{}]",
+				position.name, moves.empty() ? "-" : format_move(moves[0].move), moves.empty() ? 0 : moves[0].score,
+				log.completed_depth, log.nodes, ms, log.aspiration_fails, status, log.tt);
 
 		if (status == "INCOMPLETE") {
 			++incomplete;
@@ -154,4 +151,88 @@ int main(int argc, char **argv) {
 	std::println("TOTAL nodes={} time_ms={:.1f} nps={} asp_fail={} incomplete={}", total_nodes, total_ms, nps,
 			total_aspiration_fails, incomplete);
 	return depth_mode && incomplete > 0 ? 1 : 0;
+}
+
+int run_game(int analysis_depth, int ai_depth) {
+	BoardState board(Turn::SENTE);
+	setup_initial_position(board);
+	if (!replay(board, GAME_FIRST_MOVE_COUNT, KIFU2)) {
+		return 1;
+	}
+
+	AIPlayer ai;
+	ai.set_time_limit_usec(UNLIMITED_TIME_USEC);
+	SearchLog log;
+	attach_logger(ai, log);
+
+	uint64_t analysis_nodes = 0;
+	uint64_t ai_nodes = 0;
+	int tt_clears = 0;
+	int incomplete = 0;
+	auto start = std::chrono::steady_clock::now();
+	for (int move_count = GAME_FIRST_MOVE_COUNT; move_count <= GAME_LAST_MOVE_COUNT; ++move_count) {
+		log = SearchLog{};
+		ai.set_max_depth(analysis_depth);
+		static_cast<void>(ai.search_top_moves(board, ANALYSIS_CANDIDATE_COUNT));
+		SearchLog analysis_log = log;
+
+		log = SearchLog{};
+		ai.set_max_depth(ai_depth);
+		std::vector<ScoredMove> moves = ai.search_top_moves(board, 1);
+		SearchLog ai_log = log;
+
+		analysis_nodes += analysis_log.nodes;
+		ai_nodes += ai_log.nodes;
+		tt_clears += analysis_log.tt_clears + ai_log.tt_clears;
+		bool complete = is_complete(analysis_log, analysis_depth) && is_complete(ai_log, ai_depth);
+		if (!complete) {
+			++incomplete;
+		}
+		std::println("kif2-{} analysis_depth={:2} analysis_nodes={:10} analysis_tt=[{}] ai_best={:6} ai_score={:8} ai_depth={:2} ai_nodes={:10} ai_tt=[{}] status={}",
+				move_count, analysis_log.completed_depth, analysis_log.nodes, analysis_log.tt,
+				moves.empty() ? "-" : format_move(moves[0].move), moves.empty() ? 0 : moves[0].score, ai_log.completed_depth,
+				ai_log.nodes, ai_log.tt, complete ? "OK" : "INCOMPLETE");
+
+		if (!replay(board, 1, KIFU2 + move_count)) {
+			return 1;
+		}
+	}
+	double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+
+	std::println("GAME analysis_nodes={} ai_nodes={} time_ms={:.1f} tt_clears={} incomplete={}", analysis_nodes, ai_nodes, ms,
+			tt_clears, incomplete);
+	print_heap_size();
+	return incomplete > 0 ? 1 : 0;
+}
+
+} // namespace
+
+int main(int argc, char **argv) {
+	if (argc < 2) {
+		print_usage();
+		return 2;
+	}
+
+	std::vector<uint8_t> zobrist = read_file(argv[1]);
+	if (!BoardState::load_zobrist_params(zobrist)) {
+		std::println("FAIL: zobrist params could not be loaded from {}", argv[1]);
+		return 1;
+	}
+
+	std::string_view mode = argc >= 3 ? argv[2] : "depth";
+	if (mode == "game") {
+		if (argc < 5) {
+			print_usage();
+			return 2;
+		}
+		return run_game(std::atoi(argv[3]), std::atoi(argv[4]));
+	}
+
+	bool depth_mode = mode == "depth";
+	if (!depth_mode && mode != "time") {
+		print_usage();
+		return 2;
+	}
+	int value = argc >= 4 ? std::atoi(argv[3]) : (depth_mode ? DEFAULT_DEPTH : DEFAULT_TIME_MSEC);
+	return run_positions(depth_mode, value);
 }
