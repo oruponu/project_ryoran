@@ -315,6 +315,36 @@ void run_quiescence_tests() {
 	}
 }
 
+void setup_capture_choice_position(BoardState &board) {
+	board.set_cell({ 0, 0 }, K, Turn::GOTE, false);
+	board.set_cell({ 8, 8 }, K, Turn::SENTE, false);
+	board.set_cell({ 6, 4 }, G, Turn::GOTE, false);
+	board.set_cell({ 6, 7 }, R, Turn::SENTE, false);
+	board.set_cell({ 2, 4 }, B, Turn::GOTE, false);
+	board.set_cell({ 2, 3 }, P, Turn::GOTE, false);
+	board.set_cell({ 2, 7 }, R, Turn::SENTE, false);
+	board.set_cell({ 4, 2 }, S, Turn::GOTE, false);
+	board.set_cell({ 4, 1 }, P, Turn::GOTE, false);
+	board.set_cell({ 4, 7 }, L, Turn::SENTE, false);
+	board.set_cell({ 0, 4 }, N, Turn::GOTE, false);
+	board.set_cell({ 0, 5 }, S, Turn::SENTE, false);
+}
+
+void run_pvs_tests() {
+	// 期待値はPVS導入前の実装で求めた値
+	BoardState board(Turn::SENTE);
+	setup_capture_choice_position(board);
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	bool timeout = false;
+	uint64_t nodes = 0;
+	int score = ai_t.alpha_beta(board, 2, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
+	check(score == 1411, "pvs: depth-2 score matches full-window search (1411)");
+	const TTEntry &entry = ai_t.transposition_table().at(board.get_zobrist_hash());
+	check(entry.best_move.from_col == 6 && entry.best_move.from_row == 7 && entry.best_move.to_col == 6 && entry.best_move.to_row == 4,
+			"pvs: depth-2 best move is rook takes gold");
+}
+
 void run_lmr_and_extension_tests() {
 	// LMR回帰: 深さ5の通常探索が kif2-60 の詰みを見逃さないこと
 	{
@@ -587,6 +617,7 @@ void run_search_tests() {
 	run_sort_moves_tests();
 	run_see_tests();
 	run_quiescence_tests();
+	run_pvs_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
 	run_history_repetition_tests();

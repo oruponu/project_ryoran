@@ -347,11 +347,18 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 			reduction = 0;
 		}
 
-		int eval = -alpha_beta(board, depth - 1 + extension - reduction, ply + 1, -beta, -alpha, end_time, timeout,
-				node_count);
-
-		if (!timeout && reduction > 0 && eval > alpha) {
-			eval = -alpha_beta(board, depth - 1 + extension, ply + 1, -beta, -alpha, end_time, timeout, node_count);
+		int new_depth = depth - 1 + extension;
+		int eval;
+		if (move_index == 1) {
+			eval = -alpha_beta(board, new_depth, ply + 1, -beta, -alpha, end_time, timeout, node_count);
+		} else {
+			eval = -alpha_beta(board, new_depth - reduction, ply + 1, -alpha - 1, -alpha, end_time, timeout, node_count);
+			if (!timeout && reduction > 0 && eval > alpha) {
+				eval = -alpha_beta(board, new_depth, ply + 1, -alpha - 1, -alpha, end_time, timeout, node_count);
+			}
+			if (!timeout && eval > alpha && eval < beta) {
+				eval = -alpha_beta(board, new_depth, ply + 1, -beta, -alpha, end_time, timeout, node_count);
+			}
 		}
 
 		board.undo_move(undo);
