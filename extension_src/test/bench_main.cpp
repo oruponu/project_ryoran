@@ -64,7 +64,7 @@ std::string format_move(const Shogi::Move &move) {
 }
 
 void print_usage() {
-	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC | game ANALYSIS_DEPTH AI_DEPTH]");
+	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC | game ANALYSIS_DEPTH AI_DEPTH [TT_MB]]");
 }
 
 void attach_logger(AIPlayer &ai, SearchLog &log) {
@@ -153,7 +153,7 @@ int run_positions(bool depth_mode, int value) {
 	return depth_mode && incomplete > 0 ? 1 : 0;
 }
 
-int run_game(int analysis_depth, int ai_depth) {
+int run_game(int analysis_depth, int ai_depth, size_t tt_bytes) {
 	BoardState board(Turn::SENTE);
 	setup_initial_position(board);
 	if (!replay(board, GAME_FIRST_MOVE_COUNT, KIFU2)) {
@@ -161,6 +161,9 @@ int run_game(int analysis_depth, int ai_depth) {
 	}
 
 	AIPlayer ai;
+	if (tt_bytes > 0) {
+		ai.set_tt_bytes(tt_bytes);
+	}
 	ai.set_time_limit_usec(UNLIMITED_TIME_USEC);
 	SearchLog log;
 	attach_logger(ai, log);
@@ -199,8 +202,8 @@ int run_game(int analysis_depth, int ai_depth) {
 	}
 	double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 
-	std::println("GAME analysis_nodes={} ai_nodes={} time_ms={:.1f} tt_clears={} incomplete={}", analysis_nodes, ai_nodes, ms,
-			tt_clears, incomplete);
+	std::println("GAME analysis_nodes={} ai_nodes={} time_ms={:.1f} tt_clears={} incomplete={} tt_bytes={}", analysis_nodes,
+			ai_nodes, ms, tt_clears, incomplete, tt_bytes);
 	print_heap_size();
 	return incomplete > 0 ? 1 : 0;
 }
@@ -225,7 +228,8 @@ int main(int argc, char **argv) {
 			print_usage();
 			return 2;
 		}
-		return run_game(std::atoi(argv[3]), std::atoi(argv[4]));
+		size_t tt_bytes = argc >= 6 ? static_cast<size_t>(std::atoi(argv[5])) << 20 : 0;
+		return run_game(std::atoi(argv[3]), std::atoi(argv[4]), tt_bytes);
 	}
 
 	bool depth_mode = mode == "depth";
