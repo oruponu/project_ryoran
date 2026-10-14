@@ -80,3 +80,4 @@ void run_rules_tests();
 void run_search_tests();
 void run_evaluator_tests();
 void run_transposition_table_tests();
+void run_usi_protocol_tests();

@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
 	run_search_tests();
 	run_rules_tests();
 	run_evaluator_tests();
+	run_usi_protocol_tests();
 
 	std::println("{} ({} failures)", failure_count() == 0 ? "ALL PASS" : "SOME FAILED", failure_count());
 	return failure_count() == 0 ? 0 : 1;
