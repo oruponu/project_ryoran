@@ -36,7 +36,7 @@ void run_logger_tests() {
 	check(rates_in_range, "search_top_moves: win_rate within [0, 1]");
 
 	const std::regex depth_line(R"(Depth \d+ completed\. BestScore: -?\d+, WinRate: \d+(\.[1-9])?%)");
-	const std::regex total_line(R"(Total nodes searched: \d+, TT size: \d+)");
+	const std::regex total_line(R"(Total nodes searched: \d+, TT hashfull: \d+)");
 	bool has_depth = false;
 	bool depth_format = true;
 	bool has_total = false;
@@ -79,6 +79,11 @@ void run_max_depth_tests() {
 		}
 	}
 	check(last_depth_line.starts_with("Depth 3 completed."), "max_depth: search stops after depth 3");
+
+	AIPlayer clamped;
+	AIPlayerTestAccess clamped_t{ clamped };
+	clamped.set_max_depth(1000);
+	check(clamped_t.max_depth() == AIPlayerTestAccess::MAX_PLY - 1, "max_depth: clamped to fit the transposition table depth");
 }
 
 std::vector<int> completed_depths(const std::vector<std::string> &lines) {
@@ -180,32 +185,32 @@ void run_depth_callback_tests() {
 	}
 }
 
-void run_tt_clear_tests() {
-	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
-	check(board.has_value(), "tt_clear: test position parses");
-	if (!board.has_value()) {
+void run_tt_persistence_tests() {
+	std::optional<BoardState> first = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	std::optional<BoardState> second =
+			BoardState::from_sfen("lnsg1g2l/1rk3s2/p1pppp1pp/6p2/2N6/1SP2PPP1/PPNPR3P/3g2S2/+p4K1NL b 2BLPg 41");
+	check(first.has_value() && second.has_value(), "tt persistence: test positions parse");
+	if (!first.has_value() || !second.has_value()) {
 		return;
 	}
 
-	check(AIPlayerTestAccess::TT_CLEAR_THRESHOLD > AIPlayerTestAccess::TT_SIZE, "tt_clear: threshold is above TT_SIZE");
-
 	AIPlayer ai;
 	AIPlayerTestAccess ai_t{ ai };
-	ai.set_max_depth(1);
-	auto &table = ai_t.transposition_table();
-	auto fill = [&table](size_t count) {
-		for (uint64_t key = 1; table.size() < count; ++key) {
-			table[key] = TTEntry{ .score = 0, .depth = 0, .flag = TTFlag::EXACT, .best_move = Move() };
-		}
-	};
+	ai.set_max_depth(3);
+	ai.set_time_limit_usec(60'000'000);
+	std::vector<ScoredMove> moves = ai.search_top_moves(*first, 1);
+	check(!moves.empty(), "tt persistence: first search returns a move");
+	if (moves.empty()) {
+		return;
+	}
 
-	fill(AIPlayerTestAccess::TT_SIZE + 1);
-	static_cast<void>(ai.search_top_moves(*board, 1));
-	check(table.contains(1), "tt_clear: table above TT_SIZE but within threshold is kept");
+	BoardState child = *first;
+	static_cast<void>(child.apply_move(moves[0].move));
+	uint64_t child_hash = child.get_zobrist_hash();
+	check(ai_t.tt().probe(child_hash).has_value(), "tt persistence: the best move's child is stored");
 
-	fill(AIPlayerTestAccess::TT_CLEAR_THRESHOLD + 1);
-	static_cast<void>(ai.search_top_moves(*board, 1));
-	check(!table.contains(1), "tt_clear: table above threshold is cleared");
+	static_cast<void>(ai.search_top_moves(*second, 1));
+	check(ai_t.tt().probe(child_hash).has_value(), "tt persistence: entries survive the next search of another position");
 }
 
 void run_format_percent_tests() {
@@ -469,8 +474,8 @@ void run_pvs_tests() {
 	uint64_t nodes = 0;
 	int score = ai_t.alpha_beta(board, 2, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes);
 	check(score == 1411, "pvs: depth-2 score matches full-window search (1411)");
-	const TTEntry &entry = ai_t.transposition_table().at(board.get_zobrist_hash());
-	check(entry.best_move.from_col == 6 && entry.best_move.from_row == 7 && entry.best_move.to_col == 6 && entry.best_move.to_row == 4,
+	std::optional<TTData> entry = ai_t.tt().probe(board.get_zobrist_hash());
+	check(entry.has_value() && entry->move == pack_move(Move(6, 7, 6, 4, R, false, false, true)),
 			"pvs: depth-2 best move is rook takes gold");
 }
 
@@ -482,15 +487,30 @@ void run_fail_low_tt_move_tests() {
 	AIPlayerTestAccess ai_t{ ai };
 	const Move king_move(8, 8, 7, 7, K, false, false, false);
 	uint64_t hash = board.get_zobrist_hash();
-	ai_t.transposition_table()[hash] = TTEntry{ .score = 0, .depth = 0, .flag = TTFlag::EXACT, .best_move = king_move };
+	ai_t.tt().store(hash, 0, 1, TTFlag::EXACT, pack_move(king_move));
 
 	bool timeout = false;
 	uint64_t nodes = 0;
 	constexpr int HIGH_ALPHA = 100000;
 	static_cast<void>(ai_t.alpha_beta(board, 2, 0, HIGH_ALPHA, HIGH_ALPHA + 1, UINT64_MAX, timeout, nodes));
-	const TTEntry &entry = ai_t.transposition_table().at(hash);
-	check(entry.flag == TTFlag::UPPER_BOUND, "tt move: fail-low node is stored as upper bound");
-	check(entry.best_move == king_move, "tt move: fail-low node keeps the previous best move");
+	std::optional<TTData> entry = ai_t.tt().probe(hash);
+	check(entry.has_value() && entry->flag == TTFlag::UPPER_BOUND, "tt move: fail-low node is stored as upper bound");
+	check(entry.has_value() && entry->move == pack_move(king_move), "tt move: fail-low node keeps the previous best move");
+
+	// A move not in the move list is not kept
+	AIPlayer other;
+	AIPlayerTestAccess other_t{ other };
+	constexpr uint16_t NOT_A_LEGAL_MOVE = 0x7fff;
+	other_t.tt().store(hash, 0, 1, TTFlag::EXACT, NOT_A_LEGAL_MOVE);
+	timeout = false;
+	nodes = 0;
+	static_cast<void>(other_t.alpha_beta(board, 2, 0, HIGH_ALPHA, HIGH_ALPHA + 1, UINT64_MAX, timeout, nodes));
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list);
+	std::optional<TTData> other_entry = other_t.tt().probe(hash);
+	check(other_entry.has_value() &&
+					std::ranges::any_of(move_list, [&other_entry](const Move &move) { return pack_move(move) == other_entry->move; }),
+			"tt move: a move not in the move list is not kept on fail-low");
 }
 
 bool is_board_move(const ScoredMove &scored, int from_col, int from_row, int to_col, int to_row) {
@@ -683,7 +703,7 @@ void run_alpha_beta_repetition_tests() {
 		AIPlayerTestAccess ai_t{ ai };
 		uint64_t hash = board.get_zobrist_hash();
 		// この局面に対する非引き分けの TT エントリを仕込む（別の経路で保存されたエントリを模したもの）
-		ai_t.transposition_table()[hash] = TTEntry{ 5000, 10, TTFlag::EXACT, Move{} };
+		ai_t.tt().store(hash, 5000, 10, TTFlag::EXACT, 0);
 		// 現局面を経路の起点として登録
 		ai_t.path_hashes()[0] = hash;
 		ai_t.path_in_check()[0] = false;
@@ -786,7 +806,7 @@ void run_search_tests() {
 	run_max_depth_tests();
 	run_stop_tests();
 	run_depth_callback_tests();
-	run_tt_clear_tests();
+	run_tt_persistence_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
 	run_see_tests();

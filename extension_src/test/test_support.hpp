@@ -40,8 +40,7 @@ struct AIPlayerTestAccess {
 
 	static constexpr int QS_PLY_LIMIT = AIPlayer::QS_PLY_LIMIT;
 	static constexpr uint32_t INFINITY_PN = AIPlayer::INFINITY_PN;
-	static constexpr size_t TT_SIZE = AIPlayer::TT_SIZE;
-	static constexpr size_t TT_CLEAR_THRESHOLD = AIPlayer::TT_CLEAR_THRESHOLD;
+	static constexpr int MAX_PLY = AIPlayer::MAX_PLY;
 
 	int get_move_ordering_score(const BoardState &board, const Move &move, int ply) {
 		return ai.get_move_ordering_score(board, move, ply);
@@ -54,6 +53,7 @@ struct AIPlayerTestAccess {
 	}
 	int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
 			uint64_t &node_count) {
+		ai.tt_.allocate(ai.tt_bytes_);
 		return ai.alpha_beta(board, depth, ply, alpha, beta, end_time, timeout, node_count);
 	}
 	std::optional<int> detect_path_repetition(int ply, uint64_t hash) { return ai.detect_path_repetition(ply, hash); }
@@ -65,7 +65,11 @@ struct AIPlayerTestAccess {
 	double calculate_win_probability(int score) { return ai.calculate_win_probability(score); }
 	auto &path_hashes() { return ai.path_hashes_; }
 	auto &path_in_check() { return ai.path_in_check_; }
-	auto &transposition_table() { return ai.transposition_table_; }
+	TranspositionTable &tt() {
+		ai.tt_.allocate(ai.tt_bytes_);
+		return ai.tt_;
+	}
+	int max_depth() const { return ai.max_depth_; }
 	auto &dfpn_path() { return ai.dfpn_path_; }
 	auto &dfpn_table() { return ai.dfpn_table_; }
 	static std::string format_percent(double value) { return AIPlayer::format_percent(value); }

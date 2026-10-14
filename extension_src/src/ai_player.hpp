@@ -10,13 +10,6 @@
 #include <unordered_set>
 #include <vector>
 
-struct TTEntry {
-	int score;
-	int depth;
-	TTFlag flag;
-	Shogi::Move best_move;
-};
-
 struct DfpnEntry {
 	uint32_t pn;
 	uint32_t dn;
@@ -44,8 +37,7 @@ public:
 
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
-	static constexpr size_t TT_SIZE = 1 << 20; // 約100万エントリ
-	static constexpr size_t TT_CLEAR_THRESHOLD = TT_SIZE * 2;
+	static constexpr size_t TT_BYTES = size_t{ 32 } << 20;
 	uint64_t time_limit_usec_ = TIME_LIMIT_USEC;
 	int max_depth_ = DEFAULT_MAX_DEPTH;
 	int time_check_countdown_ = 0;
@@ -64,7 +56,8 @@ private:
 	std::function<void(const std::vector<ScoredMove> &, int)> depth_callback_;
 	std::atomic<bool> stop_requested_ = false;
 
-	std::unordered_map<uint64_t, TTEntry> transposition_table_;
+	TranspositionTable tt_;
+	size_t tt_bytes_ = TT_BYTES;
 	std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
 	std::vector<uint64_t> dfpn_path_;
 	Shogi::Move killer_moves_[MAX_PLY][2]; // 探索の深さごとに2スロット
@@ -99,9 +92,6 @@ private:
 			int qs_ply = 0);
 	[[nodiscard]] double calculate_win_probability(int score);
 
-	[[nodiscard]] TTEntry *probe_tt(uint64_t hash);
-	void store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Shogi::Move &best_move);
-	void clear_tt();
 	[[nodiscard]] bool should_stop(uint64_t end_time) const;
 	void log(const std::string &message) const;
 	[[nodiscard]] static std::string format_percent(double value);
@@ -111,6 +101,7 @@ public:
 	void set_game_history(const std::vector<uint64_t> &hashes, const std::vector<bool> &in_checks);
 	void set_time_limit_usec(uint64_t usec);
 	void set_max_depth(int depth);
+	void set_tt_bytes(size_t bytes);
 	void set_logger(std::function<void(const std::string &)> logger);
 	void request_stop();
 	void clear_stop();

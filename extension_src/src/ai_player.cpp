@@ -80,7 +80,11 @@ void AIPlayer::set_time_limit_usec(uint64_t usec) {
 }
 
 void AIPlayer::set_max_depth(int depth) {
-	max_depth_ = std::max(depth, 1);
+	max_depth_ = std::clamp(depth, 1, MAX_PLY - 1);
+}
+
+void AIPlayer::set_tt_bytes(size_t bytes) {
+	tt_bytes_ = bytes;
 }
 
 void AIPlayer::set_logger(std::function<void(const std::string &)> logger) {
@@ -280,27 +284,22 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	int original_alpha = alpha;
 	int original_beta = beta;
-	Move tt_best_move{};
-	bool has_tt_move = false;
 
 	// 置換表の上限と下限で探索窓を狭めると保存時のフラグ分類が不正確になるため、カットのみに使う
-	TTEntry *tt_entry = probe_tt(hash);
-	if (tt_entry != nullptr && tt_entry->depth >= depth) {
-		int tt_score = score_from_tt(tt_entry->score, ply);
-		if (tt_entry->flag == TTFlag::EXACT) {
+	std::optional<TTData> tt_data = tt_.probe(hash);
+	if (tt_data.has_value() && tt_data->depth >= depth) {
+		int tt_score = score_from_tt(tt_data->score, ply);
+		if (tt_data->flag == TTFlag::EXACT) {
 			return tt_score;
-		} else if (tt_entry->flag == TTFlag::LOWER_BOUND && tt_score >= beta) {
+		} else if (tt_data->flag == TTFlag::LOWER_BOUND && tt_score >= beta) {
 			return tt_score;
-		} else if (tt_entry->flag == TTFlag::UPPER_BOUND && tt_score <= alpha) {
+		} else if (tt_data->flag == TTFlag::UPPER_BOUND && tt_score <= alpha) {
 			return tt_score;
 		}
 	}
 
 	// TTから最善手を取得
-	if (tt_entry != nullptr) {
-		tt_best_move = tt_entry->best_move;
-		has_tt_move = true;
-	}
+	uint16_t tt_move = tt_data.has_value() ? tt_data->move : 0;
 
 	if (depth <= 0) {
 		// 静止探索を実行
@@ -333,10 +332,12 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		}
 	}
 
-	if (has_tt_move) {
-		auto it = std::ranges::find(move_list, tt_best_move);
+	bool has_tt_move = false;
+	if (tt_move != 0) {
+		auto it = std::ranges::find_if(move_list, [tt_move](const Move &move) { return pack_move(move) == tt_move; });
 		if (it != move_list.end()) {
 			std::ranges::rotate(move_list.begin(), it, it + 1);
+			has_tt_move = true;
 		}
 	}
 
@@ -402,17 +403,18 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	TTFlag flag;
+	uint16_t stored_move = pack_move(best_move);
 	if (max_eval <= original_alpha) {
 		flag = TTFlag::UPPER_BOUND;
 		if (has_tt_move) {
-			best_move = tt_best_move;
+			stored_move = tt_move;
 		}
 	} else if (max_eval >= original_beta) {
 		flag = TTFlag::LOWER_BOUND;
 	} else {
 		flag = TTFlag::EXACT;
 	}
-	store_tt(hash, score_to_tt(max_eval, ply), depth, flag, best_move);
+	tt_.store(hash, score_to_tt(max_eval, ply), depth, flag, stored_move);
 
 	return max_eval;
 }
@@ -750,25 +752,6 @@ double AIPlayer::calculate_win_probability(int score) {
 	return 1.0 / (1.0 + std::pow(10.0, -static_cast<double>(score) / SCALING_FACTOR));
 }
 
-TTEntry *AIPlayer::probe_tt(uint64_t hash) {
-	auto it = transposition_table_.find(hash);
-	if (it != transposition_table_.end()) {
-		return &it->second;
-	}
-	return nullptr;
-}
-
-void AIPlayer::store_tt(uint64_t hash, int score, int depth, TTFlag flag, const Move &best_move) {
-	auto it = transposition_table_.find(hash);
-	if (it == transposition_table_.end() || it->second.depth <= depth) {
-		transposition_table_[hash] = TTEntry{ .score = score, .depth = depth, .flag = flag, .best_move = best_move };
-	}
-}
-
-void AIPlayer::clear_tt() {
-	transposition_table_.clear();
-}
-
 std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) {
 	if (count < 1) {
 		return {};
@@ -791,12 +774,8 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		return {};
 	}
 
-	transposition_table_.reserve(TT_SIZE);
-
-	if (transposition_table_.size() > TT_CLEAR_THRESHOLD) {
-		log(std::format("TT size exceeded limit, clearing. Size was: {}", transposition_table_.size()));
-		clear_tt();
-	}
+	tt_.allocate(tt_bytes_);
+	tt_.new_search();
 
 	// Killerは探索ごとにクリア
 	// Historyはエージングして対局内の学習を引き継ぐ
@@ -830,9 +809,15 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 	// TTから最善手を取得
 	uint64_t root_hash = board.get_zobrist_hash();
-	TTEntry *root_tt = probe_tt(root_hash);
-	Move best_move_prev_iter = (root_tt != nullptr) ? root_tt->best_move : move_list[0];
-	bool has_prev_best = (root_tt != nullptr);
+	Move best_move_prev_iter = move_list[0];
+	bool has_prev_best = false;
+	if (std::optional<TTData> root_tt = tt_.probe(root_hash); root_tt.has_value() && root_tt->move != 0) {
+		auto it = std::ranges::find_if(move_list, [&root_tt](const Move &move) { return pack_move(move) == root_tt->move; });
+		if (it != move_list.end()) {
+			best_move_prev_iter = *it;
+			has_prev_best = true;
+		}
+	}
 
 	uint64_t total_node_count = 0;
 
@@ -938,7 +923,7 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		}
 	}
 
-	log(std::format("Total nodes searched: {}, TT size: {}", total_node_count, transposition_table_.size()));
+	log(std::format("Total nodes searched: {}, TT hashfull: {}", total_node_count, tt_.hashfull()));
 
 	return to_scored_moves(global_top);
 }
