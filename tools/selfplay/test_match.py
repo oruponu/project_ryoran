@@ -1,9 +1,11 @@
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -57,8 +59,23 @@ hang_with_child()
 
 
 def process_alive(pid):
-    output = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
-    return str(pid) in output.split()
+    if sys.platform == "win32":
+        output = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
+        return str(pid) in output.split()
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def exited(pid, timeout_sec=5.0):
+    deadline = time.monotonic() + timeout_sec
+    while process_alive(pid):
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.1)
+    return True
 
 
 def child_pids(run_dir):
@@ -183,7 +200,6 @@ class FormatProgressTest(unittest.TestCase):
         self.assertTrue(line.endswith("(-2.94, 2.94)"))
 
 
-@unittest.skipUnless(sys.platform == "win32", "process checks use tasklist")
 class RunTest(unittest.TestCase):
     def test_decision_stops_run_and_kills_running_pairs(self):
         pairs = decisive_pairs()
@@ -194,7 +210,7 @@ class RunTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(summary[-1], f"result: H1 after {pairs} pairs")
         self.assertTrue(pids)
-        self.assertFalse(any(process_alive(pid) for pid in pids))
+        self.assertTrue(all(exited(pid) for pid in pids))
 
     def test_tallies_in_opening_order(self):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
@@ -211,7 +227,7 @@ class RunTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertRegex(summary[-1], r"^error: pair 0 failed with exit code 1 ")
         self.assertEqual(len(pids), 2)
-        self.assertFalse(any(process_alive(pid) for pid in pids))
+        self.assertTrue(all(exited(pid) for pid in pids))
 
     def test_deadline_kills_descendants(self):
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
@@ -219,7 +235,7 @@ class RunTest(unittest.TestCase):
             child_pid = int((run_dir / "pair-0000" / "child.pid").read_text())
         self.assertEqual(code, 1)
         self.assertRegex(summary[-1], r"^error: pair 0 did not finish within 2s ")
-        self.assertFalse(process_alive(child_pid))
+        self.assertTrue(exited(child_pid))
 
 
 @unittest.skipUnless(ENGINE.exists(), f"{ENGINE} is not built")

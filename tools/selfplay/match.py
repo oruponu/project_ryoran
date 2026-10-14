@@ -1,6 +1,8 @@
 import argparse
 import datetime
 import json
+import os
+import signal
 import subprocess
 import sys
 import time
@@ -91,7 +93,7 @@ def kill_tree(process):
     if sys.platform == "win32":
         subprocess.run(["taskkill", "/T", "/F", "/PID", str(process.pid)], capture_output=True)
     else:
-        process.kill()
+        os.killpg(process.pid, signal.SIGKILL)
     process.wait()
 
 
@@ -114,7 +116,7 @@ def start_pair(args, byoyomi, index, run_dir, play_pair):
         str(pair_dir),
     ]
     with open(pair_dir / "stderr.txt", "w", encoding="utf-8") as stderr:
-        process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=stderr)
+        process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=stderr, start_new_session=True)
     return process, time.monotonic(), pair_dir
 
 
