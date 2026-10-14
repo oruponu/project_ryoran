@@ -1,7 +1,11 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
 #include "usi_protocol.hpp"
+#include <cstdint>
+#include <initializer_list>
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace {
 
@@ -73,10 +77,59 @@ void run_round_trip_tests() {
 	check(all_round_trip, "usi: every legal move survives format and parse");
 }
 
+void run_parse_position_tests() {
+	std::optional<BoardState> start = BoardState::from_sfen(START_SFEN);
+	std::optional<Usi::Position> startpos = Usi::parse_position("startpos");
+	check(start.has_value() && startpos.has_value() &&
+					startpos->board.get_zobrist_hash() == start->get_zobrist_hash() && startpos->history_hashes.empty() &&
+					startpos->history_in_checks.empty(),
+			"usi: startpos without moves");
+
+	std::optional<Usi::Position> from_startpos = Usi::parse_position("startpos moves 7g7f 3c3d");
+	std::optional<Usi::Position> from_sfen = Usi::parse_position(std::string("sfen ") + START_SFEN + " moves 7g7f 3c3d");
+	check(from_startpos.has_value() && from_sfen.has_value() &&
+					from_startpos->board.get_zobrist_hash() == from_sfen->board.get_zobrist_hash() &&
+					from_startpos->board.get_turn_to_move() == from_sfen->board.get_turn_to_move(),
+			"usi: startpos and sfen give the same position");
+
+	std::optional<BoardState> bishop_exchange = BoardState::from_sfen(BISHOP_EXCHANGE_SFEN);
+	check(from_startpos.has_value() && bishop_exchange.has_value() &&
+					from_startpos->board.get_zobrist_hash() == bishop_exchange->get_zobrist_hash(),
+			"usi: moves from startpos reach the bishop exchange position");
+
+	if (start.has_value()) {
+		BoardState board = *start;
+		std::vector<uint64_t> expected_hashes;
+		for (const char *text : { "7g7f", "3c3d", "8h2b+" }) {
+			expected_hashes.push_back(board.get_zobrist_hash());
+			std::optional<Move> move = Usi::parse_move(board, text);
+			if (move.has_value()) {
+				static_cast<void>(board.apply_move(*move));
+			}
+		}
+		std::optional<Usi::Position> position = Usi::parse_position("startpos moves 7g7f 3c3d 8h2b+");
+		check(position.has_value() && position->history_hashes == expected_hashes &&
+						position->history_in_checks == std::vector<bool>{ false, false, false } &&
+						position->board.get_zobrist_hash() == board.get_zobrist_hash(),
+				"usi: history holds every position before the current one");
+	}
+
+	std::optional<Usi::Position> check_position = Usi::parse_position("sfen 4k4/9/9/9/9/9/9/9/4K4 b G 1 moves G*5b 5a5b");
+	check(check_position.has_value() && check_position->history_in_checks == std::vector<bool>{ false, true },
+			"usi: history records whether the side to move is in check");
+
+	check(!Usi::parse_position("").has_value(), "usi: rejects an empty position");
+	check(!Usi::parse_position("foo").has_value(), "usi: rejects an unknown position type");
+	check(!Usi::parse_position("sfen bad").has_value(), "usi: rejects a broken sfen");
+	check(!Usi::parse_position("startpos 7g7f").has_value(), "usi: rejects moves without the moves keyword");
+	check(!Usi::parse_position("startpos moves 7g7f 7g7e").has_value(), "usi: rejects an illegal move in the list");
+}
+
 } // namespace
 
 void run_usi_protocol_tests() {
 	run_format_move_tests();
 	run_parse_move_tests();
 	run_round_trip_tests();
+	run_parse_position_tests();
 }
