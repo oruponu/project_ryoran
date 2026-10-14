@@ -473,14 +473,12 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 	++node_count;
 	uint64_t hash = board.get_zobrist_hash();
 
-	// 経路上に再出現した局面（連続王手の千日手など）は強制詰みではないため不詰み扱いで返す
-	for (uint64_t ancestor : dfpn_path_) {
-		if (ancestor == hash) {
-			pn = INFINITY_PN;
-			dn = 0;
-			// GHIを避けるため置換表には保存しない
-			return;
-		}
+	// A position repeated on the path or in the game history (e.g. perpetual check) is not a forced mate
+	if (std::ranges::contains(dfpn_path_, hash) || (!dfpn_path_.empty() && game_history_hash_set_.contains(hash))) {
+		pn = INFINITY_PN;
+		dn = 0;
+		// GHIを避けるため置換表には保存しない
+		return;
 	}
 
 	if (auto it = dfpn_table_.find(hash); it != dfpn_table_.end()) {

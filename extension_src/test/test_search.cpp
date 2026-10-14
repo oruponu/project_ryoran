@@ -1,5 +1,6 @@
 #include "move_generator.hpp"
 #include "test_support.hpp"
+#include "usi_protocol.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <regex>
@@ -794,6 +795,27 @@ void run_dfpn_repetition_tests() {
 				100000);
 		check(pn2 == static_cast<int>(AIPlayerTestAccess::INFINITY_PN) && dn2 == 0, "dfpn: KvK leaf is unmate");
 		check(ai2_t.dfpn_table().contains(hash), "dfpn: non-repetition leaf IS cached");
+	}
+
+	// Self-play game lost by perpetual check: GOTE kept checking with 3f1d and 1d3f
+	{
+		std::optional<Usi::Position> position = Usi::parse_position(
+				"sfen l2g3+N1/5g2+B/p1nkpp2p/1p3sP2/6l1K/2pn2+b1S/PPNlPP2P/1S7/L1G2G3 w 2R2Ps4p 108 moves 3f1d 1e2f 1d3f 2f1e");
+		check(position.has_value(), "dfpn history: test position parses");
+		if (position.has_value()) {
+			AIPlayer ai;
+			AIPlayerTestAccess ai_t{ ai };
+			ai.set_game_history(position->history_hashes, position->history_in_checks);
+			std::optional<Move> mate = ai_t.find_mate(position->board, 21);
+			check(mate.has_value(), "dfpn history: mate is found when the root is in game history");
+			bool repeats = false;
+			if (mate.has_value()) {
+				Shogi::UndoInfo undo = position->board.apply_move(*mate);
+				repeats = std::ranges::contains(position->history_hashes, position->board.get_zobrist_hash());
+				position->board.undo_move(undo);
+			}
+			check(!repeats, "dfpn history: mate move does not return to a position in game history");
+		}
 	}
 }
 
