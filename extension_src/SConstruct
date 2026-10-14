@@ -39,7 +39,7 @@ if env["platform"] == "windows":
         if f.name not in ("shogi_engine.cpp", "register_types.cpp")
     ]
     test_sources = engine_sources + [
-        f for f in Glob("build/test/test/*.cpp") if f.name != "bench_main.cpp"
+        f for f in Glob("build/test/test/*.cpp") if f.name not in ("bench_main.cpp", "usi_main.cpp")
     ]
     test_program = test_env.Program("build/test/shogi_tests", test_sources)
     test_run = test_env.Command(
@@ -55,6 +55,13 @@ if env["platform"] == "windows":
         engine_sources + ["build/test/test/bench_main.cpp", "build/test/test/test_support.cpp"],
     )
     Alias("bench", bench_program)
+
+    usi_program = test_env.Program(
+        "build/test/shogi_usi",
+        engine_sources + ["build/test/test/usi_main.cpp", "build/test/test/usi_protocol.cpp"],
+    )
+    usi_zobrist = test_env.Install("build/test", File("../assets/data/zobrist_params.bin"))
+    Alias("usi", [usi_program, usi_zobrist])
 
 if env["platform"] != "web":
     Default("compiledb")

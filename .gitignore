@@ -13,3 +13,8 @@ bin/*
 dist/
 
 extension_src/build/
+
+tools/selfplay/.venv/
+tools/selfplay/engines/
+tools/selfplay/results/
+__pycache__/
