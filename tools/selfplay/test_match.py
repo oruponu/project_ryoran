@@ -1,4 +1,5 @@
 import argparse
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -8,6 +9,9 @@ from pathlib import Path
 
 import match
 import sprt
+
+ENGINE = Path(__file__).resolve().parents[2] / "extension_src" / "build" / "test" / "shogi_usi.exe"
+PLAY_PAIR_TIMEOUT_SEC = 30
 
 FAKE_PAIR_PRELUDE = """\
 import json
@@ -216,6 +220,35 @@ class RunTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertRegex(summary[-1], r"^error: pair 0 did not finish within 2s ")
         self.assertFalse(process_alive(child_pid))
+
+
+@unittest.skipUnless(ENGINE.exists(), f"{ENGINE} is not built")
+class PlayPairTest(unittest.TestCase):
+    def test_fails_fast_when_engine_exits(self):
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as directory:
+            directory = Path(directory)
+            # Without zobrist_params.bin next to it, the engine exits at isready
+            engine = directory / "shogi_usi.exe"
+            shutil.copy(ENGINE, engine)
+            openings = directory / "openings.txt"
+            openings.write_text("startpos moves 7g7f\n", encoding="utf-8")
+            command = [
+                sys.executable,
+                str(match.PLAY_PAIR),
+                str(engine),
+                str(engine),
+                "--openings",
+                str(openings),
+                "--index",
+                "0",
+                "--byoyomi",
+                "50",
+                "50",
+                "--out-dir",
+                str(directory / "pair"),
+            ]
+            result = subprocess.run(command, capture_output=True, timeout=PLAY_PAIR_TIMEOUT_SEC)
+        self.assertNotEqual(result.returncode, 0)
 
 
 if __name__ == "__main__":

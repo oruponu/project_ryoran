@@ -13,6 +13,36 @@ OPENING_MOVES_LIMIT = 256
 ENGINE_NAMES = ["engine1", "engine2"]
 
 
+class EofCheckingStdout:
+    def __init__(self, stream):
+        self._stream = stream
+
+    def readline(self):
+        line = self._stream.readline()
+        if not line:
+            raise EOFError("engine closed its output")
+        return line
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+# cshogi 1.0.9 compares bytes with '' and keeps reading after the engine exits
+class EofCheckingEngine(cli.Engine):
+    @property
+    def proc(self):
+        return self._proc
+
+    @proc.setter
+    def proc(self, process):
+        if process is not None:
+            process.stdout = EofCheckingStdout(process.stdout)
+        self._proc = process
+
+
+cli.Engine = EofCheckingEngine
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Play one pair of games from an opening with colors swapped")
     parser.add_argument("engine1")
