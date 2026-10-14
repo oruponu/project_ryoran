@@ -1,6 +1,7 @@
 #include "ai_player.hpp"
 #include "board_state.hpp"
 #include "test_support.hpp"
+#include "transposition_table.hpp"
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -64,7 +65,7 @@ std::string format_move(const Shogi::Move &move) {
 }
 
 void print_usage() {
-	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC | game ANALYSIS_DEPTH AI_DEPTH [TT_MB]]");
+	std::println("usage: shogi_bench <zobrist_params.bin> [depth N | time MSEC | game ANALYSIS_DEPTH AI_DEPTH [TT_MB] | alloc MB]");
 }
 
 void attach_logger(AIPlayer &ai, SearchLog &log) {
@@ -208,6 +209,16 @@ int run_game(int analysis_depth, int ai_depth, size_t tt_bytes) {
 	return incomplete > 0 ? 1 : 0;
 }
 
+int run_alloc(size_t bytes) {
+	auto start = std::chrono::steady_clock::now();
+	TranspositionTable table;
+	table.allocate(bytes);
+	double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+	std::println("alloc_bytes={} alloc_ms={:.2f} hashfull={}", bytes, ms, table.hashfull());
+	print_heap_size();
+	return 0;
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -230,6 +241,13 @@ int main(int argc, char **argv) {
 		}
 		size_t tt_bytes = argc >= 6 ? static_cast<size_t>(std::atoi(argv[5])) << 20 : 0;
 		return run_game(std::atoi(argv[3]), std::atoi(argv[4]), tt_bytes);
+	}
+	if (mode == "alloc") {
+		if (argc < 4) {
+			print_usage();
+			return 2;
+		}
+		return run_alloc(static_cast<size_t>(std::atoi(argv[3])) << 20);
 	}
 
 	bool depth_mode = mode == "depth";
