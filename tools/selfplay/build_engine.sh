@@ -34,9 +34,17 @@ for file in "$source_root"/extension_src/src/*.cpp; do
 	esac
 done
 
+if [ "$(uname -s)" = Darwin ]; then
+	cxx=${CXX:-clang++}
+	link_flags=()
+else
+	cxx=g++
+	link_flags=(-static -lstdc++exp)
+fi
+
 mkdir -p "$out"
-g++ -std=c++23 -O3 -static "-DRYORAN_BUILD_NAME=\"$name\"" -I"$source_root/extension_src/src" \
+"$cxx" -std=c++23 -O3 "-DRYORAN_BUILD_NAME=\"$name\"" -I"$source_root/extension_src/src" \
 	"${sources[@]}" "$repo/extension_src/test/usi_main.cpp" "$repo/extension_src/test/usi_protocol.cpp" \
-	-lstdc++exp -o "$out/shogi_usi.exe"
+	${link_flags[@]+"${link_flags[@]}"} -o "$out/shogi_usi.exe"
 cp "$source_root/assets/data/zobrist_params.bin" "$out/"
 echo "$out/shogi_usi.exe"
