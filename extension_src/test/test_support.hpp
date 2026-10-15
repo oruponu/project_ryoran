@@ -41,6 +41,12 @@ struct AIPlayerTestAccess {
 	static constexpr int QS_PLY_LIMIT = AIPlayer::QS_PLY_LIMIT;
 	static constexpr uint32_t INFINITY_PN = AIPlayer::INFINITY_PN;
 	static constexpr int MAX_PLY = AIPlayer::MAX_PLY;
+	static constexpr int RFP_MAX_DEPTH = AIPlayer::RFP_MAX_DEPTH;
+	static constexpr int RFP_MARGIN = AIPlayer::RFP_MARGIN;
+	static bool can_prune_node(bool in_check, int alpha, int beta) { return AIPlayer::can_prune_node(in_check, alpha, beta); }
+	static bool reverse_futility_cuts(int depth, int static_eval, int beta) {
+		return AIPlayer::reverse_futility_cuts(depth, static_eval, beta);
+	}
 
 	int get_move_ordering_score(const BoardState &board, const Move &move, int ply) {
 		return ai.get_move_ordering_score(board, move, ply);

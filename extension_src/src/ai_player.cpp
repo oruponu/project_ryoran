@@ -257,6 +257,14 @@ void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int dep
 	value = std::min(value + depth * depth, HISTORY_CAP);
 }
 
+bool AIPlayer::can_prune_node(bool in_check, int alpha, int beta) {
+	return !in_check && beta - alpha == 1 && std::abs(alpha) < MATE_BOUND && std::abs(beta) < MATE_BOUND;
+}
+
+bool AIPlayer::reverse_futility_cuts(int depth, int static_eval, int beta) {
+	return depth <= RFP_MAX_DEPTH && static_eval - RFP_MARGIN * depth >= beta;
+}
+
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
 		uint64_t &node_count, bool can_null) {
 	++node_count;
@@ -308,6 +316,14 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	// 王手延長：王手を受けた側は深さを減らさず読む
 	const int extension = (in_check && ply < MAX_PLY) ? 1 : 0;
+
+	const bool prune_node = can_prune_node(in_check, alpha, beta);
+	const int static_eval = prune_node ? side_to_move_score(board) : 0;
+
+	// Reverse Futility Pruning
+	if (prune_node && reverse_futility_cuts(depth, static_eval, beta)) {
+		return beta;
+	}
 
 	Shogi::MoveList move_list;
 	MoveGenerator::get_legal_moves(board, move_list);

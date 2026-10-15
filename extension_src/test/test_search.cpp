@@ -520,7 +520,7 @@ bool is_board_move(const ScoredMove &scored, int from_col, int from_row, int to_
 }
 
 void run_hint_score_tests() {
-	// 期待値はPVS導入前の実装で求めた値
+	// Expected values come from the implementation after reverse futility pruning
 	BoardState board(Turn::SENTE);
 	setup_capture_choice_position(board);
 	AIPlayer ai;
@@ -532,9 +532,85 @@ void run_hint_score_tests() {
 		return;
 	}
 	check(is_board_move(moves[0], 6, 7, 6, 4) && moves[0].score == 1871, "hint: 1st is rook takes gold (1871)");
-	check(is_board_move(moves[1], 2, 7, 2, 4) && moves[1].score == 1306, "hint: 2nd is rook takes bishop (1306)");
-	check(is_board_move(moves[2], 4, 7, 4, 2) && moves[2].move.is_promotion && moves[2].score == 1289,
-			"hint: 3rd is lance takes silver with promotion (1289)");
+	check(is_board_move(moves[1], 0, 5, 0, 4) && moves[1].score == 1320, "hint: 2nd is silver takes knight (1320)");
+	check(is_board_move(moves[2], 2, 7, 2, 4) && moves[2].score == 1306, "hint: 3rd is rook takes bishop (1306)");
+}
+
+const char *SENTE_AHEAD_SFEN = "4k4/9/9/9/9/9/9/9/4K4 b RBGSNLP 1";
+const char *SENTE_AHEAD_IN_CHECK_SFEN = "4k4/9/9/9/9/9/9/4r4/4K4 b RBGSNLP 1";
+const char *GOTE_AHEAD_SFEN = "4k4/9/9/9/9/9/9/9/4K4 w rbgsnlp 1";
+
+struct AlphaBetaResult {
+	int score = 0;
+	uint64_t nodes = 0;
+	int static_eval = 0;
+};
+
+AlphaBetaResult run_alpha_beta(const char *sfen, int depth, int alpha, int beta) {
+	std::optional<BoardState> board = BoardState::from_sfen(sfen);
+	check(board.has_value(), "pruning: test position parses");
+	if (!board.has_value()) {
+		return {};
+	}
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	AlphaBetaResult result;
+	int score = board->get_score();
+	result.static_eval = board->get_turn_to_move() == Turn::SENTE ? score : -score;
+	bool timeout = false;
+	result.score = ai_t.alpha_beta(*board, depth, 0, alpha, beta, UINT64_MAX, timeout, result.nodes);
+	return result;
+}
+
+void run_reverse_futility_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::can_prune_node(false, 99, 100), "pruning: zero window node can be pruned");
+	check(!T::can_prune_node(true, 99, 100), "pruning: not in check");
+	check(!T::can_prune_node(false, 99, 101), "pruning: not in PV nodes");
+	check(!T::can_prune_node(false, AIPlayer::MATE_BOUND - 1, AIPlayer::MATE_BOUND), "pruning: not near a winning mate score");
+	check(!T::can_prune_node(false, -AIPlayer::MATE_BOUND - 1, -AIPlayer::MATE_BOUND), "pruning: not near a losing mate score");
+
+	check(T::reverse_futility_cuts(3, 100 + 3 * T::RFP_MARGIN, 100), "rfp: cuts at the margin boundary");
+	check(!T::reverse_futility_cuts(3, 99 + 3 * T::RFP_MARGIN, 100), "rfp: does not cut just below the margin");
+	check(!T::reverse_futility_cuts(T::RFP_MAX_DEPTH + 1, 100000, 0), "rfp: not above the max depth");
+
+	AlphaBetaResult cut = run_alpha_beta(SENTE_AHEAD_SFEN, 2, 99, 100);
+	check(cut.score == 100 && cut.nodes == 1, "rfp: returns beta without searching children");
+
+	AlphaBetaResult gote = run_alpha_beta(GOTE_AHEAD_SFEN, 2, 99, 100);
+	check(gote.score == 100 && gote.nodes == 1, "rfp: works for gote to move");
+
+	AlphaBetaResult pv = run_alpha_beta(SENTE_AHEAD_SFEN, 2, 99, 101);
+	check(pv.nodes > 1, "rfp: does not cut PV nodes");
+
+	AlphaBetaResult in_check = run_alpha_beta(SENTE_AHEAD_IN_CHECK_SFEN, 2, 99, 100);
+	check(in_check.nodes > 1, "rfp: does not cut when in check");
+
+	AlphaBetaResult deep = run_alpha_beta(SENTE_AHEAD_SFEN, T::RFP_MAX_DEPTH + 1, 99, 100);
+	check(deep.nodes > 1, "rfp: does not cut above the max depth");
+
+	int s = cut.static_eval;
+	AlphaBetaResult boundary = run_alpha_beta(SENTE_AHEAD_SFEN, 2, s - 2 * T::RFP_MARGIN - 1, s - 2 * T::RFP_MARGIN);
+	check(boundary.nodes == 1, "rfp: cuts at the margin boundary in search");
+	AlphaBetaResult below = run_alpha_beta(SENTE_AHEAD_SFEN, 2, s - 2 * T::RFP_MARGIN, s - 2 * T::RFP_MARGIN + 1);
+	check(below.nodes > 1, "rfp: does not cut just below the margin in search");
+
+	AlphaBetaResult mate_window = run_alpha_beta(SENTE_AHEAD_SFEN, 2, -AIPlayer::MATE_BOUND - 1, -AIPlayer::MATE_BOUND);
+	check(mate_window.nodes > 1, "rfp: does not cut when the window is a mate score");
+}
+
+void run_pruning_mate_regression_tests() {
+	BoardState board(Turn::SENTE);
+	setup_initial_position(board);
+	if (!replay(board, 59, KIFU2)) {
+		check(false, "pruning: replay kif2-59");
+		return;
+	}
+	AIPlayer ai;
+	ai.set_max_depth(6);
+	ai.set_time_limit_usec(60'000'000);
+	std::vector<ScoredMove> moves = ai.search_top_moves(board, 1);
+	check(!moves.empty() && moves[0].score <= -AIPlayer::MATE_BOUND, "pruning: still sees being mated at kif2-59 depth 6");
 }
 
 void run_lmr_and_extension_tests() {
@@ -836,6 +912,8 @@ void run_search_tests() {
 	run_pvs_tests();
 	run_fail_low_tt_move_tests();
 	run_hint_score_tests();
+	run_reverse_futility_tests();
+	run_pruning_mate_regression_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
 	run_history_repetition_tests();

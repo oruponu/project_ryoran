@@ -49,6 +49,8 @@ private:
 	static constexpr int KILLER2_ORDERING_SCORE = 800000;
 	static constexpr int PROMOTION_ORDERING_BONUS = 20000;
 	static constexpr int HISTORY_CAP = 700000; // Killer2を超えさせない上限
+	static constexpr int RFP_MAX_DEPTH = 3;
+	static constexpr int RFP_MARGIN = 200;
 	// 静止探索を打ち切る深さ
 	static constexpr int QS_PLY_LIMIT = 16;
 
@@ -82,6 +84,8 @@ private:
 	}
 	void update_killer(int ply, const Shogi::Move &move);
 	void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);
+	[[nodiscard]] static bool can_prune_node(bool in_check, int alpha, int beta);
+	[[nodiscard]] static bool reverse_futility_cuts(int depth, int static_eval, int beta);
 	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,
 			bool &timeout, uint64_t &node_count, bool can_null = true);
 	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);
