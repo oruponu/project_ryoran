@@ -53,6 +53,7 @@ private:
 	static constexpr int RFP_MARGIN = 200;
 	static constexpr int FUTILITY_MAX_DEPTH = 2;
 	static constexpr int FUTILITY_MARGINS[FUTILITY_MAX_DEPTH + 1] = { 0, 300, 550 };
+	static constexpr int LMP_MAX_DEPTH = 3;
 	// 静止探索を打ち切る深さ
 	static constexpr int QS_PLY_LIMIT = 16;
 
@@ -90,6 +91,7 @@ private:
 	[[nodiscard]] static bool reverse_futility_cuts(int depth, int static_eval, int beta);
 	[[nodiscard]] static bool is_prunable_quiet_move(const Shogi::Move &move, bool gives_check, bool is_killer, int prior_move_count);
 	[[nodiscard]] static bool futility_prunes(int depth, int static_eval, int alpha);
+	[[nodiscard]] static bool late_move_prunes(int depth, int prior_move_count);
 	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,
 			bool &timeout, uint64_t &node_count, bool can_null = true);
 	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);

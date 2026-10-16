@@ -273,6 +273,10 @@ bool AIPlayer::futility_prunes(int depth, int static_eval, int alpha) {
 	return depth <= FUTILITY_MAX_DEPTH && static_eval + FUTILITY_MARGINS[depth] <= alpha;
 }
 
+bool AIPlayer::late_move_prunes(int depth, int prior_move_count) {
+	return depth <= LMP_MAX_DEPTH && prior_move_count >= 4 + 2 * depth * depth;
+}
+
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
 		uint64_t &node_count, bool can_null) {
 	++node_count;
@@ -396,9 +400,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 			reduction = 0;
 		}
 
-		// Futility Pruning
+		// Futility Pruning / Late Move Pruning
 		if (prune_node && is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count) &&
-				futility_prunes(depth, static_eval, alpha)) {
+				(futility_prunes(depth, static_eval, alpha) || late_move_prunes(depth, prior_move_count))) {
 			board.undo_move(undo);
 			continue;
 		}

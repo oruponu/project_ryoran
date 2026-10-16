@@ -53,6 +53,8 @@ struct AIPlayerTestAccess {
 		return AIPlayer::is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count);
 	}
 	static bool futility_prunes(int depth, int static_eval, int alpha) { return AIPlayer::futility_prunes(depth, static_eval, alpha); }
+	static constexpr int LMP_MAX_DEPTH = AIPlayer::LMP_MAX_DEPTH;
+	static bool late_move_prunes(int depth, int prior_move_count) { return AIPlayer::late_move_prunes(depth, prior_move_count); }
 
 	int get_move_ordering_score(const BoardState &board, const Move &move, int ply) {
 		return ai.get_move_ordering_score(board, move, ply);

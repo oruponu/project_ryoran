@@ -629,6 +629,21 @@ void run_futility_tests() {
 	check(pruned.nodes < below.nodes, "futility: no pruning just below the margin");
 }
 
+void run_late_move_pruning_tests() {
+	using T = AIPlayerTestAccess;
+	check(!T::late_move_prunes(1, 5) && T::late_move_prunes(1, 6), "lmp: depth 1 prunes from the 7th move");
+	check(!T::late_move_prunes(2, 11) && T::late_move_prunes(2, 12), "lmp: depth 2 prunes from the 13th move");
+	check(!T::late_move_prunes(3, 21) && T::late_move_prunes(3, 22), "lmp: depth 3 prunes from the 23rd move");
+	check(!T::late_move_prunes(T::LMP_MAX_DEPTH + 1, 1000), "lmp: not above the max depth");
+
+	// Futility does not prune here because the static eval is within its margin of alpha
+	int s = run_alpha_beta(SENTE_BEHIND_SFEN, 2, 0, 1).static_eval;
+	int alpha = s + 300;
+	AlphaBetaResult pruned = run_alpha_beta(SENTE_BEHIND_SFEN, 2, alpha, alpha + 1);
+	AlphaBetaResult pv = run_alpha_beta(SENTE_BEHIND_SFEN, 2, alpha, alpha + 2);
+	check(pruned.nodes < pv.nodes, "lmp: zero window search skips late quiet moves");
+}
+
 void run_pruning_mate_regression_tests() {
 	BoardState board(Turn::SENTE);
 	setup_initial_position(board);
@@ -945,6 +960,7 @@ void run_search_tests() {
 	run_reverse_futility_tests();
 	run_quiet_move_prune_tests();
 	run_futility_tests();
+	run_late_move_pruning_tests();
 	run_pruning_mate_regression_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
