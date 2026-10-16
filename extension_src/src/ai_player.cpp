@@ -265,6 +265,14 @@ bool AIPlayer::reverse_futility_cuts(int depth, int static_eval, int beta) {
 	return depth <= RFP_MAX_DEPTH && static_eval - RFP_MARGIN * depth >= beta;
 }
 
+bool AIPlayer::is_prunable_quiet_move(const Shogi::Move &move, bool gives_check, bool is_killer, int prior_move_count) {
+	return prior_move_count >= 1 && !move.is_capture && !move.is_promotion && !gives_check && !is_killer;
+}
+
+bool AIPlayer::futility_prunes(int depth, int static_eval, int alpha) {
+	return depth <= FUTILITY_MAX_DEPTH && static_eval + FUTILITY_MARGINS[depth] <= alpha;
+}
+
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
 		uint64_t &node_count, bool can_null) {
 	++node_count;
@@ -369,19 +377,30 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	int max_eval = -INFINITE_SCORE;
 	int move_index = 0;
 	for (const Move &move : move_list) {
+		const int prior_move_count = move_index;
+		const bool is_killer = is_killer_move(move);
+
 		// Late Move Reductions
 		int reduction = 0;
 		if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
-				!is_killer_move(move)) {
+				!is_killer) {
 			reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
 		}
 		++move_index;
 
 		Shogi::UndoInfo undo = board.apply_move(move);
 
+		const bool gives_check = (reduction > 0 || prune_node) && MoveGenerator::is_king_in_check(board, opponent_turn);
 		// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
-		if (reduction > 0 && MoveGenerator::is_king_in_check(board, opponent_turn)) {
+		if (gives_check) {
 			reduction = 0;
+		}
+
+		// Futility Pruning
+		if (prune_node && is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count) &&
+				futility_prunes(depth, static_eval, alpha)) {
+			board.undo_move(undo);
+			continue;
 		}
 
 		int new_depth = depth - 1 + extension;

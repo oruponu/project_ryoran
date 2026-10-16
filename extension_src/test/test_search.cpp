@@ -599,6 +599,36 @@ void run_reverse_futility_tests() {
 	check(mate_window.nodes > 1, "rfp: does not cut when the window is a mate score");
 }
 
+const char *SENTE_BEHIND_SFEN = "4k4/9/9/9/9/9/PPPPPPPPP/9/4K4 b 2r2b4g4s 1";
+
+void run_quiet_move_prune_tests() {
+	using T = AIPlayerTestAccess;
+	const Move quiet(6, 6, 6, 5, P, false, false, false);
+	const Move capture(6, 6, 6, 5, P, false, false, true);
+	const Move promotion(6, 3, 6, 2, P, true, false, false);
+	check(T::is_prunable_quiet_move(quiet, false, false, 1), "quiet prune: quiet move after the first");
+	check(!T::is_prunable_quiet_move(quiet, false, false, 0), "quiet prune: never the first move");
+	check(!T::is_prunable_quiet_move(capture, false, false, 1), "quiet prune: not captures");
+	check(!T::is_prunable_quiet_move(promotion, false, false, 1), "quiet prune: not promotions");
+	check(!T::is_prunable_quiet_move(quiet, true, false, 1), "quiet prune: not checks");
+	check(!T::is_prunable_quiet_move(quiet, false, true, 1), "quiet prune: not killers");
+}
+
+void run_futility_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::futility_prunes(1, 0, T::FUTILITY_MARGIN_1), "futility: prunes at the margin boundary");
+	check(!T::futility_prunes(1, 1, T::FUTILITY_MARGIN_1), "futility: does not prune just below the margin");
+	check(!T::futility_prunes(T::FUTILITY_MAX_DEPTH + 1, -100000, 0), "futility: not above the max depth");
+
+	int s = run_alpha_beta(SENTE_BEHIND_SFEN, 1, 0, 1).static_eval;
+	int alpha = s + T::FUTILITY_MARGIN_1;
+	AlphaBetaResult pruned = run_alpha_beta(SENTE_BEHIND_SFEN, 1, alpha, alpha + 1);
+	AlphaBetaResult pv = run_alpha_beta(SENTE_BEHIND_SFEN, 1, alpha, alpha + 2);
+	AlphaBetaResult below = run_alpha_beta(SENTE_BEHIND_SFEN, 1, alpha - 1, alpha);
+	check(pruned.nodes < pv.nodes, "futility: zero window search skips quiet moves");
+	check(pruned.nodes < below.nodes, "futility: no pruning just below the margin");
+}
+
 void run_pruning_mate_regression_tests() {
 	BoardState board(Turn::SENTE);
 	setup_initial_position(board);
@@ -913,6 +943,8 @@ void run_search_tests() {
 	run_fail_low_tt_move_tests();
 	run_hint_score_tests();
 	run_reverse_futility_tests();
+	run_quiet_move_prune_tests();
+	run_futility_tests();
 	run_pruning_mate_regression_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
