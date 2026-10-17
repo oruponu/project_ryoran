@@ -644,6 +644,15 @@ void run_late_move_pruning_tests() {
 	check(pruned.nodes < pv.nodes, "lmp: zero window search skips late quiet moves");
 }
 
+const char *QUIET_DEFENSE_SFEN = "4k4/9/4p4/g8/R8/9/7s1/9/8K b g 1";
+
+void run_pruning_false_mate_tests() {
+	int s = run_alpha_beta(QUIET_DEFENSE_SFEN, 2, 0, 1).static_eval;
+	int alpha = s + AIPlayerTestAccess::FUTILITY_MARGIN_2;
+	AlphaBetaResult pruned = run_alpha_beta(QUIET_DEFENSE_SFEN, 2, alpha, alpha + 1);
+	check(pruned.score > -AIPlayer::MATE_BOUND, "pruning: no false mate when only quiet moves stop the mate");
+}
+
 void run_pruning_mate_regression_tests() {
 	BoardState board(Turn::SENTE);
 	setup_initial_position(board);
@@ -961,6 +970,7 @@ void run_search_tests() {
 	run_quiet_move_prune_tests();
 	run_futility_tests();
 	run_late_move_pruning_tests();
+	run_pruning_false_mate_tests();
 	run_pruning_mate_regression_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();

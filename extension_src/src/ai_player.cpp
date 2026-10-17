@@ -401,7 +401,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		}
 
 		// Futility Pruning / Late Move Pruning
-		if (prune_node && is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count) &&
+		if (prune_node && max_eval > -MATE_BOUND && is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count) &&
 				(futility_prunes(depth, static_eval, alpha) || late_move_prunes(depth, prior_move_count))) {
 			board.undo_move(undo);
 			continue;

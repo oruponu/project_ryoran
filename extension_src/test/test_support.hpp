@@ -49,6 +49,7 @@ struct AIPlayerTestAccess {
 	}
 	static constexpr int FUTILITY_MAX_DEPTH = AIPlayer::FUTILITY_MAX_DEPTH;
 	static constexpr int FUTILITY_MARGIN_1 = AIPlayer::FUTILITY_MARGINS[1];
+	static constexpr int FUTILITY_MARGIN_2 = AIPlayer::FUTILITY_MARGINS[2];
 	static bool is_prunable_quiet_move(const Move &move, bool gives_check, bool is_killer, int prior_move_count) {
 		return AIPlayer::is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count);
 	}
