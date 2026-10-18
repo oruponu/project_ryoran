@@ -667,6 +667,28 @@ void run_pruning_mate_regression_tests() {
 	check(!moves.empty() && moves[0].score <= -AIPlayer::MATE_BOUND, "pruning: still sees being mated at kif2-59 depth 6");
 }
 
+void run_lmr_table_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::lmr_reduction(3, 5) == 1 && T::lmr_reduction(3, 101) == 1, "lmr: depth 3 reduces by 1");
+	check(T::lmr_reduction(4, 13) == 1 && T::lmr_reduction(4, 21) == 2, "lmr: depth 4 grows with the move number");
+	check(T::lmr_reduction(6, 9) == 2 && T::lmr_reduction(6, 41) == 3, "lmr: depth 6 values");
+	check(T::lmr_reduction(12, 5) == 2 && T::lmr_reduction(12, 101) == 5, "lmr: depth 12 values");
+	check(T::lmr_reduction(100, 1000) == T::lmr_reduction(63, 600) && T::lmr_reduction(63, 600) == 11,
+			"lmr: clamps beyond the table");
+
+	bool within = true;
+	bool monotonic = true;
+	for (int depth = 3; depth <= 63; ++depth) {
+		for (int n = 5; n <= 600; ++n) {
+			int r = T::lmr_reduction(depth, n);
+			within = within && r >= 1 && r <= depth - 2;
+			monotonic = monotonic && r >= T::lmr_reduction(depth, n - 1) && r >= T::lmr_reduction(depth - 1, n);
+		}
+	}
+	check(within, "lmr: never reduces below depth 1");
+	check(monotonic, "lmr: grows with depth and move number");
+}
+
 void run_lmr_and_extension_tests() {
 	// LMR回帰: 深さ5の通常探索が kif2-60 の詰みを見逃さないこと
 	{
@@ -972,6 +994,7 @@ void run_search_tests() {
 	run_late_move_pruning_tests();
 	run_pruning_false_mate_tests();
 	run_pruning_mate_regression_tests();
+	run_lmr_table_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
 	run_history_repetition_tests();

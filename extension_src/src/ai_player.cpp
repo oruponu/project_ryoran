@@ -29,7 +29,6 @@ constexpr uint64_t NO_TIME_LIMIT = UINT64_MAX;
 
 // 後方の駒を取らない手は最善である可能性が低いため、先頭の手を除いて探索深さを削減する
 constexpr int LMR_MOVE_THRESHOLD = 4;
-constexpr int LMR_DEEP_MOVE_THRESHOLD = 12;
 
 // Delta Pruningのマージン
 constexpr int DELTA_MARGIN = 540;
@@ -277,6 +276,26 @@ bool AIPlayer::late_move_prunes(int depth, int prior_move_count) {
 	return depth <= LMP_MAX_DEPTH && prior_move_count >= 4 + 2 * depth * depth;
 }
 
+int AIPlayer::lmr_reduction(int depth, int move_number) {
+	constexpr int MAX_TABLE_DEPTH = 63;
+	constexpr int MAX_TABLE_MOVE = Shogi::MoveList::MAX_MOVES;
+	static const auto table = [] {
+		std::array<std::array<int, MAX_TABLE_MOVE + 1>, MAX_TABLE_DEPTH + 1> reductions{};
+		for (int d = 0; d <= MAX_TABLE_DEPTH; ++d) {
+			for (int n = 0; n <= MAX_TABLE_MOVE; ++n) {
+				if (d == 0 || n == 0) {
+					reductions[d][n] = 1;
+					continue;
+				}
+				int r = static_cast<int>(std::floor(0.5 + std::log(d) * std::log(n) / 2.5));
+				reductions[d][n] = std::clamp(r, 1, std::max(d - 2, 1));
+			}
+		}
+		return reductions;
+	}();
+	return table[std::clamp(depth, 0, MAX_TABLE_DEPTH)][std::clamp(move_number, 0, MAX_TABLE_MOVE)];
+}
+
 int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
 		uint64_t &node_count, bool can_null) {
 	++node_count;
@@ -388,7 +407,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		int reduction = 0;
 		if (depth >= 3 && move_index >= LMR_MOVE_THRESHOLD && !in_check && !move.is_capture && !move.is_promotion &&
 				!is_killer) {
-			reduction = (depth >= 6 && move_index >= LMR_DEEP_MOVE_THRESHOLD) ? 2 : 1;
+			reduction = lmr_reduction(depth, move_index + 1);
 		}
 		++move_index;
 

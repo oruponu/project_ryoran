@@ -92,6 +92,7 @@ private:
 	[[nodiscard]] static bool is_prunable_quiet_move(const Shogi::Move &move, bool gives_check, bool is_killer, int prior_move_count);
 	[[nodiscard]] static bool futility_prunes(int depth, int static_eval, int alpha);
 	[[nodiscard]] static bool late_move_prunes(int depth, int prior_move_count);
+	[[nodiscard]] static int lmr_reduction(int depth, int move_number);
 	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,
 			bool &timeout, uint64_t &node_count, bool can_null = true);
 	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);
