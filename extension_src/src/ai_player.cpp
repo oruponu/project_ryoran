@@ -276,6 +276,10 @@ bool AIPlayer::late_move_prunes(int depth, int prior_move_count) {
 	return depth <= LMP_MAX_DEPTH && prior_move_count >= 4 + 2 * depth * depth;
 }
 
+int AIPlayer::null_move_reduction(int depth) {
+	return 2 + depth / 4;
+}
+
 int AIPlayer::lmr_reduction(int depth, int move_number) {
 	constexpr int MAX_TABLE_DEPTH = 63;
 	constexpr int MAX_TABLE_MOVE = Shogi::MoveList::MAX_MOVES;
@@ -364,10 +368,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	// Null Move Pruning
-	constexpr int NULL_MOVE_R = 2;
 	if (can_null && depth >= 3 && !in_check && side_to_move_score(board) >= beta) {
 		uint64_t null_hash = board.make_null_move();
-		int null_score = -alpha_beta(board, depth - 1 - NULL_MOVE_R, ply + 1, -beta, -beta + 1, end_time, timeout,
+		int null_score = -alpha_beta(board, depth - 1 - null_move_reduction(depth), ply + 1, -beta, -beta + 1, end_time, timeout,
 				node_count, false);
 		board.undo_null_move(null_hash);
 

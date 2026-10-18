@@ -667,6 +667,20 @@ void run_pruning_mate_regression_tests() {
 	check(!moves.empty() && moves[0].score <= -AIPlayer::MATE_BOUND, "pruning: still sees being mated at kif2-59 depth 6");
 }
 
+void run_null_move_reduction_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::null_move_reduction(3) == 2, "null move: depth 3 keeps R = 2");
+	check(T::null_move_reduction(4) == 3 && T::null_move_reduction(7) == 3, "null move: depth 4-7 reduces by 3");
+	check(T::null_move_reduction(8) == 4 && T::null_move_reduction(11) == 4, "null move: depth 8-11 reduces by 4");
+	check(T::null_move_reduction(12) == 5, "null move: depth 12 reduces by 5");
+
+	bool non_negative = true;
+	for (int depth = 3; depth <= 127; ++depth) {
+		non_negative = non_negative && depth - 1 - T::null_move_reduction(depth) >= 0;
+	}
+	check(non_negative, "null move: child depth is never negative");
+}
+
 void run_lmr_table_tests() {
 	using T = AIPlayerTestAccess;
 	check(T::lmr_reduction(3, 5) == 1 && T::lmr_reduction(3, 101) == 1, "lmr: depth 3 reduces by 1");
@@ -994,6 +1008,7 @@ void run_search_tests() {
 	run_late_move_pruning_tests();
 	run_pruning_false_mate_tests();
 	run_pruning_mate_regression_tests();
+	run_null_move_reduction_tests();
 	run_lmr_table_tests();
 	run_lmr_and_extension_tests();
 	run_path_repetition_tests();
