@@ -256,6 +256,10 @@ void AIPlayer::update_history(Shogi::Turn turn, const Shogi::Move &move, int dep
 	value = std::min(value + depth * depth, HISTORY_CAP);
 }
 
+bool AIPlayer::can_use_partial_top(int partial_size, int count) {
+	return partial_size >= count;
+}
+
 bool AIPlayer::can_prune_node(bool in_check, int alpha, int beta) {
 	return !in_check && beta - alpha == 1 && std::abs(alpha) < MATE_BOUND && std::abs(beta) < MATE_BOUND;
 }
@@ -960,6 +964,15 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 
 		if (timeout) {
 			log(std::format("Time limit reached before depth {}", depth));
+			if (can_use_partial_top(std::ssize(depth_top), count)) {
+				global_top = depth_top;
+				double win_prob = calculate_win_probability(global_top[0].score);
+				log(std::format("Partial depth {} used. BestScore: {}, WinRate: {}%", depth, global_top[0].score,
+						format_percent(win_prob * 100.0)));
+				if (depth_callback_) {
+					depth_callback_(to_scored_moves(global_top), depth);
+				}
+			}
 			break;
 		}
 

@@ -87,6 +87,7 @@ private:
 	}
 	void update_killer(int ply, const Shogi::Move &move);
 	void update_history(Shogi::Turn turn, const Shogi::Move &move, int depth);
+	[[nodiscard]] static bool can_use_partial_top(int partial_size, int count);
 	[[nodiscard]] static bool can_prune_node(bool in_check, int alpha, int beta);
 	[[nodiscard]] static bool reverse_futility_cuts(int depth, int static_eval, int beta);
 	[[nodiscard]] static bool is_prunable_quiet_move(const Shogi::Move &move, bool gives_check, bool is_killer, int prior_move_count);

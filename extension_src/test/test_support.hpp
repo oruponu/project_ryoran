@@ -44,6 +44,7 @@ struct AIPlayerTestAccess {
 	static constexpr int RFP_MAX_DEPTH = AIPlayer::RFP_MAX_DEPTH;
 	static constexpr int RFP_MARGIN = AIPlayer::RFP_MARGIN;
 	static bool can_prune_node(bool in_check, int alpha, int beta) { return AIPlayer::can_prune_node(in_check, alpha, beta); }
+	static bool can_use_partial_top(int partial_size, int count) { return AIPlayer::can_use_partial_top(partial_size, count); }
 	static bool reverse_futility_cuts(int depth, int static_eval, int beta) {
 		return AIPlayer::reverse_futility_cuts(depth, static_eval, beta);
 	}

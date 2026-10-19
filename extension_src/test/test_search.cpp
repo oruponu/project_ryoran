@@ -186,6 +186,15 @@ void run_depth_callback_tests() {
 	}
 }
 
+void run_partial_top_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::can_use_partial_top(1, 1), "partial top: uses one finished move when searching one move");
+	check(!T::can_use_partial_top(0, 1), "partial top: keeps the previous depth before the first move finishes");
+	check(T::can_use_partial_top(3, 3), "partial top: uses three finished moves when searching three moves");
+	check(!T::can_use_partial_top(2, 3) && !T::can_use_partial_top(0, 3),
+			"partial top: keeps the previous depth until three moves finish");
+}
+
 void run_tt_persistence_tests() {
 	std::optional<BoardState> first = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
 	std::optional<BoardState> second =
@@ -994,6 +1003,7 @@ void run_search_tests() {
 	run_max_depth_tests();
 	run_stop_tests();
 	run_depth_callback_tests();
+	run_partial_top_tests();
 	run_tt_persistence_tests();
 	run_move_ordering_tests();
 	run_sort_moves_tests();
