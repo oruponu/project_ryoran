@@ -110,6 +110,14 @@ bool AIPlayer::should_stop(uint64_t end_time) const {
 	return now_usec() > end_time || stop_requested_.load(std::memory_order_relaxed);
 }
 
+bool AIPlayer::time_check_stops(uint64_t end_time) {
+	if (--time_check_countdown_ > 0) {
+		return false;
+	}
+	time_check_countdown_ = TIME_CHECK_INTERVAL;
+	return should_stop(end_time);
+}
+
 void AIPlayer::log(const std::string &message) const {
 	if (logger_) {
 		logger_(message);
@@ -309,12 +317,9 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		uint64_t &node_count, bool can_null) {
 	++node_count;
 
-	if (--time_check_countdown_ <= 0) {
-		time_check_countdown_ = TIME_CHECK_INTERVAL;
-		if (should_stop(end_time)) {
-			timeout = true;
-			return 0;
-		}
+	if (time_check_stops(end_time)) {
+		timeout = true;
+		return 0;
 	}
 
 	uint64_t hash = board.get_zobrist_hash();
@@ -351,7 +356,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	if (depth <= 0) {
 		// 静止探索を実行
-		return quiescence_search(board, alpha, beta, ply, node_count);
+		return quiescence_search(board, alpha, beta, ply, end_time, timeout, node_count);
 	}
 
 	// 王手延長：王手を受けた側は深さを減らさず読む
@@ -731,8 +736,14 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 	dfpn_table_[hash] = { .pn = static_cast<uint32_t>(pn), .dn = static_cast<uint32_t>(dn) };
 }
 
-int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count, int qs_ply) {
+int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t end_time, bool &timeout,
+		uint64_t &node_count, int qs_ply) {
 	++node_count;
+
+	if (time_check_stops(end_time)) {
+		timeout = true;
+		return 0;
+	}
 
 	Turn turn = board.get_turn_to_move();
 	bool in_check = MoveGenerator::is_king_in_check(board, turn);
@@ -796,8 +807,11 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 		}
 
 		Shogi::UndoInfo undo = board.apply_move(move);
-		int eval = -quiescence_search(board, -beta, -alpha, ply + 1, node_count, qs_ply + 1);
+		int eval = -quiescence_search(board, -beta, -alpha, ply + 1, end_time, timeout, node_count, qs_ply + 1);
 		board.undo_move(undo);
+		if (timeout) {
+			return 0;
+		}
 
 		max_eval = std::max(max_eval, eval);
 		alpha = std::max(alpha, eval);

@@ -474,6 +474,32 @@ void setup_capture_choice_position(BoardState &board) {
 	board.set_cell({ 0, 5 }, S, Turn::SENTE, false);
 }
 
+void run_quiescence_deadline_tests() {
+	std::optional<BoardState> board = BoardState::from_sfen(NON_BOOK_SENTE_SFEN);
+	check(board.has_value(), "qsearch deadline: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		bool timeout = false;
+		uint64_t nodes = 0;
+		static_cast<void>(ai_t.quiescence_search(*board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, 1, timeout, nodes));
+		check(timeout, "qsearch: past deadline times out");
+	}
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		bool timeout = false;
+		uint64_t nodes = 0;
+		static_cast<void>(ai_t.quiescence_search(*board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0,
+				AIPlayerTestAccess::NO_TIME_LIMIT, timeout, nodes));
+		check(!timeout, "qsearch: no deadline does not time out");
+	}
+}
+
 void run_pvs_tests() {
 	// 期待値はPVS導入前の実装で求めた値
 	BoardState board(Turn::SENTE);
@@ -1028,6 +1054,7 @@ void run_search_tests() {
 	run_sort_moves_tests();
 	run_see_tests();
 	run_quiescence_tests();
+	run_quiescence_deadline_tests();
 	run_pvs_tests();
 	run_fail_low_tt_move_tests();
 	run_hint_score_tests();
