@@ -38,6 +38,7 @@ public:
 private:
 	static constexpr uint64_t TIME_LIMIT_USEC = 1000000; // 1秒
 	static constexpr size_t TT_BYTES = size_t{ 32 } << 20;
+	static constexpr uint64_t NO_TIME_LIMIT = UINT64_MAX;
 	uint64_t time_limit_usec_ = TIME_LIMIT_USEC;
 	int max_depth_ = DEFAULT_MAX_DEPTH;
 	int time_check_countdown_ = 0;
@@ -65,6 +66,8 @@ private:
 	size_t tt_bytes_ = TT_BYTES;
 	std::unordered_map<uint64_t, DfpnEntry> dfpn_table_;
 	std::vector<uint64_t> dfpn_path_;
+	uint64_t dfpn_end_time_ = NO_TIME_LIMIT;
+	bool dfpn_stopped_ = false;
 	Shogi::Move killer_moves_[MAX_PLY][2]; // 探索の深さごとに2スロット
 	bool killer_valid_[MAX_PLY][2] = {};
 	int history_[2][Shogi::PIECE_TYPE_COUNT][Shogi::BOARD_SIZE] = {};
@@ -97,7 +100,8 @@ private:
 	[[nodiscard]] static int null_move_reduction(int depth);
 	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,
 			bool &timeout, uint64_t &node_count, bool can_null = true);
-	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000);
+	std::optional<Shogi::Move> find_mate(BoardState &board, int max_depth, uint64_t max_nodes = 100000,
+			uint64_t end_time = NO_TIME_LIMIT);
 	void dfpn_search(BoardState &board, Shogi::Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn,
 			int depth, uint64_t &node_count, const uint64_t max_nodes);
 	void generate_check_moves(BoardState &board, Shogi::MoveList &move_list);

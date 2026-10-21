@@ -994,6 +994,25 @@ void run_dfpn_repetition_tests() {
 	}
 }
 
+void run_mate_deadline_tests() {
+	const char *MATE_IN_ONE_SFEN = "4k4/9/4G4/9/9/9/9/9/4K4 b G 1";
+	std::optional<BoardState> board = BoardState::from_sfen(MATE_IN_ONE_SFEN);
+	check(board.has_value(), "dfpn deadline: test position parses");
+	if (!board.has_value()) {
+		return;
+	}
+
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	check(!ai_t.find_mate(*board, 3, 1).has_value(), "dfpn: past deadline does not prove mate");
+	check(ai_t.find_mate(*board, 3).has_value(), "dfpn: a later search without deadline still finds mate");
+	check(ai_t.find_mate(*board, 3, UINT64_MAX - 1).has_value(), "dfpn: future deadline still finds mate");
+
+	ai.request_stop();
+	check(!ai_t.find_mate(*board, 3, UINT64_MAX - 1).has_value(), "dfpn: stop request ends a search with deadline");
+	check(ai_t.find_mate(*board, 3).has_value(), "dfpn: no deadline ignores a stop request");
+}
+
 } // namespace
 
 void run_search_tests() {
@@ -1026,4 +1045,5 @@ void run_search_tests() {
 	run_alpha_beta_repetition_tests();
 	run_gote_search_tests();
 	run_dfpn_repetition_tests();
+	run_mate_deadline_tests();
 }

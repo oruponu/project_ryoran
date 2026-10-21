@@ -21,11 +21,12 @@ namespace {
 // 不詰みの証明はノード数上限まで探索しがちなため、思考時間に収まるよう上限を用途別に分ける
 constexpr int OWN_MATE_DEPTH = 21;
 constexpr uint64_t OWN_MATE_NODES = 30000;
+constexpr uint64_t OWN_MATE_TIME_DIVISOR = 4;
 constexpr int MATE_CHECK_DEPTH = 9;
 constexpr uint64_t MATE_CHECK_NODES = 5000;
 
 constexpr int TIME_CHECK_INTERVAL = 1024;
-constexpr uint64_t NO_TIME_LIMIT = UINT64_MAX;
+constexpr uint64_t DFPN_TIME_CHECK_INTERVAL = 64;
 
 // 後方の駒を取らない手は最善である可能性が低いため、先頭の手を除いて探索深さを削減する
 constexpr int LMR_MOVE_THRESHOLD = 4;
@@ -484,9 +485,11 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	return max_eval;
 }
 
-std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth, uint64_t max_nodes) {
+std::optional<Shogi::Move> AIPlayer::find_mate(BoardState &board, int max_depth, uint64_t max_nodes, uint64_t end_time) {
 	dfpn_table_.clear();
 	dfpn_path_.clear();
+	dfpn_end_time_ = end_time;
+	dfpn_stopped_ = false;
 	uint64_t node_count = 0;
 
 	int pn = 1;
@@ -567,7 +570,11 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		pn = 1;
 	}
 
-	if (node_count > max_nodes) {
+	if (node_count % DFPN_TIME_CHECK_INTERVAL == 1 && should_stop(dfpn_end_time_)) {
+		dfpn_stopped_ = true;
+	}
+
+	if (node_count > max_nodes || dfpn_stopped_) {
 		return;
 	}
 
@@ -679,7 +686,7 @@ void AIPlayer::dfpn_search(BoardState &board, Turn turn, int threshold_pn, int t
 		if (pn >= threshold_pn || dn >= threshold_dn || pn == 0 || dn == 0) {
 			break;
 		}
-		if (node_count > max_nodes) {
+		if (node_count > max_nodes || dfpn_stopped_) {
 			break;
 		}
 
@@ -820,9 +827,12 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 		return {};
 	}
 
+	uint64_t start_time = now_usec();
+	uint64_t strict_limit_time = start_time + time_limit_usec_;
+
 	Turn root_turn = board.get_turn_to_move();
 
-	auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES);
+	auto mate_move = find_mate(board, OWN_MATE_DEPTH, OWN_MATE_NODES, start_time + time_limit_usec_ / OWN_MATE_TIME_DIVISOR);
 	if (mate_move.has_value()) {
 		log("Checkmate proven.");
 
@@ -850,9 +860,6 @@ std::vector<ScoredMove> AIPlayer::search_top_moves(BoardState board, int count) 
 			}
 		}
 	}
-
-	uint64_t start_time = now_usec();
-	uint64_t strict_limit_time = start_time + time_limit_usec_;
 
 	auto to_scored_moves = [this](const std::vector<RootMove> &top) {
 		// 手番側が勝ちを読み切った局面では1手だけを返す

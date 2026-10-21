@@ -40,6 +40,7 @@ struct AIPlayerTestAccess {
 
 	static constexpr int QS_PLY_LIMIT = AIPlayer::QS_PLY_LIMIT;
 	static constexpr uint32_t INFINITY_PN = AIPlayer::INFINITY_PN;
+	static constexpr uint64_t NO_TIME_LIMIT = AIPlayer::NO_TIME_LIMIT;
 	static constexpr int MAX_PLY = AIPlayer::MAX_PLY;
 	static constexpr int RFP_MAX_DEPTH = AIPlayer::RFP_MAX_DEPTH;
 	static constexpr int RFP_MARGIN = AIPlayer::RFP_MARGIN;
@@ -76,6 +77,9 @@ struct AIPlayerTestAccess {
 	}
 	std::optional<int> detect_path_repetition(int ply, uint64_t hash) { return ai.detect_path_repetition(ply, hash); }
 	std::optional<Move> find_mate(BoardState &board, int max_depth) { return ai.find_mate(board, max_depth); }
+	std::optional<Move> find_mate(BoardState &board, int max_depth, uint64_t end_time) {
+		return ai.find_mate(board, max_depth, 100000, end_time);
+	}
 	void dfpn_search(BoardState &board, Turn turn, int threshold_pn, int threshold_dn, int &pn, int &dn, int depth,
 			uint64_t &node_count, uint64_t max_nodes) {
 		ai.dfpn_search(board, turn, threshold_pn, threshold_dn, pn, dn, depth, node_count, max_nodes);
