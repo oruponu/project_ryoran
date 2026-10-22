@@ -24,7 +24,7 @@ class TranspositionTable {
 		uint64_t key;
 		int32_t score;
 		uint16_t move;
-		int8_t depth; // 0 means empty
+		uint8_t depth; // depth + 1; 0 means empty
 		uint8_t gen_flag; // upper 6 bits: generation, lower 2 bits: flag
 	};
 

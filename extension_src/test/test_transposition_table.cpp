@@ -82,6 +82,11 @@ void run_store_probe_tests() {
 	check(data.has_value() && data->depth == 127 && data->flag == TTFlag::UPPER_BOUND && data->move == 0x7fff,
 			"tt: the largest depth and move are read back");
 
+	tt.store(0x3333, 42, 0, TTFlag::EXACT, 0x0123);
+	data = tt.probe(0x3333);
+	check(data.has_value() && data->score == 42 && data->depth == 0 && data->flag == TTFlag::EXACT && data->move == 0x0123,
+			"tt: a depth-0 entry is read back");
+
 	tt.allocate(SMALL_TABLE_BYTES * 4);
 	check(has_entry(tt, 0x1234), "tt: allocating again keeps the entries");
 }
@@ -147,6 +152,28 @@ void run_replacement_tests() {
 		tt.store(5, 0, 3, TTFlag::EXACT, 0);
 		check(!has_entry(tt, 1) && has_entry(tt, 2) && has_entry(tt, 3) && has_entry(tt, 4) && has_entry(tt, 5),
 				"tt replace: ties replace the first entry in the bucket");
+	}
+	{
+		TranspositionTable tt;
+		tt.allocate(ONE_BUCKET_BYTES);
+		tt.store(1, 0, 3, TTFlag::EXACT, 1);
+		tt.store(1, 0, 0, TTFlag::EXACT, 2);
+		std::optional<TTData> data = tt.probe(1);
+		check(data.has_value() && data->depth == 3 && data->move == 1,
+				"tt replace: a depth-0 store keeps a deeper entry of the same generation");
+	}
+	{
+		TranspositionTable tt;
+		tt.allocate(ONE_BUCKET_BYTES);
+		tt.store(1, 0, 1, TTFlag::EXACT, 0);
+		tt.store(2, 0, 0, TTFlag::EXACT, 0);
+		tt.store(3, 0, 1, TTFlag::EXACT, 0);
+		tt.store(4, 0, 1, TTFlag::EXACT, 0);
+		check(has_entry(tt, 1) && has_entry(tt, 2) && has_entry(tt, 3) && has_entry(tt, 4),
+				"tt replace: a depth-0 entry takes a slot");
+		tt.store(5, 0, 1, TTFlag::EXACT, 0);
+		check(!has_entry(tt, 2) && has_entry(tt, 1) && has_entry(tt, 3) && has_entry(tt, 4) && has_entry(tt, 5),
+				"tt replace: a depth-0 entry is replaced before depth-1 entries");
 	}
 }
 

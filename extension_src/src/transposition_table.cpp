@@ -28,7 +28,7 @@ std::optional<TTData> TranspositionTable::probe(uint64_t key) const {
 	const Bucket &bucket = buckets_[key & bucket_mask_];
 	for (const Entry &entry : bucket.entries) {
 		if (entry.depth != 0 && entry.key == key) {
-			return TTData{ .score = entry.score, .depth = entry.depth, .flag = static_cast<TTFlag>(entry.gen_flag & 3), .move = entry.move };
+			return TTData{ .score = entry.score, .depth = entry.depth - 1, .flag = static_cast<TTFlag>(entry.gen_flag & 3), .move = entry.move };
 		}
 	}
 	return std::nullopt;
@@ -39,12 +39,12 @@ void TranspositionTable::store(uint64_t key, int score, int depth, TTFlag flag, 
 	const Entry new_entry{ .key = key,
 		.score = score,
 		.move = move,
-		.depth = static_cast<int8_t>(depth),
+		.depth = static_cast<uint8_t>(depth + 1),
 		.gen_flag = static_cast<uint8_t>((generation_ << 2) | std::to_underlying(flag)) };
 
 	for (Entry &entry : bucket.entries) {
 		if (entry.depth != 0 && entry.key == key) {
-			if (depth >= entry.depth || age(entry) != 0) {
+			if (new_entry.depth >= entry.depth || age(entry) != 0) {
 				entry = new_entry;
 			}
 			return;
