@@ -68,11 +68,13 @@ struct AIPlayerTestAccess {
 	void update_killer(int ply, const Move &move) { ai.update_killer(ply, move); }
 	void update_history(Turn turn, const Move &move, int depth) { ai.update_history(turn, move, depth); }
 	int quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t &node_count, int qs_ply = 0) {
+		ai.tt_.allocate(ai.tt_bytes_);
 		bool timeout = false;
 		return ai.quiescence_search(board, alpha, beta, ply, AIPlayer::NO_TIME_LIMIT, timeout, node_count, qs_ply);
 	}
 	int quiescence_search(BoardState &board, int alpha, int beta, int ply, uint64_t end_time, bool &timeout,
 			uint64_t &node_count) {
+		ai.tt_.allocate(ai.tt_bytes_);
 		return ai.quiescence_search(board, alpha, beta, ply, end_time, timeout, node_count);
 	}
 	int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time, bool &timeout,
@@ -92,6 +94,7 @@ struct AIPlayerTestAccess {
 	double calculate_win_probability(int score) { return ai.calculate_win_probability(score); }
 	auto &path_hashes() { return ai.path_hashes_; }
 	auto &path_in_check() { return ai.path_in_check_; }
+	void set_time_check_countdown(int countdown) { ai.time_check_countdown_ = countdown; }
 	TranspositionTable &tt() {
 		ai.tt_.allocate(ai.tt_bytes_);
 		return ai.tt_;

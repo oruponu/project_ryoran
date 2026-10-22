@@ -60,6 +60,18 @@ int side_to_move_score(const BoardState &board) {
 	return (board.get_turn_to_move() == Turn::SENTE) ? score : -score;
 }
 
+bool move_tt_move_to_front(Shogi::MoveList &move_list, uint16_t tt_move) {
+	if (tt_move == 0) {
+		return false;
+	}
+	auto it = std::ranges::find_if(move_list, [tt_move](const Shogi::Move &move) { return pack_move(move) == tt_move; });
+	if (it == move_list.end()) {
+		return false;
+	}
+	std::ranges::rotate(move_list.begin(), it, it + 1);
+	return true;
+}
+
 struct RootMove {
 	Shogi::Move move;
 	int score;
@@ -335,6 +347,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		path_hashes_[ply] = hash;
 	}
 
+	if (depth <= 0) {
+		return quiescence_search(board, alpha, beta, ply, end_time, timeout, node_count);
+	}
+
 	int original_alpha = alpha;
 	int original_beta = beta;
 
@@ -353,11 +369,6 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	// TTから最善手を取得
 	uint16_t tt_move = tt_data.has_value() ? tt_data->move : 0;
-
-	if (depth <= 0) {
-		// 静止探索を実行
-		return quiescence_search(board, alpha, beta, ply, end_time, timeout, node_count);
-	}
 
 	// 王手延長：王手を受けた側は深さを減らさず読む
 	const int extension = (in_check && ply < MAX_PLY) ? 1 : 0;
@@ -392,15 +403,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		}
 	}
 
-	bool has_tt_move = false;
-	if (tt_move != 0) {
-		auto it = std::ranges::find_if(move_list, [tt_move](const Move &move) { return pack_move(move) == tt_move; });
-		if (it != move_list.end()) {
-			std::ranges::rotate(move_list.begin(), it, it + 1);
-			has_tt_move = true;
-		}
-	}
-
+	const bool has_tt_move = move_tt_move_to_front(move_list, tt_move);
 	auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
 	sort_moves(board, sort_start, move_list.end(), ply);
 
@@ -747,16 +750,31 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 
 	Turn turn = board.get_turn_to_move();
 	bool in_check = MoveGenerator::is_king_in_check(board, turn);
+	uint64_t hash = board.get_zobrist_hash();
 
-	// 千日手（経路反復）：Stand-Patより前に判定
+	// Path repetition: check before the TT probe and stand-pat
 	if (ply < MAX_PLY) {
-		uint64_t hash = board.get_zobrist_hash();
 		path_in_check_[ply] = in_check;
 		if (auto rep = detect_path_repetition(ply, hash); rep.has_value()) {
 			return rep.value();
 		}
 		path_hashes_[ply] = hash;
 	}
+
+	std::optional<TTData> tt_data = tt_.probe(hash);
+	if (tt_data.has_value()) {
+		int tt_score = score_from_tt(tt_data->score, ply);
+		if (tt_data->flag == TTFlag::EXACT) {
+			return tt_score;
+		} else if (tt_data->flag == TTFlag::LOWER_BOUND && tt_score >= beta) {
+			return tt_score;
+		} else if (tt_data->flag == TTFlag::UPPER_BOUND && tt_score <= alpha) {
+			return tt_score;
+		}
+	}
+	uint16_t tt_move = tt_data.has_value() ? tt_data->move : 0;
+	const bool can_store = !tt_data.has_value() || tt_data->depth == 0;
+	const int original_alpha = alpha;
 
 	int stand_pat = side_to_move_score(board);
 
@@ -781,9 +799,11 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 		// 詰み（手番側の負け）
 		return -(MATE_SCORE - ply);
 	}
-	sort_moves(board, move_list.begin(), move_list.end(), ply);
+	auto sort_start = move_tt_move_to_front(move_list, tt_move) ? move_list.begin() + 1 : move_list.begin();
+	sort_moves(board, sort_start, move_list.end(), ply);
 
 	int max_eval = in_check ? -INFINITE_SCORE : stand_pat;
+	uint16_t best_move = 0;
 
 	for (const auto &move : move_list) {
 		if (!in_check) {
@@ -813,12 +833,24 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 			return 0;
 		}
 
-		max_eval = std::max(max_eval, eval);
+		if (eval > max_eval) {
+			max_eval = eval;
+			best_move = pack_move(move);
+		}
 		alpha = std::max(alpha, eval);
 
 		if (alpha >= beta) {
+			if (can_store) {
+				tt_.store(hash, score_to_tt(beta, ply), 0, TTFlag::LOWER_BOUND, pack_move(move));
+			}
 			return beta; // βカット
 		}
+	}
+
+	if (can_store) {
+		TTFlag flag = max_eval <= original_alpha ? TTFlag::UPPER_BOUND : TTFlag::EXACT;
+		uint16_t stored_move = (flag == TTFlag::UPPER_BOUND && tt_move != 0) ? tt_move : best_move;
+		tt_.store(hash, score_to_tt(max_eval, ply), 0, flag, stored_move);
 	}
 
 	return max_eval;

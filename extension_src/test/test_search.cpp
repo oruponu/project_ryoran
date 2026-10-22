@@ -416,7 +416,9 @@ void run_quiescence_tests() {
 		int stand_pat = board.get_score();
 		nodes = 0;
 		int high_alpha = stand_pat + 90 + 540 + 1; // victim(90) + DELTA_MARGIN(540) でも届かない
-		score = ai_t.quiescence_search(board, high_alpha, high_alpha + 1, 0, nodes);
+		AIPlayer fresh_ai;
+		AIPlayerTestAccess fresh_ai_t{ fresh_ai };
+		score = fresh_ai_t.quiescence_search(board, high_alpha, high_alpha + 1, 0, nodes);
 		check(nodes == 1, "delta pruning skips hopeless capture");
 		check(score == stand_pat + 90 + 540, "delta pruning returns the optimistic value of the skipped capture");
 	}
@@ -497,6 +499,65 @@ void run_quiescence_deadline_tests() {
 		static_cast<void>(ai_t.quiescence_search(*board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0,
 				AIPlayerTestAccess::NO_TIME_LIMIT, timeout, nodes));
 		check(!timeout, "qsearch: no deadline does not time out");
+	}
+}
+
+void run_quiescence_tt_tests() {
+	BoardState board(Turn::SENTE);
+	board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+	board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+	const uint64_t hash = board.get_zobrist_hash();
+	const int stand_pat = board.get_score();
+	const Move capture(4, 8, 4, 4, R, false, false, true);
+
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		uint64_t first_nodes = 0;
+		int first = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, first_nodes);
+		uint64_t second_nodes = 0;
+		int second = ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, second_nodes);
+		check(second_nodes == 1 && second == first, "qsearch tt: a second search returns from the table");
+	}
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		uint64_t nodes = 0;
+		int score = ai_t.quiescence_search(board, stand_pat, stand_pat + 1, 0, nodes);
+		std::optional<TTData> entry = ai_t.tt().probe(hash);
+		check(score == stand_pat + 1 && entry.has_value() && entry->depth == 0 && entry->flag == TTFlag::LOWER_BOUND &&
+						entry->score == stand_pat + 1 && entry->move == pack_move(capture),
+				"qsearch tt: a beta cutoff is stored as a lower bound");
+	}
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		ai_t.set_time_check_countdown(2);
+		bool timeout = false;
+		uint64_t nodes = 0;
+		static_cast<void>(ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, 1, timeout, nodes));
+		check(timeout && nodes == 2 && !ai_t.tt().probe(hash).has_value(), "qsearch tt: timeout stores nothing");
+	}
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		ai_t.tt().store(hash, stand_pat - 5000, 5, TTFlag::LOWER_BOUND, 0x0abc);
+		ai_t.tt().new_search();
+		uint64_t nodes = 0;
+		static_cast<void>(ai_t.quiescence_search(board, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, 0, nodes));
+		std::optional<TTData> entry = ai_t.tt().probe(hash);
+		check(nodes > 1 && entry.has_value() && entry->depth == 5 && entry->score == stand_pat - 5000 && entry->move == 0x0abc,
+				"qsearch tt: an older deep entry survives");
+	}
+	{
+		AIPlayer ai;
+		AIPlayerTestAccess ai_t{ ai };
+		ai_t.tt().store(hash, stand_pat + 3000, 0, TTFlag::EXACT, 0);
+		bool timeout = false;
+		uint64_t nodes = 0;
+		int score = ai_t.alpha_beta(board, 1, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE,
+				AIPlayerTestAccess::NO_TIME_LIMIT, timeout, nodes);
+		check(score != stand_pat + 3000, "qsearch tt: depth-1 search ignores a qsearch entry");
 	}
 }
 
@@ -1055,6 +1116,7 @@ void run_search_tests() {
 	run_see_tests();
 	run_quiescence_tests();
 	run_quiescence_deadline_tests();
+	run_quiescence_tt_tests();
 	run_pvs_tests();
 	run_fail_low_tt_move_tests();
 	run_hint_score_tests();
