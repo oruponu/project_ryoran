@@ -291,6 +291,52 @@ void run_move_ordering_tests() {
 	Move kp(6, 2, 6, 1, S, true, false, false);
 	ai_t.update_killer(5, kp);
 	check(ai_t.get_move_ordering_score(board, kp, 5) == 920000, "killer + promotion = 920000");
+
+	{
+		BoardState bad_board(Turn::SENTE);
+		bad_board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		bad_board.set_cell({ 4, 3 }, P, Turn::GOTE, false);
+		bad_board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(ai_t.get_move_ordering_score(bad_board, move, 3) == -1000000 + 90 - 990,
+				"ordering: bad capture scores below quiet moves");
+	}
+	{
+		BoardState bad_board(Turn::SENTE);
+		bad_board.set_cell({ 4, 2 }, P, Turn::GOTE, false);
+		bad_board.set_cell({ 4, 1 }, P, Turn::GOTE, false);
+		bad_board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 2, R, true, false, true);
+		const int score = ai_t.get_move_ordering_score(bad_board, move, 3);
+		check(score == -1000000 + 90 - 990 + 20000 && score < 0,
+				"ordering: bad capture with promotion stays below quiet moves");
+	}
+	{
+		BoardState free_board(Turn::SENTE);
+		free_board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		free_board.set_cell({ 4, 8 }, R, Turn::SENTE, false);
+		Move move(4, 8, 4, 4, R, false, false, true);
+		check(ai_t.get_move_ordering_score(free_board, move, 3) == 1000000 + 90 - 990,
+				"ordering: free capture stays in the capture band");
+	}
+	{
+		BoardState cheap_board(Turn::SENTE);
+		cheap_board.set_cell({ 4, 4 }, S, Turn::GOTE, false);
+		cheap_board.set_cell({ 4, 3 }, P, Turn::GOTE, false);
+		cheap_board.set_cell({ 4, 5 }, P, Turn::SENTE, false);
+		Move move(4, 5, 4, 4, P, false, false, true);
+		check(ai_t.get_move_ordering_score(cheap_board, move, 3) == 1000000 + 495 - 90,
+				"ordering: cheaper attacker stays in the capture band");
+	}
+	{
+		BoardState tokin_board(Turn::SENTE);
+		tokin_board.set_cell({ 4, 4 }, P, Turn::GOTE, false);
+		tokin_board.set_cell({ 4, 3 }, P, Turn::GOTE, false);
+		tokin_board.set_cell({ 4, 5 }, P, Turn::SENTE, true);
+		Move move(4, 5, 4, 4, P, false, false, true);
+		check(ai_t.get_move_ordering_score(tokin_board, move, 3) == -1000000 + 90 - 90,
+				"ordering: tokin capture of a defended pawn is a bad capture");
+	}
 }
 
 void run_sort_moves_tests() {

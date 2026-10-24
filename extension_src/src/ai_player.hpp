@@ -46,6 +46,7 @@ private:
 	static constexpr int MAX_PLY = 128;
 	static constexpr int DEFAULT_MAX_DEPTH = 12;
 	static constexpr int CAPTURE_ORDERING_BASE = 1000000;
+	static constexpr int BAD_CAPTURE_ORDERING_BASE = -1000000;
 	static constexpr int KILLER1_ORDERING_SCORE = 900000;
 	static constexpr int KILLER2_ORDERING_SCORE = 800000;
 	static constexpr int PROMOTION_ORDERING_BONUS = 20000;

@@ -205,8 +205,11 @@ int AIPlayer::get_move_ordering_score(const BoardState &board, const Shogi::Move
 		if (!target_cell.is_empty()) {
 			int victim_value = Shogi::PIECE_VALUES[std::to_underlying(target_cell.piece_type)][target_cell.is_promoted ? 1 : 0];
 			int aggressor_value = Shogi::PIECE_VALUES[std::to_underlying(move.piece_type)][0];
+			const Cell &from_cell = board.get_cell({ move.from_col, move.from_row });
+			const int actual_aggressor_value = Shogi::PIECE_VALUES[std::to_underlying(from_cell.piece_type)][from_cell.is_promoted ? 1 : 0];
+			const bool is_bad_capture = victim_value < actual_aggressor_value && MoveGenerator::see(board, move) < 0;
 			// 高い駒を安い駒で取るほど高得点
-			score = CAPTURE_ORDERING_BASE + victim_value - aggressor_value;
+			score = (is_bad_capture ? BAD_CAPTURE_ORDERING_BASE : CAPTURE_ORDERING_BASE) + victim_value - aggressor_value;
 		}
 	} else {
 		// 駒を取らない手：Killer / History
