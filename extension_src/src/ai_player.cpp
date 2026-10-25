@@ -304,6 +304,10 @@ bool AIPlayer::late_move_prunes(int depth, int prior_move_count) {
 	return depth <= LMP_MAX_DEPTH && prior_move_count >= 4 + 2 * depth * depth;
 }
 
+bool AIPlayer::iir_reduces(int depth, bool has_tt_move, bool in_check) {
+	return depth >= IIR_MIN_DEPTH && !has_tt_move && !in_check;
+}
+
 int AIPlayer::null_move_reduction(int depth) {
 	return 2 + depth / 4;
 }
@@ -407,6 +411,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	const bool has_tt_move = move_tt_move_to_front(move_list, tt_move);
+	// Internal Iterative Reductions
+	if (iir_reduces(depth, has_tt_move, in_check)) {
+		--depth;
+	}
 	auto sort_start = has_tt_move ? move_list.begin() + 1 : move_list.begin();
 	sort_moves(board, sort_start, move_list.end(), ply);
 

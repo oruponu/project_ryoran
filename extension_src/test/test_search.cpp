@@ -786,6 +786,38 @@ void run_late_move_pruning_tests() {
 	check(pruned.nodes < pv.nodes, "lmp: zero window search skips late quiet moves");
 }
 
+int iir_stored_depth(int depth, std::optional<uint16_t> tt_move) {
+	BoardState board(Turn::SENTE);
+	setup_capture_choice_position(board);
+	AIPlayer ai;
+	AIPlayerTestAccess ai_t{ ai };
+	uint64_t hash = board.get_zobrist_hash();
+	if (tt_move.has_value()) {
+		ai_t.tt().store(hash, 0, 1, TTFlag::EXACT, tt_move.value());
+	}
+	bool timeout = false;
+	uint64_t nodes = 0;
+	static_cast<void>(ai_t.alpha_beta(board, depth, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX, timeout, nodes));
+	std::optional<TTData> entry = ai_t.tt().probe(hash);
+	return entry.has_value() ? entry->depth : -1;
+}
+
+void run_iir_tests() {
+	using T = AIPlayerTestAccess;
+	check(T::iir_reduces(4, false, false), "iir: reduces at the min depth without a tt move");
+	check(!T::iir_reduces(3, false, false), "iir: not below the min depth");
+	check(!T::iir_reduces(4, true, false) && !T::iir_reduces(10, true, false), "iir: not with a tt move");
+	check(!T::iir_reduces(4, false, true), "iir: not in check");
+	check(T::IIR_MIN_DEPTH == 4, "iir: min depth constant");
+
+	const uint16_t legal_move = pack_move(Move(8, 8, 7, 7, K, false, false, false));
+	constexpr uint16_t NOT_A_LEGAL_MOVE = 0x7fff;
+	check(iir_stored_depth(4, std::nullopt) == 3, "iir: stores the reduced depth without a tt entry");
+	check(iir_stored_depth(4, legal_move) == 4, "iir: keeps the depth with a legal tt move");
+	check(iir_stored_depth(4, NOT_A_LEGAL_MOVE) == 3, "iir: reduces when the tt move is not legal");
+	check(iir_stored_depth(3, std::nullopt) == 3, "iir: no reduction below the min depth");
+}
+
 const char *QUIET_DEFENSE_SFEN = "4k4/9/4p4/g8/R8/9/7s1/9/8K b g 1";
 
 void run_pruning_false_mate_tests() {
@@ -863,8 +895,7 @@ void run_lmr_and_extension_tests() {
 		}
 	}
 
-	// 王手延長: 延長なしでは見逃す kif2-60 の詰みを深さ4で発見できること
-	// （手順が9手あるため深さ3では延長を足しても届かず、深さ4にした）
+	// Check extension: finds the kif2-60 mate that is missed without it
 	{
 		BoardState ext_board(Turn::SENTE);
 		setup_initial_position(ext_board);
@@ -873,9 +904,9 @@ void run_lmr_and_extension_tests() {
 			AIPlayerTestAccess ext_ai_t{ ext_ai };
 			bool timeout = false;
 			uint64_t nodes = 0;
-			int score = ext_ai_t.alpha_beta(ext_board, 4, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX,
+			int score = ext_ai_t.alpha_beta(ext_board, 5, 0, -AIPlayer::INFINITE_SCORE, AIPlayer::INFINITE_SCORE, UINT64_MAX,
 					timeout, nodes);
-			check(score >= AIPlayer::MATE_BOUND, "check extension finds mate at kif2-60 at depth 4");
+			check(score >= AIPlayer::MATE_BOUND, "check extension finds mate at kif2-60 at depth 5");
 		} else {
 			check(false, "replay kif2-60 for check extension");
 		}
@@ -1170,6 +1201,7 @@ void run_search_tests() {
 	run_quiet_move_prune_tests();
 	run_futility_tests();
 	run_late_move_pruning_tests();
+	run_iir_tests();
 	run_pruning_false_mate_tests();
 	run_pruning_mate_regression_tests();
 	run_null_move_reduction_tests();

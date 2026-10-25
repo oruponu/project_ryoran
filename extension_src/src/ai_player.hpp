@@ -56,6 +56,7 @@ private:
 	static constexpr int FUTILITY_MAX_DEPTH = 2;
 	static constexpr int FUTILITY_MARGINS[FUTILITY_MAX_DEPTH + 1] = { 0, 300, 550 };
 	static constexpr int LMP_MAX_DEPTH = 3;
+	static constexpr int IIR_MIN_DEPTH = 4;
 	// 静止探索を打ち切る深さ
 	static constexpr int QS_PLY_LIMIT = 16;
 
@@ -97,6 +98,7 @@ private:
 	[[nodiscard]] static bool is_prunable_quiet_move(const Shogi::Move &move, bool gives_check, bool is_killer, int prior_move_count);
 	[[nodiscard]] static bool futility_prunes(int depth, int static_eval, int alpha);
 	[[nodiscard]] static bool late_move_prunes(int depth, int prior_move_count);
+	[[nodiscard]] static bool iir_reduces(int depth, bool has_tt_move, bool in_check);
 	[[nodiscard]] static int lmr_reduction(int depth, int move_number);
 	[[nodiscard]] static int null_move_reduction(int depth);
 	[[nodiscard]] int alpha_beta(BoardState &board, int depth, int ply, int alpha, int beta, uint64_t end_time,

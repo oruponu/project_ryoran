@@ -58,6 +58,8 @@ struct AIPlayerTestAccess {
 	static bool futility_prunes(int depth, int static_eval, int alpha) { return AIPlayer::futility_prunes(depth, static_eval, alpha); }
 	static constexpr int LMP_MAX_DEPTH = AIPlayer::LMP_MAX_DEPTH;
 	static bool late_move_prunes(int depth, int prior_move_count) { return AIPlayer::late_move_prunes(depth, prior_move_count); }
+	static constexpr int IIR_MIN_DEPTH = AIPlayer::IIR_MIN_DEPTH;
+	static bool iir_reduces(int depth, bool has_tt_move, bool in_check) { return AIPlayer::iir_reduces(depth, has_tt_move, in_check); }
 	static int lmr_reduction(int depth, int move_number) { return AIPlayer::lmr_reduction(depth, move_number); }
 	static int null_move_reduction(int depth) { return AIPlayer::null_move_reduction(depth); }
 
