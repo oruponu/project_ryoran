@@ -277,20 +277,25 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 	const auto &sente_king_scores = sente_king_table_[sente_king_index];
 	const auto &gote_king_scores = gote_king_table_[gote_king_index];
 	int score = 0;
-	for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
-		auto count_attacks = [&](int turn_index) {
-			return attacks_any[turn_index].is_set(index) + attacks_multi[turn_index].is_set(index);
-		};
-		int sente_attack_count = count_attacks(0);
-		int gote_attack_count = count_attacks(1);
+	auto accumulate_squares = [&](int first_index, int square_count, uint64_t sente_any, uint64_t sente_multi,
+									  uint64_t gote_any, uint64_t gote_multi) {
+		for (int bit = 0; bit < square_count; ++bit) {
+			const int index = first_index + bit;
+			const int sente_attack_count = static_cast<int>((sente_any >> bit) & 1) + static_cast<int>((sente_multi >> bit) & 1);
+			const int gote_attack_count = static_cast<int>((gote_any >> bit) & 1) + static_cast<int>((gote_multi >> bit) & 1);
 
-		int piece_state_index = get_piece_state_index(board.get_cell(index));
-		int owner_index = get_owner_index(piece_state_index);
-		int total = sente_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
-				gote_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
-				piece_table_[index][sente_attack_count][gote_attack_count][piece_state_index];
-		score += total / (TABLE_SCALE / EVAL_SCALE_FACTOR);
-	}
+			int piece_state_index = get_piece_state_index(board.get_cell(index));
+			int owner_index = get_owner_index(piece_state_index);
+			int total = sente_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
+					gote_king_scores[index][sente_attack_count][gote_attack_count][owner_index] +
+					piece_table_[index][sente_attack_count][gote_attack_count][piece_state_index];
+			score += total / (TABLE_SCALE / EVAL_SCALE_FACTOR);
+		}
+	};
+	accumulate_squares(0, 64, attacks_any[0].lower(), attacks_multi[0].lower(), attacks_any[1].lower(),
+			attacks_multi[1].lower());
+	accumulate_squares(64, Shogi::BOARD_SIZE - 64, attacks_any[0].upper(), attacks_multi[0].upper(),
+			attacks_any[1].upper(), attacks_multi[1].upper());
 
 	return score / EVAL_SCALE_FACTOR;
 }

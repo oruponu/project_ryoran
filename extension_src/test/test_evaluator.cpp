@@ -23,6 +23,12 @@ const ScoreCase SCORE_CASES[] = {
 	{ "kif2-60", nullptr, 60, 567, 3151 },
 	{ "kif2-69", nullptr, 69, 916, 6866 },
 	{ "edge-kings", EDGE_KINGS_SFEN, 0, 858, 1978 },
+	{ "pawn-boundary-sente", "4k4/7P1/9/9/9/9/9/9/4K4 b - 1", 0, 21, 102 },
+	{ "pawn-boundary-gote", "4k2p1/9/9/9/9/9/9/9/4K4 b - 1", 0, -34, -115 },
+	{ "pawn-last-rank-sente", "k3P4/9/9/9/9/9/9/9/4K4 b - 1", 0, -7, 74 },
+	{ "pawn-last-rank-gote", "4k4/9/9/9/9/9/9/9/K3p4 b - 1", 0, -48, -129 },
+	{ "tokin-sente", "4k4/9/2+P6/9/9/9/9/9/4K4 b - 1", 0, 375, 861 },
+	{ "tokin-gote", "4k4/9/9/9/9/9/6+p2/9/4K4 b - 1", 0, -375, -861 },
 };
 
 std::optional<BoardState> make_board(const ScoreCase &score_case) {

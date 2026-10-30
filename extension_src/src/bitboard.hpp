@@ -96,6 +96,10 @@ public:
 		}
 	}
 
+	constexpr uint64_t lower() const { return lower_; }
+
+	constexpr uint64_t upper() const { return upper_; }
+
 	constexpr bool is_empty() const { return lower_ == 0 && upper_ == 0; }
 
 	constexpr int count() const {
