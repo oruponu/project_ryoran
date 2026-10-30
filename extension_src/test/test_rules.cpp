@@ -1,6 +1,8 @@
+#include "attack_table.hpp"
 #include "move_generator.hpp"
 #include "test_support.hpp"
 #include <algorithm>
+#include <format>
 #include <span>
 #include <vector>
 
@@ -395,6 +397,27 @@ void run_nifu_tests() {
 	check(has_pawn_drop_on_col(board, 1), "nifu: opponent pawn does not count");
 }
 
+void run_pawn_attacks_tests() {
+	AttackTable::initialize();
+
+	for (Turn turn : { Turn::SENTE, Turn::GOTE }) {
+		const char *side = turn == Turn::SENTE ? "sente" : "gote";
+		bool single_matches = true;
+		Bitboard all_pawns;
+		Bitboard expected_all;
+		for (int index = 0; index < Shogi::BOARD_SIZE; ++index) {
+			Bitboard pawn;
+			pawn.set(index);
+			single_matches = single_matches && AttackTable::get_pawn_attacks(pawn, turn) == AttackTable::get_pawn_attacks(index, turn);
+			all_pawns.set(index);
+			expected_all |= AttackTable::get_pawn_attacks(index, turn);
+		}
+		check(single_matches, std::format("pawn attacks: single pawn matches table ({})", side).c_str());
+		check(AttackTable::get_pawn_attacks(all_pawns, turn) == expected_all,
+				std::format("pawn attacks: all squares match table ({})", side).c_str());
+	}
+}
+
 } // namespace
 
 void run_zobrist_tests(const std::vector<uint8_t> &data) {
@@ -422,4 +445,5 @@ void run_rules_tests() {
 	run_promotion_rule_tests();
 	run_king_move_tests();
 	run_nifu_tests();
+	run_pawn_attacks_tests();
 }

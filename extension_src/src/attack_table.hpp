@@ -16,6 +16,14 @@ private:
 
 	inline static Bitboard rays_[8][Shogi::BOARD_SIZE];
 
+	static constexpr Bitboard make_row_mask(int row) {
+		Bitboard mask;
+		for (int col = 0; col < Shogi::BOARD_COLS; ++col) {
+			mask.set(Shogi::to_index(col, row));
+		}
+		return mask;
+	}
+
 public:
 	static void initialize();
 
@@ -23,6 +31,17 @@ public:
 
 	static const Bitboard &get_pawn_attacks(int index, Shogi::Turn turn) {
 		return attacks_pawn_[std::to_underlying(turn)][index];
+	}
+
+	static Bitboard get_pawn_attacks(const Bitboard &pawns, Shogi::Turn turn) {
+		if (turn == Shogi::Turn::SENTE) {
+			constexpr Bitboard first_row = make_row_mask(0);
+			const Bitboard movable = pawns & ~first_row;
+			return Bitboard((movable.lower() >> 1) | (movable.upper() << 63), movable.upper() >> 1);
+		}
+		constexpr Bitboard last_row = make_row_mask(Shogi::BOARD_ROWS - 1);
+		const Bitboard movable = pawns & ~last_row;
+		return Bitboard(movable.lower() << 1, (movable.upper() << 1) | (movable.lower() >> 63)) & ~Bitboard();
 	}
 
 	static const Bitboard &get_knight_attacks(int index, Shogi::Turn turn) {

@@ -259,9 +259,17 @@ int Evaluator::calculate_spatial_score(const BoardState &board) {
 	for (int turn_index = 0; turn_index < 2; ++turn_index) {
 		Shogi::Turn turn = static_cast<Shogi::Turn>(turn_index);
 		const Bitboard promoted_pieces = board.get_promoted_pieces(turn);
+		const Bitboard pawn_attacks =
+				AttackTable::get_pawn_attacks(board.get_pieces(turn, Shogi::PieceType::PAWN) & ~promoted_pieces, turn);
+		attacks_multi[turn_index] |= (attacks_any[turn_index] & pawn_attacks);
+		attacks_any[turn_index] |= pawn_attacks;
+
 		for (int piece_type_index = 0; piece_type_index < Shogi::PIECE_TYPE_COUNT; ++piece_type_index) {
 			Shogi::PieceType piece_type = static_cast<Shogi::PieceType>(piece_type_index);
 			Bitboard pieces = board.get_pieces(turn, piece_type);
+			if (piece_type == Shogi::PieceType::PAWN) {
+				pieces &= promoted_pieces;
+			}
 			while (!pieces.is_empty()) {
 				int from_index = pieces.pop_lsb();
 
