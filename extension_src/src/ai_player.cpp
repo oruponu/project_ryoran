@@ -2,6 +2,7 @@
 #include "move_generator.hpp"
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -423,7 +424,11 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		return ply < MAX_PLY && ((killer_valid_[ply][0] && killer_moves_[ply][0] == move) || (killer_valid_[ply][1] && killer_moves_[ply][1] == move));
 	};
 
-	Turn opponent_turn = Shogi::opponent(turn);
+	std::optional<CheckInfo> check_info;
+	if (prune_node || (depth >= 3 && !in_check)) {
+		check_info = MoveGenerator::get_check_info(board);
+	}
+
 	Move best_move = move_list[0];
 	int max_eval = -INFINITE_SCORE;
 	int move_index = 0;
@@ -439,9 +444,11 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		}
 		++move_index;
 
-		Shogi::UndoInfo undo = board.apply_move(move);
-
-		const bool gives_check = (reduction > 0 || prune_node) && MoveGenerator::is_king_in_check(board, opponent_turn);
+		bool gives_check = false;
+		if (reduction > 0 || prune_node) {
+			assert(check_info.has_value());
+			gives_check = MoveGenerator::gives_check(board, *check_info, move);
+		}
 		// 王手をかける手は詰み筋の見逃しを防ぐため削減しない
 		if (gives_check) {
 			reduction = 0;
@@ -450,9 +457,10 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 		// Futility Pruning / Late Move Pruning
 		if (prune_node && max_eval > -MATE_BOUND && is_prunable_quiet_move(move, gives_check, is_killer, prior_move_count) &&
 				(futility_prunes(depth, static_eval, alpha) || late_move_prunes(depth, prior_move_count))) {
-			board.undo_move(undo);
 			continue;
 		}
+
+		Shogi::UndoInfo undo = board.apply_move(move);
 
 		int new_depth = depth - 1 + extension;
 		int eval;
@@ -545,14 +553,11 @@ void AIPlayer::generate_check_moves(BoardState &board, Shogi::MoveList &move_lis
 
 	Shogi::MoveList candidates;
 	MoveGenerator::get_legal_moves(board, candidates);
-	Turn opponent_turn = Shogi::opponent(board.get_turn_to_move());
+	const CheckInfo check_info = MoveGenerator::get_check_info(board);
 	for (const auto &move : candidates) {
-		Shogi::UndoInfo undo = board.apply_move(move);
-		if (MoveGenerator::is_king_in_check(board, opponent_turn)) {
+		if (MoveGenerator::gives_check(board, check_info, move)) {
 			move_list.push(move);
 		}
-
-		board.undo_move(undo);
 	}
 }
 

@@ -3,6 +3,8 @@
 #include "test_support.hpp"
 #include <algorithm>
 #include <format>
+#include <optional>
+#include <random>
 #include <span>
 #include <vector>
 
@@ -431,6 +433,29 @@ std::vector<BoardState> collect_kifu2_positions() {
 	return positions;
 }
 
+std::vector<BoardState> collect_check_test_positions() {
+	constexpr int PLAYOUT_START_INTERVAL = 10;
+	constexpr int PLAYOUT_LAST_START = 60;
+	constexpr int PLAYOUT_LENGTH = 40;
+
+	std::vector<BoardState> positions = collect_kifu2_positions();
+	std::mt19937 rng(20261031);
+	for (int start = 0; start <= PLAYOUT_LAST_START; start += PLAYOUT_START_INTERVAL) {
+		BoardState board = positions[start];
+		for (int ply = 0; ply < PLAYOUT_LENGTH; ++ply) {
+			Shogi::MoveList move_list;
+			MoveGenerator::get_legal_moves(board, move_list);
+			if (move_list.is_empty()) {
+				break;
+			}
+			std::uniform_int_distribution<int> pick(0, move_list.size() - 1);
+			static_cast<void>(board.apply_move(move_list[pick(rng)]));
+			positions.push_back(board);
+		}
+	}
+	return positions;
+}
+
 bool given_checkers_match(BoardState &board) {
 	const Bitboard checkers = MoveGenerator::get_checkers(board, board.get_turn_to_move());
 	for (bool only_captures : { false, true }) {
@@ -448,9 +473,9 @@ bool given_checkers_match(BoardState &board) {
 void run_given_checkers_tests() {
 	AttackTable::initialize();
 
-	std::vector<BoardState> positions = collect_kifu2_positions();
-	check(std::ssize(positions) == KIFU2_MOVE_COUNT + 1 && std::ranges::all_of(positions, given_checkers_match),
-			"given checkers: matches generated checkers (kifu2)");
+	std::vector<BoardState> positions = collect_check_test_positions();
+	check(std::ssize(positions) > KIFU2_MOVE_COUNT + 1 && std::ranges::all_of(positions, given_checkers_match),
+			"given checkers: matches generated checkers (kifu2 and random playouts)");
 
 	bool check_positions_match = true;
 	for (const char *sfen : { "4k4/9/9/9/4R4/9/9/9/K8 w - 1", "4k4/9/9/9/4R3B/9/9/9/4K4 w - 1" }) {
@@ -459,6 +484,71 @@ void run_given_checkers_tests() {
 				!MoveGenerator::get_checkers(*board, board->get_turn_to_move()).is_empty() && given_checkers_match(*board);
 	}
 	check(check_positions_match, "given checkers: matches generated checkers (check positions)");
+}
+
+bool check_detection_matches(BoardState &board, int &checking, int &quiet) {
+	const Turn opponent_turn = Shogi::opponent(board.get_turn_to_move());
+	if (MoveGenerator::is_king_in_check(board, opponent_turn)) {
+		return false;
+	}
+
+	const CheckInfo check_info = MoveGenerator::get_check_info(board);
+	Shogi::MoveList move_list;
+	MoveGenerator::get_legal_moves(board, move_list);
+	bool matches = true;
+	for (const Move &move : move_list) {
+		const bool predicted = MoveGenerator::gives_check(board, check_info, move);
+		Shogi::UndoInfo undo = board.apply_move(move);
+		const bool actual = MoveGenerator::is_king_in_check(board, opponent_turn);
+		board.undo_move(undo);
+		matches = matches && predicted == actual;
+		++(actual ? checking : quiet);
+	}
+	return matches;
+}
+
+void run_check_detection_tests() {
+	AttackTable::initialize();
+
+	struct CheckCase {
+		const char *name;
+		const char *sfen;
+	};
+	constexpr CheckCase CHECK_CASES[] = {
+		{ "lance-discovered-sente", "4k4/9/9/4S4/9/9/4L4/9/K8 b - 1" },
+		{ "lance-discovered-gote", "8k/9/4l4/9/9/4s4/9/9/4K4 w - 1" },
+		{ "rook-king-discovered-sente", "9/9/9/9/R1K5k/9/9/9/9 b - 1" },
+		{ "rook-king-discovered-gote", "9/9/9/9/K5k1r/9/9/9/9 w - 1" },
+		{ "bishop-discovered", "9/9/6k2/9/9/9/2N6/9/B7K b - 1" },
+		{ "dragon-horse-steps", "4k4/9/6+R2/2+B6/9/9/9/9/4K4 b - 1" },
+		{ "promotion", "4k4/6S2/9/6N2/9/9/9/9/4K4 b - 1" },
+		{ "promoted-pieces", "2+S1k4/9/5+N3/9/9/9/9/9/4K4 b - 1" },
+		{ "drops-sente", "4k4/9/9/9/9/9/9/9/4K4 b RBNL 1" },
+		{ "drops-gote", "4k4/9/9/9/9/9/9/9/4K4 w rbnl 1" },
+		{ "double-check", "4k4/9/4N4/9/9/9/9/9/K3R4 b - 1" },
+		{ "capture-check", "4k4/5g3/6S2/9/9/9/9/9/4K4 b - 1" },
+		{ "boundary-sente", "7k1/9/9/9/9/9/9/9/K8 b P 1" },
+		{ "boundary-gote", "9/7K1/9/9/9/9/9/9/k8 w p 1" },
+		{ "no-opponent-king", "9/9/9/9/9/9/9/9/4K4 b R 1" },
+	};
+	for (const CheckCase &check_case : CHECK_CASES) {
+		std::optional<BoardState> board = BoardState::from_sfen(check_case.sfen);
+		int checking = 0;
+		int quiet = 0;
+		const bool matches = board.has_value() && check_detection_matches(*board, checking, quiet);
+		const bool has_opponent_king =
+				board.has_value() && board->get_king_position(Shogi::opponent(board->get_turn_to_move())).has_value();
+		check(matches && (has_opponent_king ? checking > 0 : checking == 0) && quiet > 0,
+				std::format("check detection: {}", check_case.name).c_str());
+	}
+
+	int checking = 0;
+	int quiet = 0;
+	bool all_match = true;
+	for (BoardState &board : collect_check_test_positions()) {
+		all_match = all_match && check_detection_matches(board, checking, quiet);
+	}
+	check(all_match && checking > 0, "check detection: kifu2 and random playouts");
 }
 
 } // namespace
@@ -490,4 +580,5 @@ void run_rules_tests() {
 	run_nifu_tests();
 	run_pawn_attacks_tests();
 	run_given_checkers_tests();
+	run_check_detection_tests();
 }
