@@ -418,6 +418,49 @@ void run_pawn_attacks_tests() {
 	}
 }
 
+constexpr int KIFU2_MOVE_COUNT = 69;
+
+std::vector<BoardState> collect_kifu2_positions() {
+	std::vector<BoardState> positions;
+	BoardState board(Turn::SENTE);
+	setup_initial_position(board);
+	positions.push_back(board);
+	for (int i = 0; i < KIFU2_MOVE_COUNT && replay(board, 1, KIFU2 + i); ++i) {
+		positions.push_back(board);
+	}
+	return positions;
+}
+
+bool given_checkers_match(BoardState &board) {
+	const Bitboard checkers = MoveGenerator::get_checkers(board, board.get_turn_to_move());
+	for (bool only_captures : { false, true }) {
+		Shogi::MoveList generated;
+		Shogi::MoveList given;
+		MoveGenerator::get_legal_moves(board, generated, only_captures);
+		MoveGenerator::get_legal_moves(board, given, only_captures, checkers);
+		if (!std::ranges::equal(generated, given)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void run_given_checkers_tests() {
+	AttackTable::initialize();
+
+	std::vector<BoardState> positions = collect_kifu2_positions();
+	check(std::ssize(positions) == KIFU2_MOVE_COUNT + 1 && std::ranges::all_of(positions, given_checkers_match),
+			"given checkers: matches generated checkers (kifu2)");
+
+	bool check_positions_match = true;
+	for (const char *sfen : { "4k4/9/9/9/4R4/9/9/9/K8 w - 1", "4k4/9/9/9/4R3B/9/9/9/4K4 w - 1" }) {
+		std::optional<BoardState> board = BoardState::from_sfen(sfen);
+		check_positions_match = check_positions_match && board.has_value() &&
+				!MoveGenerator::get_checkers(*board, board->get_turn_to_move()).is_empty() && given_checkers_match(*board);
+	}
+	check(check_positions_match, "given checkers: matches generated checkers (check positions)");
+}
+
 } // namespace
 
 void run_zobrist_tests(const std::vector<uint8_t> &data) {
@@ -446,4 +489,5 @@ void run_rules_tests() {
 	run_king_move_tests();
 	run_nifu_tests();
 	run_pawn_attacks_tests();
+	run_given_checkers_tests();
 }

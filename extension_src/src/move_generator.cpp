@@ -148,6 +148,10 @@ bool MoveGenerator::is_king_in_check(const BoardState &board, Turn turn) {
 }
 
 void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures) {
+	get_legal_moves(board, move_list, only_captures, get_checkers(board, board.get_turn_to_move()));
+}
+
+void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_list, bool only_captures, const Bitboard &checkers) {
 	move_list.clear();
 
 	const Turn turn = board.get_turn_to_move();
@@ -157,7 +161,6 @@ void MoveGenerator::get_legal_moves(BoardState &board, Shogi::MoveList &move_lis
 	const Bitboard occupancy = board.get_occupancy();
 	PinMasks pin_masks = calculate_pin_masks(board, turn);
 
-	Bitboard checkers = get_checkers(board, turn);
 	Bitboard evasion_mask;
 	if (checkers.is_empty()) {
 		// 王手なし

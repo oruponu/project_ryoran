@@ -343,7 +343,8 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 
 	uint64_t hash = board.get_zobrist_hash();
 	Turn turn = board.get_turn_to_move();
-	bool in_check = MoveGenerator::is_king_in_check(board, turn);
+	const Bitboard checkers = MoveGenerator::get_checkers(board, turn);
+	const bool in_check = !checkers.is_empty();
 
 	// 千日手（経路反復）：TTより前に判定
 	if (ply < MAX_PLY) {
@@ -389,7 +390,7 @@ int AIPlayer::alpha_beta(BoardState &board, int depth, int ply, int alpha, int b
 	}
 
 	Shogi::MoveList move_list;
-	MoveGenerator::get_legal_moves(board, move_list);
+	MoveGenerator::get_legal_moves(board, move_list, false, checkers);
 	if (move_list.is_empty()) {
 		// 投了（手番側の負け）
 		return -(MATE_SCORE - ply);
@@ -760,7 +761,8 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 	}
 
 	Turn turn = board.get_turn_to_move();
-	bool in_check = MoveGenerator::is_king_in_check(board, turn);
+	const Bitboard checkers = MoveGenerator::get_checkers(board, turn);
+	const bool in_check = !checkers.is_empty();
 	uint64_t hash = board.get_zobrist_hash();
 
 	// Path repetition: check before the TT probe and stand-pat
@@ -805,7 +807,7 @@ int AIPlayer::quiescence_search(BoardState &board, int alpha, int beta, int ply,
 	}
 
 	Shogi::MoveList move_list;
-	MoveGenerator::get_legal_moves(board, move_list, !in_check);
+	MoveGenerator::get_legal_moves(board, move_list, !in_check, checkers);
 	if (in_check && move_list.is_empty()) {
 		// 詰み（手番側の負け）
 		return -(MATE_SCORE - ply);
